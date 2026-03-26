@@ -1,16 +1,73 @@
-# React + Vite
+# ⚖️ Divorcio Frontend ADMINISTRATIVO - Sistema de Gestión
+Bienvenido al repositorio del proyecto **Divorcio FRONTEND ADMINISTRATIVO**. Este sistema maneja experiencia del usuario y el proceso de gestión de divorcios. 🛠  
+<hr>
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<b>Recuerda:</b> Debes seguir los pasos, no te saltes para no generar problemas. Además, es de suma relevancia que tengas instalado Git y haberlo añadido a tu <b>PATH</b>.
 
-Currently, two official plugins are available:
+```markdown
+https://git-scm.com/downloads/win
+```
+<hr>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Clonar el repositorio <br>
+Para obtener una copia local del proyecto, ejecuta:
 
-## React Compiler
+```bash
+git clone https://github.com/JhordanDev25/divorcio-frontend-administracion.git
+```
+## 🔥 Instala las dependencias <br>
+Antes de comenzar a trabajar, asegúrate instalar las dependencias del proyecto:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+cd divorcio-frontend-administracion
+npm install
+```
 
-## Expanding the ESLint configuration
+## 💡 Levanta frontend <br>
+Para levantar frontend, ejecuta el siguiente comando en:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+cd divorcio-frontend-administracion
+npm run dev
+```
+
+## 🔄 Actualizar la copia local <br>
+Antes de comenzar a trabajar, asegúrate de tener la última versión del proyecto:
+
+```bash
+git pull origin main
+```
+## 🌱 Crear una nueva rama <br>
+Crea tu propia rama para mantener un código más ordenado:
+
+```bash
+git checkout -b TuNombre-NombreRama
+```
+
+## 🧩 Añadir y subir cambios al repositorio <br>
+Después de realizar modificaciones o agregar nuevas funcionalidades:
+
+```bash
+git add .
+```
+```bash
+git commit -m "TuNombre - Breve descripcion de lo que hiciste"
+```
+```bash
+git push origin NombreDeTuRama
+```
+Usa un mensaje de commit descriptivo para identificar facilmente las modificaciones.
+
+## 🧱 Actualizar la rama principal (main) <br>
+Actualiza siempre los últimos cambios del repositorio:
+
+```bash
+git checkout main
+```
+```bash
+git pull origin main
+```
+
+🧩 Recuerda siempre consultar cualquier duda
+<hr>
+
