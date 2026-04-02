@@ -1,0 +1,345 @@
+/* ====================================================================
+   ESTILOS PARA VINCULAR EXPEDIENTES Y EXPEDIENTES ACTIVOS
+   ==================================================================== */
+
+/* Layout principal */
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.contenido {
+  flex: 1;
+  margin-left: 280px;
+  padding: 2rem;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+/* Header de página */
+.pagina-header {
+  margin-bottom: 2rem;
+}
+
+.pagina-header h1 {
+  font-size: 1.8rem;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.pagina-header p {
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+/* ====================================================================
+   PANEL DE FILTROS
+   ==================================================================== */
+
+.filtros-panel {
+  background: white;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.filtro-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.filtro-grupo label {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.filtro-grupo input,
+.filtro-grupo select {
+  padding: 0.375rem 0.625rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  font-size: 0.8125rem;
+  transition: border-color 0.2s;
+  background: white;
+  color: #1e293b;
+}
+
+.filtro-grupo input:focus,
+.filtro-grupo select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.filtro-grupo input::placeholder {
+  color: #cbd5e1;
+}
+
+.acciones-filtros {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-limpiar {
+  padding: 0.375rem 0.875rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  color: #64748b;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  height: 32px;
+}
+
+.btn-limpiar:hover {
+  background: #e2e8f0;
+}
+
+/* Resultados info */
+.resultados-info {
+  margin-bottom: 0.625rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* ====================================================================
+   TABLA PRINCIPAL
+   ==================================================================== */
+
+.tabla-container {
+  overflow-x: auto;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 750px;
+}
+
+.tabla thead {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tabla th {
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.tabla td {
+  padding: 0.6875rem 0.875rem;
+  border-bottom: 0.5px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.tabla tr:last-child td {
+  border-bottom: none;
+}
+
+.tabla tbody tr:hover td {
+  background: #fafbff;
+}
+
+/* ====================================================================
+   COLUMNAS
+   ==================================================================== */
+
+/* Código */
+.codigo-cell {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6366f1;
+}
+
+/* Nombres */
+.nombre-solicitante {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.nombre-demandado {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+/* DNI */
+.dni-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dni-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.dni-tag {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #94a3b8;
+  min-width: 12px;
+}
+
+/* Fecha */
+.fecha-cell {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+/* ====================================================================
+   BOTONES
+   ==================================================================== */
+
+.btn-vincular-tabla {
+  padding: 0.3125rem 0.875rem;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.btn-vincular-tabla:hover {
+  opacity: 0.85;
+}
+
+.btn-ver {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.3125rem 0.875rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.btn-ver:hover {
+  opacity: 0.85;
+}
+
+.btn-buscar {
+  padding: 0.375rem 1rem;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.btn-buscar:hover {
+  opacity: 0.85;
+}
+
+/* ====================================================================
+   BADGES
+   ==================================================================== */
+
+.badge-vinculado {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  background: #10b981;
+  color: white;
+  border-radius: 20px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.badge-pendiente {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  background: #f59e0b;
+  color: white;
+  border-radius: 20px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.badge-recibido    { background: #e0f2fe; color: #0369a1; }
+.badge-evaluacion  { background: #fef3c7; color: #b45309; }
+.badge-res_separacion { background: #d9f99d; color: #3f6212; }
+.badge-res_disolucion { background: #fed7aa; color: #9a3412; }
+.badge-archivo     { background: #e2e8f0; color: #475569; }
+
+/* ====================================================================
+   ESTADOS VACÍOS Y CARGANDO
+   ==================================================================== */
+
+.vacio {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.cargando {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+/* ====================================================================
+   RESPONSIVE
+   ==================================================================== */
+
+@media (max-width: 768px) {
+  .contenido {
+    margin-left: 80px;
+    padding: 1rem;
+  }
+
+  .filtros-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .acciones-filtros {
+    justify-content: stretch;
+  }
+
+  .btn-limpiar {
+    width: 100%;
+  }
+
+  .tabla {
+    min-width: 650px;
+  }
+}
+
+
