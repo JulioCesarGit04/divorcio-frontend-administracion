@@ -250,4 +250,29 @@ body {
   .filtros button {
     width: 100%;
   }
+
+  :root {
+  --azul-primary: #1a3a6b;
+  --azul-dark: #0f2347;
+  --azul-light: #2d5aa0;
+  --dorado: #c9a84c;
+  --dorado-light: #e8c96d;
+  --dorado-dark: #a07830;
+  --blanco: #ffffff;
+  --gris-claro: #f4f6f9;
+  --gris-borde: #dde2ec;
+  --gris-texto: #4a5568;
+  --rojo-error: #e53e3e;
+  --verde-exito: #276749;
+  --amarillo-obs: #b7791f;
+  --rojo-imp: #9b2c2c;
 }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--gris-claro);
+  color: var(--gris-texto);
+ 
+}}
