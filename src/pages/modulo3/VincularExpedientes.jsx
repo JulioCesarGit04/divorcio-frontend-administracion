@@ -82,7 +82,7 @@ export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
                     <div className="filtros-grid">
                         <div className="filtro-grupo">
                             <label>Código</label>
-                            <input type="text" placeholder="Buscar por código"
+                            <input type="text" placeholder="Buscar por código..."
                                 value={filtros.codigo}
                                 onChange={e => setFiltros({ ...filtros, codigo: e.target.value })} />
                         </div>
