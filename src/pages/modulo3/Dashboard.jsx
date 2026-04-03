@@ -3,12 +3,10 @@ import Sidebar from '../../components/modulo3/Sidebar'
 import { getAlertas, getReportes } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/dashboard.css'
 
-export default function Dashboard({ cambiarPagina, paginaActual }) {
+export default function Dashboard() {
     const [reportes, setReportes] = useState(null)
     const [alertas, setAlertas] = useState([])
     const [cargando, setCargando] = useState(true)
-
-    
 
     useEffect(() => {
         const cargar = async () => {
@@ -17,7 +15,7 @@ export default function Dashboard({ cambiarPagina, paginaActual }) {
                 setReportes(r)
                 setAlertas(a)
             } catch {
-                console.error('Error cargando dashboard.')
+                console.error('Error cargando dashboard')
             } finally {
                 setCargando(false)
             }
@@ -27,8 +25,8 @@ export default function Dashboard({ cambiarPagina, paginaActual }) {
 
     return (
         <>
-            <Sidebar cambiarPagina={cambiarPagina} paginaActual={paginaActual} />
-            <main className="contenido">
+            <Sidebar />
+            <main className="contenido-modulo3">
                 <div className="pagina-header">
                     <h1>Dashboard</h1>
                     <p>Resumen del día</p>
@@ -64,13 +62,13 @@ export default function Dashboard({ cambiarPagina, paginaActual }) {
                         <div className="accesos-rapidos">
                             <h2>Accesos rápidos</h2>
                             <div className="botones-rapidos">
-                                <button onClick={() => cambiarPagina('vincular')} className="btn-rapido">
+                                <button onClick={() => window.location.href = '/modulo3/vincular'} className="btn-rapido">
                                     Vincular expediente
                                 </button>
-                                <button onClick={() => cambiarPagina('expedientes')} className="btn-rapido">
+                                <button onClick={() => window.location.href = '/modulo3/expedientes'} className="btn-rapido">
                                     Ver expedientes
                                 </button>
-                                <button onClick={() => cambiarPagina('alertas')} className="btn-rapido btn-rapido-alerta">
+                                <button onClick={() => window.location.href = '/modulo3/alertas'} className="btn-rapido btn-rapido-alerta">
                                     Ver alertas ({alertas.length})
                                 </button>
                             </div>

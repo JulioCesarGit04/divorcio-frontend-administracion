@@ -1,5 +1,4 @@
 import { createContext, useContext, useState } from 'react'
-//generado por julio borra despues2
 
 const NavigationContext = createContext()
 
@@ -8,13 +7,13 @@ export function NavigationProvider({ children }) {
     const [expedienteId, setExpedienteId] = useState(null)
 
     const cambiarPagina = (pagina, id = null) => {
-        console.log('🔵 cambiarPagina llamada:', pagina, id);  // ← AGREGAR
+        console.log('🔵 cambiarPagina llamada:', pagina, id);
         setPaginaActual(pagina)
         if (id) setExpedienteId(id)
     }
 
-    const verDetalleExpediente = (id) => {
-        console.log('🔵 verDetalleExpediente llamada:', id);  // ← AGREGAR
+    const verDetalle = (id) => {
+        console.log('🔵 verDetalle llamada con id:', id);
         setExpedienteId(id)
         setPaginaActual('detalle')
     }
@@ -24,7 +23,7 @@ export function NavigationProvider({ children }) {
             paginaActual,
             expedienteId,
             cambiarPagina,
-            verDetalleExpediente
+            verDetalle
         }}>
             {children}
         </NavigationContext.Provider>

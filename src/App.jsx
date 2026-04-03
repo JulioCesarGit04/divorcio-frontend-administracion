@@ -17,7 +17,7 @@ function App() {
           {/* Ruta pública */}
           <Route path="/login" element={<LoginPage />} />
           
-          {/* Rutas protegidas (Módulo 2 de tu compañero) */}
+          {/* Rutas protegidas */}
           <Route path="/solicitudes" element={
             <RutaProtegida>
               <ListadoPage />
