@@ -13,9 +13,7 @@ export default function DetalleExpediente({ id, cambiarPagina, paginaActual }) {
     const [modal, setModal] = useState(null)
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
 
-    useEffect(() => {
-        if (!localStorage.getItem('usuario')) cambiarPagina('login')
-    }, [cambiarPagina])
+
 
     const cargar = async () => {
         setCargando(true)

@@ -1,11 +1,18 @@
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigation } from '../../context/modulo3/NavigationContext';
 import '../../styles/modulo3/sidebar.css'
 
-export default function Sidebar({ cambiarPagina, paginaActual }) {
+export default function Sidebar() {
+    const { cambiarPagina, paginaActual } = useNavigation();
+    const { logout } = useAuth();  // ← logout de tu compañero
+    const navigate = useNavigate();  // ← para redirigir
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
 
-    const cerrarSesion = () => {
-        localStorage.removeItem('usuario')
-        cambiarPagina('login')
+    const cerrarSesion = async () => {
+        await logout();  // ← usa el logout del contexto
+        localStorage.removeItem('usuario');  // limpieza adicional
+        navigate('/login');  // redirige al login
     }
 
     const esActivo = (pagina) => {
@@ -43,7 +50,7 @@ export default function Sidebar({ cambiarPagina, paginaActual }) {
 
                 <div className="navbar-user">
                     <div className="user-info">
-                        <span className="user-name">{usuario.nombre || 'Usuario'}</span>  {/* ← cambio */}
+                        <span className="user-name">{usuario.nombre || 'Usuario'}</span>
                         <span className="user-role">{usuario.rol || ''}</span>
                     </div>
                     <button onClick={cerrarSesion} className="btn-cerrar-sesion">

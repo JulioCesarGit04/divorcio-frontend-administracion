@@ -7,9 +7,7 @@ export default function Reportes({ cambiarPagina, paginaActual }) {
     const [reportes, setReportes] = useState(null)
     const [cargando, setCargando] = useState(true)
 
-    useEffect(() => {
-        if (!localStorage.getItem('usuario')) cambiarPagina('login')
-    }, [cambiarPagina])
+ 
 
     useEffect(() => {
         getReportes()
