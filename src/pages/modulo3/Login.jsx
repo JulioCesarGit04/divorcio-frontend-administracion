@@ -28,7 +28,7 @@ export default function Login({ cambiarPagina }) {
         <div className="login-container">
             <div className="login-card">
                 <div className="login-header">
-                    <h1>Sistema de Gestión</h1>
+                    <h1>Sistema de Gestión...</h1>
                     <p>Municipalidad Distrital de El Porvenir</p>
                     <span className="login-modulo">Módulo 3 — Gestión del Procedimiento</span>
                 </div>
