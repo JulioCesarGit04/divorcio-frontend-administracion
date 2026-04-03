@@ -23,7 +23,7 @@ export default function DetalleExpediente({ id, cambiarPagina, paginaActual }) {
             const res = await getExpedienteById(id)
             setData(res)
         } catch {
-            console.error('Error cargando expediente')
+            console.error('Error cargando expediente.')
         } finally {
             setCargando(false)
         }
