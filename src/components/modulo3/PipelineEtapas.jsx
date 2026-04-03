@@ -1,6 +1,6 @@
 // ── PipelineEtapas.jsx ──
 import '../../styles/modulo3/pipeline.css'
-
+//mensaje
 const ETAPAS = [
     { key: 'RECIBIDO',       label: 'Recibido' },
     { key: 'EVALUACION',     label: 'Evaluación' },
@@ -14,7 +14,7 @@ export default function PipelineEtapas({ estadoActual, etapas }) {
 
     return (
         <div className="pipeline">
-            <h3>Progreso del expediente</h3>
+            <h3>Progreso del expediente: </h3>
             <div className="pipeline-etapas">
                 {ETAPAS.map((etapa, i) => {
                     const completada = i < indexActual

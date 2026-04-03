@@ -13,19 +13,16 @@ function App() {
   const [paginaActual, setPaginaActual] = useState('login')
   const [expedienteId, setExpedienteId] = useState(null)
 
-  // Función para cambiar de página
   const cambiarPagina = (pagina, id = null) => {
     setPaginaActual(pagina)
     if (id) setExpedienteId(id)
   }
 
-  // Función para navegar a detalle de expediente
   const verDetalleExpediente = (id) => {
     setExpedienteId(id)
     setPaginaActual('detalle')
   }
 
-  // Renderizar componente según la página actual
   const renderComponente = () => {
     const propsComunes = { 
       cambiarPagina, 

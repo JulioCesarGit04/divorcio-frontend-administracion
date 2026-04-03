@@ -9,7 +9,7 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
 
     const handleConfirmar = async () => {
         if (!nroMesaPartes.trim()) {
-            setError('El número de Mesa de Partes es requerido');
+            setError('El número de Mesa de Partes es requerido...');
             return;
         }
 

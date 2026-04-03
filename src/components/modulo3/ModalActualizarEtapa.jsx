@@ -25,7 +25,7 @@ export default function ModalActualizarEtapa({ expedienteId, estadoActual, onCer
             // Según el tipo de acción o estado actual
             if (tipoAccion === 'archivar' || estadoActual === 'RES_DISOLUCION') {
                 if (!ubicacion.trim()) {
-                    setError('La ubicación física es obligatoria para archivar')
+                    setError('La ubicación física es obligatoria para archivar...')
                     setCargando(false)
                     return
                 }

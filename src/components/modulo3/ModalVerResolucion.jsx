@@ -1,12 +1,12 @@
 // ── ModalVerResolucion.jsx ──
 import '../../styles/modulo3/modales.css'
-
+//mensaje
 export default function ModalVerResolucion({ resoluciones, onCerrar }) {
     return (
         <div className="modal-overlay">
             <div className="modal">
                 <div className="modal-header">
-                    <h2>Resoluciones del expediente</h2>
+                    <h2>Resoluciones del expediente: </h2>
                     <button className="modal-cerrar" onClick={onCerrar}>✕</button>
                 </div>
                 <div className="modal-body">

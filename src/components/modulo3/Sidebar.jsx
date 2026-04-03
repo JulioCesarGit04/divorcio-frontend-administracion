@@ -1,5 +1,5 @@
 import '../../styles/modulo3/sidebar.css'
-
+//mensaje
 export default function Sidebar({ cambiarPagina, paginaActual }) {
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
 
@@ -17,7 +17,7 @@ export default function Sidebar({ cambiarPagina, paginaActual }) {
             <div className="navbar-container">
                 <div className="navbar-brand">
                     <h2>Módulo 3</h2>
-                    <p>Gestión del Procedimiento</p>
+                    <p>Gestión del Procedimiento...</p>
                 </div>
 
                 <div className="navbar-menu">
