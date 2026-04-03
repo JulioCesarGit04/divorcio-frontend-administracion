@@ -1,7 +1,6 @@
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import Sidebar from './Sidebar';
 
-// Genera las iniciales del nombre para el avatar
 function getIniciales(nombre = '') {
   return nombre
     .split(' ')
@@ -12,44 +11,37 @@ function getIniciales(nombre = '') {
 }
 
 export default function Layout({ children }) {
-  const { usuario, logout } = useAuth();
-  const navigate = useNavigate();
-
-  async function handleLogout() {
-    await logout();
-    navigate('/login');
-  }
+  const { usuario } = useAuth();
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gris-claro)', fontFamily: "'Barlow', 'Segoe UI', sans-serif" }}>
+    <div style={{
+      display:       'flex',
+      flexDirection: 'column',
+      minHeight:     '100vh',
+      fontFamily:    "'Barlow', 'Segoe UI', sans-serif",
+    }}>
 
       {/* ── Header ── */}
       <header style={{
-        background:  '#0054a6',
-        display:     'flex',
-        alignItems:  'stretch',
-        height:      52,
-        position:    'relative',
-        zIndex:      100,
+        background: '#0054a6',
+        display:    'flex',
+        alignItems: 'stretch',
+        height:     52,
+        flexShrink: 0,
+        zIndex:     200,
+        position:   'relative',
       }}>
-        <div style={{
-          display:    'flex',
-          alignItems: 'center',
-          flex:       1,
-          padding:    '0 24px',
-          gap:        10,
-        }}>
+        {/* Izquierda: logo + nombre + badge */}
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1, padding: '0 24px', gap: 10 }}>
           <img
             src="/logo.svg"
             alt="Logo Municipalidad El Porvenir"
             style={{ height: 36, width: 'auto', objectFit: 'contain' }}
-            />
+          />
           <span style={{ color: '#ffffff', fontSize: 13, fontWeight: 600, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
             Municipalidad Distrital de El Porvenir
           </span>
           <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.18)', flexShrink: 0 }} />
-
-          {/* Badge panel interno */}
           <span style={{
             background:    'rgba(255,255,255,0.13)',
             border:        '1px solid rgba(255,255,255,0.2)',
@@ -65,48 +57,23 @@ export default function Layout({ children }) {
             Panel Administrativo
           </span>
         </div>
+
+        {/* Derecha: diagonal + usuario */}
         <div style={{ display: 'flex', alignItems: 'stretch', flexShrink: 0 }}>
           <div style={{
-            width:       32,
-            background:  '#002d57',
-            clipPath:    'polygon(100% 0, 100% 100%, 0 100%)',
-            alignSelf:   'stretch',
+            width:      32,
+            background: '#002d57',
+            clipPath:   'polygon(100% 0, 100% 100%, 0 100%)',
+            alignSelf:  'stretch',
           }} />
-
-          {/* ========================================================= */}
-            {/* AGREGADO: Botón para Módulo 3 */}
-            {/* ========================================================= */}
-            <button
-              onClick={() => navigate('/modulo3')}
-              style={{
-                background: '#40916c',
-                border: 'none',
-                color: '#ffffff',
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '3px 12px',
-                borderRadius: 20,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                marginLeft: 'auto',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={(e) => { e.target.style.background = '#2d6a4f'; }}
-              onMouseLeave={(e) => { e.target.style.background = '#40916c'; }}
-            >
-              📋 Gestión de Expedientes
-            </button> 
-
-
-          {/* Bloque usuario */}
           <div style={{
-            background:  '#002d57',
-            display:     'flex',
-            alignItems:  'center',
-            gap:         12,
-            padding:     '0 20px 0 6px',
+            background: '#002d57',
+            display:    'flex',
+            alignItems: 'center',
+            gap:        12,
+            padding:    '0 20px 0 6px',
           }}>
-            {/* Avatar con iniciales */}
+            {/* Avatar */}
             <div style={{
               width:          30,
               height:         30,
@@ -122,6 +89,7 @@ export default function Layout({ children }) {
             }}>
               {getIniciales(usuario?.nombre)}
             </div>
+            {/* Nombre y rol */}
             <div>
               <div style={{ color: '#ffffff', fontSize: 12, fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap' }}>
                 {usuario?.nombre}
@@ -130,33 +98,25 @@ export default function Layout({ children }) {
                 {usuario?.rol}
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                background:    'transparent',
-                border:        '1px solid rgba(255,255,255,0.25)',
-                color:         '#c8daf2',
-                borderRadius:  5,
-                padding:       '5px 12px',
-                fontSize:      11,
-                fontWeight:    600,
-                cursor:        'pointer',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                whiteSpace:    'nowrap',
-                transition:    'background 0.15s, color 0.15s',
-              }}
-              onMouseEnter={e => { e.target.style.background = 'rgba(255,255,255,0.1)'; e.target.style.color = '#fff'; }}
-              onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = '#c8daf2'; }}
-            >
-              Salir
-            </button>
           </div>
         </div>
       </header>
-      <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 16px' }}>
-        {children}
-      </main>
+
+      {/* ── Cuerpo: sidebar + contenido ── */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+        <Sidebar />
+
+        <main style={{
+          flex:       1,
+          overflowY:  'auto',
+          padding:    '32px 24px',
+          background: 'var(--gris-claro)',
+        }}>
+          {children}
+        </main>
+
+      </div>
     </div>
   );
 }
