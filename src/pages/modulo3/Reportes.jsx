@@ -27,7 +27,7 @@ export default function Reportes({ cambiarPagina, paginaActual }) {
                     <p>Indicadores del procedimiento administrativo</p>
                 </div>
                 {cargando ? <p className="cargando">Cargando...</p> : !reportes ? (
-                    <div className="vacio"><p>No se pudieron cargar los reportes.</p></div>
+                    <div className="vacio"><p>No se pudieron cargar los reportes...</p></div>
                 ) : (
                     <div className="reportes-grid">
                         <div className="reporte-card">
