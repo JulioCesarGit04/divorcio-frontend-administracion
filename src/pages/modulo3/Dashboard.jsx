@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react'
 import Sidebar from '../../components/modulo3/Sidebar'
 import { getAlertas, getReportes } from '../../services/ProcedimientoService'
-import { useNavigation } from '../../context/modulo3/NavigationContext';
 import '../../styles/modulo3/dashboard.css'
 
-
-
-
-export default function Dashboard() {
-    const { cambiarPagina, paginaActual } = useNavigation()
+export default function Dashboard({ cambiarPagina, paginaActual }) {
     const [reportes, setReportes] = useState(null)
     const [alertas, setAlertas] = useState([])
     const [cargando, setCargando] = useState(true)
 
-    
+    useEffect(() => {
+        const usuario = localStorage.getItem('usuario')
+        if (!usuario) cambiarPagina('login')
+    }, [cambiarPagina])
 
     useEffect(() => {
         const cargar = async () => {

@@ -1,3 +1,4 @@
+/* Reset global - elimina márgenes y paddings por defecto */
 * {
   margin: 0;
   padding: 0;

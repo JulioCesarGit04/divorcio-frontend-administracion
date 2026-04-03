@@ -1,15 +1,10 @@
 const API_URL = 'http://localhost:3000/api/procedimiento';
-const AUTH_URL = 'http://localhost:3000/api/auth';
 
-// ====================================================================
-// AUTH - Usar el login de tu compañero
-// ====================================================================
 export const login = async (correo, password) => {
     try {
-        const response = await fetch(`${AUTH_URL}/login`, {
+        const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // ← IMPORTANTE: envía cookies de sesión
             body: JSON.stringify({ correo, password })
         });
 
@@ -17,19 +12,19 @@ export const login = async (correo, password) => {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.mensaje || error.error || 'Error en el login');
+            throw new Error(error.error || 'Error en el login');
         }
 
         const data = await response.json();
         console.log('Datos recibidos:', data);
         
-        // Guardar usuario en localStorage (para mostrar en el sidebar)
-        if (data.usuario) {
+        // Guardar usuario en localStorage
+        if (data.id) {
             localStorage.setItem('usuario', JSON.stringify({
-                id: data.usuario.id,
-                nombre: data.usuario.nombre,
-                correo: data.usuario.correo,
-                rol: data.usuario.rol
+                id: data.id,
+                nombre: data.nombre,
+                correo: data.correo,
+                rol: data.rol
             }));
             console.log('Usuario guardado:', localStorage.getItem('usuario'));
         }
@@ -40,71 +35,12 @@ export const login = async (correo, password) => {
         throw err;
     }
 };
-
-export const logout = async () => {
-    try {
-        const response = await fetch(`${AUTH_URL}/logout`, {
-            method: 'POST',
-            credentials: 'include'
-        });
-        localStorage.removeItem('usuario');
-        return response.json();
-    } catch (err) {
-        console.error('Error en logout:', err);
-        throw err;
-    }
-};
-
-export const getSesion = async () => {
-    try {
-        const response = await fetch(`${AUTH_URL}/sesion`, {
-            credentials: 'include'
-        });
-        
-        if (!response.ok) {
-            throw new Error('No hay sesión activa');
-        }
-        
-        const data = await response.json();
-        if (data.usuario) {
-            localStorage.setItem('usuario', JSON.stringify(data.usuario));
-        }
-        return data;
-    } catch (err) {
-        console.error('Error al obtener sesión:', err);
-        return null;
-    }
-};
-
-// ====================================================================
-// OBTENER USUARIO DE SESIÓN (desde tu backend)
-// ====================================================================
-export const getUsuarioSesion = async () => {
-    try {
-        const response = await fetch(`${API_URL}/usuario-sesion`, {
-            credentials: 'include'
-        });
-        
-        if (!response.ok) {
-            throw new Error('No hay sesión activa');
-        }
-        
-        const data = await response.json();
-        localStorage.setItem('usuario', JSON.stringify(data));
-        return data;
-    } catch (err) {
-        console.error('Error en getUsuarioSesion:', err);
-        return null;
-    }
-};
-
 // ====================================================================
 // PRE-EXPEDIENTES
 // ====================================================================
 export const getPreExpedientes = async () => {
     const response = await fetch(`${API_URL}/pre-expedientes`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        headers: { 'Content-Type': 'application/json' }
     });
     
     if (!response.ok) {
@@ -115,17 +51,21 @@ export const getPreExpedientes = async () => {
 };
 
 // ====================================================================
-// EXPEDIENTES (ya no se envía usuario_id, lo toma de la sesión)
+// EXPEDIENTES
 // ====================================================================
 export const vincularExpediente = async (pre_solicitud_id, nro_mesa_partes) => {
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    
+    console.log('🔗 Vincular expediente - Usuario:', usuario);
+    console.log('📦 Datos a enviar:', { pre_solicitud_id, nro_mesa_partes, usuario_id: usuario?.id });
+    
     const response = await fetch(`${API_URL}/expedientes/vincular`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
         body: JSON.stringify({ 
             pre_solicitud_id, 
-            nro_mesa_partes
-            // ❌ Ya NO se envía usuario_id, el backend lo toma de la sesión
+            nro_mesa_partes,
+            usuario_id: usuario?.id
         })
     });
     
@@ -145,8 +85,7 @@ export const getExpedientes = async (filtros = {}) => {
     const url = `${API_URL}/expedientes${params ? `?${params}` : ''}`;
     
     const response = await fetch(url, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        headers: { 'Content-Type': 'application/json' }
     });
     
     if (!response.ok) {
@@ -158,8 +97,7 @@ export const getExpedientes = async (filtros = {}) => {
 
 export const getExpedienteById = async (id) => {
     const response = await fetch(`${API_URL}/expedientes/${id}`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        headers: { 'Content-Type': 'application/json' }
     });
     
     if (!response.ok) {
@@ -170,12 +108,15 @@ export const getExpedienteById = async (id) => {
 };
 
 export const avanzarEtapa = async (id, observaciones = '') => {
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    
     const response = await fetch(`${API_URL}/expedientes/${id}/avanzar`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
-        body: JSON.stringify({ observaciones })
-        // ❌ Ya NO se envía usuario_id
+        body: JSON.stringify({ 
+            observaciones,
+            usuario_id: usuario?.id
+        })
     });
     
     if (!response.ok) {
@@ -187,12 +128,15 @@ export const avanzarEtapa = async (id, observaciones = '') => {
 };
 
 export const generarResolucion = async (id, tipo) => {
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    
     const response = await fetch(`${API_URL}/expedientes/${id}/resoluciones`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
-        body: JSON.stringify({ tipo })
-        // ❌ Ya NO se envía usuario_id
+        body: JSON.stringify({ 
+            tipo,
+            usuario_id: usuario?.id
+        })
     });
     
     if (!response.ok) {
@@ -204,12 +148,15 @@ export const generarResolucion = async (id, tipo) => {
 };
 
 export const archivarExpediente = async (id, ubicacion_fisica) => {
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    
     const response = await fetch(`${API_URL}/expedientes/${id}/archivar`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
-        body: JSON.stringify({ ubicacion_fisica })
-        // ❌ Ya NO se envía usuario_id
+        body: JSON.stringify({ 
+            ubicacion_fisica,
+            usuario_id: usuario?.id
+        })
     });
     
     if (!response.ok) {
@@ -221,12 +168,15 @@ export const archivarExpediente = async (id, ubicacion_fisica) => {
 };
 
 export const desbloquearExpediente = async (id, motivo) => {
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    
     const response = await fetch(`${API_URL}/expedientes/${id}/desbloquear`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
-        body: JSON.stringify({ motivo })
-        // ❌ Ya NO se envía usuario_id
+        body: JSON.stringify({ 
+            motivo,
+            usuario_id: usuario?.id
+        })
     });
     
     if (!response.ok) {
@@ -242,8 +192,7 @@ export const desbloquearExpediente = async (id, motivo) => {
 // ====================================================================
 export const getHistorial = async (id) => {
     const response = await fetch(`${API_URL}/expedientes/${id}/historial`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        headers: { 'Content-Type': 'application/json' }
     });
     
     if (!response.ok) {
@@ -255,8 +204,7 @@ export const getHistorial = async (id) => {
 
 export const getHistorialGlobal = async () => {
     const response = await fetch(`${API_URL}/historial`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        headers: { 'Content-Type': 'application/json' }
     });
     
     if (!response.ok) {
@@ -271,8 +219,7 @@ export const getHistorialGlobal = async () => {
 // ====================================================================
 export const getAlertas = async () => {
     const response = await fetch(`${API_URL}/alertas`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        headers: { 'Content-Type': 'application/json' }
     });
     
     if (!response.ok) {
@@ -287,8 +234,7 @@ export const getAlertas = async () => {
 // ====================================================================
 export const getReportes = async () => {
     const response = await fetch(`${API_URL}/reportes`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        headers: { 'Content-Type': 'application/json' }
     });
     
     if (!response.ok) {
