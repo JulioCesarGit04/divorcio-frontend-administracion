@@ -18,7 +18,7 @@ export const login = async (correo, password) => {
         const data = await response.json();
         console.log('Datos recibidos:', data);
         
-        // Guardar usuario en localStorage
+        // Guardar usuario en localStorage...
         if (data.id) {
             localStorage.setItem('usuario', JSON.stringify({
                 id: data.id,
