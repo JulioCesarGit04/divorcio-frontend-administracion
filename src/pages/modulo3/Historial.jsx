@@ -9,9 +9,7 @@ export default function Historial({ cambiarPagina, paginaActual }) {
     const [expedienteExpandido, setExpedienteExpandido] = useState(null)
     const [cargando, setCargando] = useState(true)
 
-    useEffect(() => {
-        if (!localStorage.getItem('usuario')) cambiarPagina('login')
-    }, [cambiarPagina])
+   
 
     useEffect(() => {
         getHistorialGlobal()

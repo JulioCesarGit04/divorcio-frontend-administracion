@@ -3,15 +3,17 @@ import { createContext, useContext, useState } from 'react'
 const NavigationContext = createContext()
 
 export function NavigationProvider({ children }) {
-    const [paginaActual, setPaginaActual] = useState('login')
+    const [paginaActual, setPaginaActual] = useState('dashboard')
     const [expedienteId, setExpedienteId] = useState(null)
 
     const cambiarPagina = (pagina, id = null) => {
+        console.log('🔵 cambiarPagina llamada:', pagina, id);  // ← AGREGAR
         setPaginaActual(pagina)
         if (id) setExpedienteId(id)
     }
 
     const verDetalleExpediente = (id) => {
+        console.log('🔵 verDetalleExpediente llamada:', id);  // ← AGREGAR
         setExpedienteId(id)
         setPaginaActual('detalle')
     }

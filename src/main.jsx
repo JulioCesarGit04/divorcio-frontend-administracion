@@ -12,6 +12,8 @@ import RutaProtegida from './components/RutaProtegida';
 import LoginPage from './pages/LoginPage';
 import ListadoPage from './pages/ListadoPage';
 import DetallePage from './pages/DetallePage';
+import Modulo3Router from './pages/modulo3/Modulo3Router';
+
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -25,9 +27,16 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/solicitudes/:id" element={
             <RutaProtegida><DetallePage /></RutaProtegida>
           } />
+          {/* TU MÓDULO 3 */}
+          <Route path="/modulo3/*" element={
+            <RutaProtegida>
+              <Modulo3Router />
+            </RutaProtegida>
+          } />
           <Route path="*" element={<Navigate to="/solicitudes" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+  
   </React.StrictMode>
 );
