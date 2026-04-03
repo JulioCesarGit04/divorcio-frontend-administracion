@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/modulo3/Sidebar'
 import PipelineEtapas from '../../components/modulo3/PipelineEtapas'
 import ModalActualizarEtapa from '../../components/modulo3/ModalActualizarEtapa'
@@ -7,23 +8,28 @@ import ModalDesbloquear from '../../components/modulo3/ModalDesbloquear'
 import { getExpedienteById } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/detalle.css'
 
-export default function DetalleExpediente({ id, cambiarPagina, paginaActual }) {
+export default function DetalleExpediente() {
+    const { id } = useParams()
+    const navigate = useNavigate()
     const [data, setData] = useState(null)
     const [cargando, setCargando] = useState(true)
     const [modal, setModal] = useState(null)
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
 
-    useEffect(() => {
-        if (!localStorage.getItem('usuario')) cambiarPagina('login')
-    }, [cambiarPagina])
+    console.log('🔵 DetalleExpediente - ID recibido de URL:', id)
 
     const cargar = async () => {
+        if (!id) {
+            console.error('❌ No hay ID en la URL')
+            return
+        }
         setCargando(true)
         try {
             const res = await getExpedienteById(id)
+            console.log('✅ Datos del expediente:', res)
             setData(res)
-        } catch {
-            console.error('Error cargando expediente.')
+        } catch (error) {
+            console.error('❌ Error cargando expediente:', error)
         } finally {
             setCargando(false)
         }
@@ -34,20 +40,27 @@ export default function DetalleExpediente({ id, cambiarPagina, paginaActual }) {
     }, [id])
 
     const handleVolver = () => {
-        cambiarPagina('expedientes')
+        navigate('/modulo3/expedientes')
     }
 
     if (cargando) return (
         <>
-            <Sidebar cambiarPagina={cambiarPagina} paginaActual={paginaActual} />
-            <main className="contenido"><p className="cargando">Cargando...</p></main>
+            <Sidebar />
+            <main className="contenido-modulo3">
+                <p className="cargando">Cargando expediente...</p>
+            </main>
         </>
     )
     
     if (!data?.expediente) return (
         <>
-            <Sidebar cambiarPagina={cambiarPagina} paginaActual={paginaActual} />
-            <main className="contenido"><p>Expediente no encontrado.</p></main>
+            <Sidebar />
+            <main className="contenido-modulo3">
+                <div className="vacio">
+                    <p>Expediente no encontrado. ID: {id}</p>
+                    <button className="btn-volver" onClick={handleVolver}>← Volver a expedientes</button>
+                </div>
+            </main>
         </>
     )
 
@@ -56,8 +69,8 @@ export default function DetalleExpediente({ id, cambiarPagina, paginaActual }) {
 
     return (
         <>
-            <Sidebar cambiarPagina={cambiarPagina} paginaActual={paginaActual} />
-            <main className="contenido">
+            <Sidebar />
+            <main className="contenido-modulo3">
                 <div className="pagina-header">
                     <button className="btn-volver" onClick={handleVolver}>← Volver</button>
                     <h1>Expediente {expediente.expedientes_nro_mesa_partes}</h1>
@@ -131,7 +144,6 @@ export default function DetalleExpediente({ id, cambiarPagina, paginaActual }) {
                             )}
                         </div>
 
-                        {/* Alerta de plazo */}
                         {contadorTresMeses && (
                             <div className={`alerta-plazo ${contadorTresMeses.Dias_Restantes <= 0 ? 'vencido' : ''}`}>
                                 <div className="alerta-icono">
@@ -206,7 +218,7 @@ export default function DetalleExpediente({ id, cambiarPagina, paginaActual }) {
 
                     <div className="detalle-derecha">
                         <div className="seccion">
-                            <h2>📊 Progreso del trámite</h2>
+                            <h2></h2>
                             <PipelineEtapas
                                 estadoActual={expediente.expedientes_estado_actual}
                                 etapas={etapas}
@@ -215,7 +227,6 @@ export default function DetalleExpediente({ id, cambiarPagina, paginaActual }) {
                     </div>
                 </div>
 
-                {/* MODALES CON SUS RESPECTIVOS TIPOS */}
                 {modal === 'etapa' && (
                     <ModalActualizarEtapa
                         expedienteId={id}

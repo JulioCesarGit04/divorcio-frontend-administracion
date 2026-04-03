@@ -4,7 +4,7 @@ import ModalVincular from '../../components/modulo3/ModalVincular'
 import { getPreExpedientes } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/expedientes.css'
 
-export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
+export default function VincularExpedientes() {
     const [preExpedientes, setPreExpedientes] = useState([])
     const [preExpedientesFiltrados, setPreExpedientesFiltrados] = useState([])
     const [cargando, setCargando] = useState(true)
@@ -17,8 +17,6 @@ export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
         fechaDesde: '',
         fechaHasta: ''
     })
-
-    
 
     const cargar = async () => {
         setCargando(true)
@@ -61,73 +59,107 @@ export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
     }, [filtros, preExpedientes])
 
     const handleVinculado = () => { setSeleccionado(null); cargar() }
-
     const limpiarFiltros = () => setFiltros({ codigo: '', solicitanteDemandado: '', dni: '', fechaDesde: '', fechaHasta: '' })
-
     const getNombre = (nombres, apellidos) => `${nombres || ''} ${apellidos || ''}`.trim() || '—'
 
     return (
         <>
-            <Sidebar cambiarPagina={cambiarPagina} paginaActual={paginaActual} />
-            <main className="contenido">
+            <Sidebar />
+            <main className="contenido-modulo3">
+
+                {/* Cabecera */}
                 <div className="pagina-header">
                     <h1>Vincular expedientes</h1>
                     <p>Pre-expedientes admisibles pendientes de vinculación</p>
                 </div>
 
+                                {/* Filtros - 2 FILAS */}
                 <div className="filtros-panel">
-                    <div className="filtros-grid">
+                    {/* PRIMERA FILA: Código, Solicitante/Demandado, DNI */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
                         <div className="filtro-grupo">
-                            <label>Código</label>
-                            <input type="text" placeholder="Buscar por código..."
+                            <label>📋 Código</label>
+                            <input
+                                type="text"
+                                placeholder="Buscar por código"
                                 value={filtros.codigo}
-                                onChange={e => setFiltros({ ...filtros, codigo: e.target.value })} />
+                                onChange={e => setFiltros({ ...filtros, codigo: e.target.value })}
+                            />
                         </div>
+
                         <div className="filtro-grupo">
-                            <label>Solicitante / Demandado</label>
-                            <input type="text" placeholder="Nombre"
+                            <label>👥 Solicitante / Demandado</label>
+                            <input
+                                type="text"
+                                placeholder="Nombre del cónyuge"
                                 value={filtros.solicitanteDemandado}
-                                onChange={e => setFiltros({ ...filtros, solicitanteDemandado: e.target.value })} />
+                                onChange={e => setFiltros({ ...filtros, solicitanteDemandado: e.target.value })}
+                            />
                         </div>
+
                         <div className="filtro-grupo">
-                            <label>DNI</label>
-                            <input type="text" placeholder="00000000"
+                            <label>🆔 DNI</label>
+                            <input
+                                type="text"
+                                placeholder="DNI del cónyuge"
                                 value={filtros.dni}
-                                onChange={e => setFiltros({ ...filtros, dni: e.target.value })} />
+                                onChange={e => setFiltros({ ...filtros, dni: e.target.value })}
+                            />
                         </div>
+                    </div>
+
+                    {/* SEGUNDA FILA: Desde, Hasta, Botones */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr) auto', gap: '16px', alignItems: 'flex-end' }}>
                         <div className="filtro-grupo">
-                            <label>Desde</label>
-                            <input type="date" value={filtros.fechaDesde}
-                                onChange={e => setFiltros({ ...filtros, fechaDesde: e.target.value })} />
+                            <label>📅 Desde</label>
+                            <input
+                                type="date"
+                                value={filtros.fechaDesde}
+                                onChange={e => setFiltros({ ...filtros, fechaDesde: e.target.value })}
+                            />
                         </div>
+
                         <div className="filtro-grupo">
-                            <label>Hasta</label>
-                            <input type="date" value={filtros.fechaHasta}
-                                onChange={e => setFiltros({ ...filtros, fechaHasta: e.target.value })} />
+                            <label>📅 Hasta</label>
+                            <input
+                                type="date"
+                                value={filtros.fechaHasta}
+                                onChange={e => setFiltros({ ...filtros, fechaHasta: e.target.value })}
+                            />
                         </div>
-                        <div className="filtro-grupo acciones-filtros">
-                            <button className="btn-limpiar" onClick={limpiarFiltros}>Limpiar</button>
+
+                        <div className="acciones-filtros">
+                            <button className="btn-buscar" onClick={cargar}>
+                                🔍 Buscar
+                            </button>
+                            <button className="btn-limpiar" onClick={limpiarFiltros}>
+                                🗑️ Limpiar
+                            </button>
                         </div>
                     </div>
                 </div>
 
+                {/* Contador de resultados */}
                 <div className="resultados-info">
                     Mostrando {preExpedientesFiltrados.length} de {preExpedientes.length} pre-expedientes
                 </div>
 
+                {/* Contenido principal */}
                 {cargando ? (
                     <p className="cargando">Cargando...</p>
                 ) : preExpedientesFiltrados.length === 0 ? (
-                    <div className="vacio"><p>No hay pre-expedientes disponibles para vincular.</p></div>
+                    <div className="vacio">
+                        <p>No hay pre-expedientes disponibles para vincular.</p>
+                    </div>
                 ) : (
                     <div className="tabla-container">
-                        <table className="tabla">
+                        <table className="tabla-vincular">
                             <thead>
                                 <tr>
                                     <th>Código</th>
                                     <th>Solicitante</th>
-                                    <th>Demandado</th>
                                     <th>DNI</th>
+                                    <th>Demandado</th>
                                     <th>Fecha</th>
                                     <th>Acción</th>
                                 </tr>
@@ -135,20 +167,26 @@ export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
                             <tbody>
                                 {preExpedientesFiltrados.map(pe => (
                                     <tr key={pe.PreSolicitudes_Id}>
-                                        <td className="codigo-cell">{pe.PreSolicitudes_Codigo}</td>
-                                        <td className="nombre-solicitante">{getNombre(pe.Solicitante_Nombres, pe.Solicitante_Apellidos)}</td>
-                                        <td className="nombre-demandado">{getNombre(pe.Demandado_Nombres, pe.Demandado_Apellidos)}</td>
-                                        <td>
-                                            <div className="dni-info">
-                                                <div className="dni-row"><span className="dni-tag">S</span>{pe.Solicitante_Dni || '—'}</div>
-                                                <div className="dni-row"><span className="dni-tag">D</span>{pe.Demandado_Dni || '—'}</div>
-                                            </div>
+                                        <td className="codigo-cell">
+                                            {pe.PreSolicitudes_Codigo}
+                                        </td>
+                                        <td className="nombre-solicitante">
+                                            {getNombre(pe.Solicitante_Nombres, pe.Solicitante_Apellidos)}
+                                        </td>
+                                        <td className="dni-cell">
+                                            {pe.Solicitante_Dni || '—'}
+                                        </td>
+                                        <td className="nombre-demandado">
+                                            {getNombre(pe.Demandado_Nombres, pe.Demandado_Apellidos)}
                                         </td>
                                         <td className="fecha-cell">
                                             {new Date(pe.PreSolicitudes_CreadoEn).toLocaleDateString('es-PE')}
                                         </td>
                                         <td>
-                                            <button className="btn-vincular-tabla" onClick={() => setSeleccionado(pe)}>
+                                            <button
+                                                className="btn-vincular-tabla"
+                                                onClick={() => setSeleccionado(pe)}
+                                            >
                                                 Vincular
                                             </button>
                                         </td>
@@ -159,6 +197,7 @@ export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
                     </div>
                 )}
 
+                {/* Modal */}
                 {seleccionado && (
                     <ModalVincular
                         preExpediente={seleccionado}
@@ -166,6 +205,7 @@ export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
                         onVinculado={handleVinculado}
                     />
                 )}
+
             </main>
         </>
     )

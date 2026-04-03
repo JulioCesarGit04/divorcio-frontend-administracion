@@ -1,4 +1,4 @@
-import { NavigationProvider, useNavigation } from '../../context/modulo3/NavigationContext';
+import { Routes, Route } from 'react-router-dom';
 import Dashboard from './Dashboard';
 import VincularExpedientes from './VincularExpedientes';
 import ExpedientesActivos from './ExpedientesActivos';
@@ -8,101 +8,19 @@ import Alertas from './Alertas';
 import Reportes from './Reportes';
 import Layout from '../../components/Layout';
 
-// Componente que usa el contexto
-function Modulo3Content() {
-  const { paginaActual, expedienteId, cambiarPagina, verDetalleExpediente } = useNavigation();
-
-  const propsComunes = {
-    cambiarPagina,
-    paginaActual,
-    verDetalle: verDetalleExpediente
-  };
-
-  // Renderizado directo sin switch anidado
-  if (paginaActual === 'dashboard') {
-    return (
-      <Layout>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 16px' }}>
-          <Dashboard {...propsComunes} />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (paginaActual === 'vincular') {
-    return (
-      <Layout>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 16px' }}>
-          <VincularExpedientes {...propsComunes} />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (paginaActual === 'expedientes') {
-    return (
-      <Layout>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 16px' }}>
-          <ExpedientesActivos {...propsComunes} />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (paginaActual === 'detalle') {
-    return (
-      <Layout>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 16px' }}>
-          <DetalleExpediente id={expedienteId} {...propsComunes} />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (paginaActual === 'historial') {
-    return (
-      <Layout>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 16px' }}>
-          <Historial {...propsComunes} />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (paginaActual === 'alertas') {
-    return (
-      <Layout>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 16px' }}>
-          <Alertas {...propsComunes} />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (paginaActual === 'reportes') {
-    return (
-      <Layout>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 16px' }}>
-          <Reportes {...propsComunes} />
-        </div>
-      </Layout>
-    );
-  }
-
-  // Default
-  return (
-    <Layout>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 16px' }}>
-        <Dashboard {...propsComunes} />
-      </div>
-    </Layout>
-  );
-}
-
 export default function Modulo3Router() {
   return (
-    <NavigationProvider>
-      <Modulo3Content />
-    </NavigationProvider>
+    <Layout>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/vincular" element={<VincularExpedientes />} />
+        <Route path="/expedientes" element={<ExpedientesActivos />} />
+        <Route path="/detalle/:id/*" element={<DetalleExpediente />} />
+        <Route path="/historial" element={<Historial />} />
+        <Route path="/alertas" element={<Alertas />} />
+        <Route path="/reportes" element={<Reportes />} />
+      </Routes>
+    </Layout>
   );
 }

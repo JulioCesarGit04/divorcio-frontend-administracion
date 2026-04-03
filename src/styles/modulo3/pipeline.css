@@ -1,60 +1,225 @@
 /* ── pipeline.css ── */
+
+:root {
+    --pipeline-completado: #10b981;
+    --pipeline-activo: #0054a6;
+    --pipeline-pendiente: #e2e8f0;
+    --pipeline-texto: #1e293b;
+    --pipeline-texto-suave: #64748b;
+}
+
 .pipeline {
-    background: var(--color-blanco);
-    border-radius: var(--radio-lg);
+    background: white;
+    border-radius: 16px;
     padding: 20px;
-    box-shadow: var(--sombra);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
 }
-.pipeline h3 {
-    font-size: 14px;
-    color: var(--color-primario);
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--color-borde);
-}
-.pipeline-etapas { display: flex; flex-direction: column; gap: 0; }
-.pipeline-paso {
+
+/* Header */
+.pipeline-header {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    position: relative;
-    padding-bottom: 20px;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
 }
-.pipeline-paso:last-child { padding-bottom: 0; }
+
+.pipeline-header h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--pipeline-texto);
+    margin: 0;
+}
+
+.pipeline-progreso-texto {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--pipeline-texto-suave);
+}
+
+/* Barra de progreso */
+.pipeline-barra-progreso {
+    width: 100%;
+    height: 6px;
+    background: var(--pipeline-pendiente);
+    border-radius: 10px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.pipeline-barra-lleno {
+    height: 100%;
+    background: linear-gradient(90deg, #0054a6, #40916c);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+/* Contenedor de etapas */
+.pipeline-etapas {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cada item (etapa + línea) */
+.pipeline-item {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Fila del círculo y contenido */
+.pipeline-fila {
+    display: flex;
+    gap: 16px;
+}
+
+/* Columna del círculo - ancho fijo */
+.pipeline-columna-circulo {
+    width: 32px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Círculo */
 .pipeline-circulo {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: var(--color-borde);
-    color: var(--color-texto-suave);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.2s;
+}
+
+/* Círculo completado */
+.pipeline-circulo.completado {
+    background: var(--pipeline-completado);
+    border: 2px solid var(--pipeline-completado);
+    color: white;
+}
+
+/* Círculo activo */
+.pipeline-circulo.activo {
+    background: var(--pipeline-activo);
+    border: 2px solid var(--pipeline-activo);
+    color: white;
+    box-shadow: 0 0 0 3px rgba(0, 84, 166, 0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 84, 166, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(0, 84, 166, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 84, 166, 0); }
+}
+
+/* Círculo pendiente */
+.pipeline-circulo.pendiente {
+    background: white;
+    border: 2px solid var(--pipeline-pendiente);
+    color: var(--pipeline-texto-suave);
+}
+
+/* Contenido de la etapa */
+.pipeline-columna-contenido {
+    flex: 1;
+    padding-bottom: 16px;
+}
+
+/* Etiqueta */
+.pipeline-label {
+    font-size: 0.85rem;
     font-weight: 600;
-    flex-shrink: 0;
-    z-index: 1;
+    margin-bottom: 2px;
 }
-.pipeline-paso.completado .pipeline-circulo {
-    background: var(--color-exito);
-    color: white;
+
+.pipeline-label.completado {
+    color: var(--pipeline-completado);
 }
-.pipeline-paso.activo .pipeline-circulo {
-    background: var(--color-secundario);
-    color: white;
-    box-shadow: 0 0 0 3px rgba(45, 106, 159, 0.2);
+
+.pipeline-label.activo {
+    color: var(--pipeline-activo);
 }
-.pipeline-info { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
-.pipeline-label { font-size: 13px; font-weight: 500; color: var(--color-texto); }
-.pipeline-paso.activo .pipeline-label { color: var(--color-secundario); }
-.pipeline-paso.completado .pipeline-label { color: var(--color-exito); }
-.pipeline-fecha { font-size: 11px; color: var(--color-texto-suave); }
+
+.pipeline-label.pendiente {
+    color: var(--pipeline-texto-suave);
+}
+
+/* Descripción */
+.pipeline-descripcion {
+    font-size: 0.7rem;
+    color: var(--pipeline-texto-suave);
+    margin-bottom: 4px;
+}
+
+/* Fecha */
+.pipeline-fecha {
+    font-size: 0.65rem;
+    color: var(--pipeline-texto-suave);
+    font-family: monospace;
+    margin-top: 4px;
+}
+
+/* Badges */
+.pipeline-activo-badge {
+    display: inline-block;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 6px;
+}
+
+.pipeline-completado-badge {
+    display: inline-block;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 6px;
+}
+
+/* Contenedor de la línea vertical */
+.pipeline-linea-container {
+    display: flex;
+    justify-content: center;
+    padding-left: 0;
+}
+
+/* Línea vertical - CENTRADA EXACTAMENTE */
 .pipeline-linea {
-    position: absolute;
-    left: 14px;
-    top: 28px;
     width: 2px;
-    height: calc(100% - 8px);
-    background: var(--color-borde);
+    height: 24px;
+    background: var(--pipeline-pendiente);
+    margin: 0 auto;
 }
-.pipeline-paso.completado .pipeline-linea { background: var(--color-exito); }
+
+.pipeline-linea.linea-completada {
+    background: var(--pipeline-completado);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pipeline {
+        padding: 16px;
+    }
+    
+    .pipeline-descripcion {
+        display: none;
+    }
+    
+    .pipeline-label {
+        font-size: 0.75rem;
+    }
+    
+    .pipeline-linea {
+        height: 16px;
+    }
+}

@@ -1,172 +1,355 @@
-/* ── historial.css ── */
-/* usa .tabla de sidebar.css */
-
-/* ── alertas.css ── */
-.alertas-lista { display: flex; flex-direction: column; gap: 14px; }
-.alerta-card {
-    background: var(--color-blanco);
-    border-radius: var(--radio-lg);
-    padding: 18px 20px;
-    box-shadow: var(--sombra);
-    border-left: 5px solid var(--color-borde);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.alerta-roja { border-left-color: var(--color-error); }
-.alerta-amarilla { border-left-color: var(--color-alerta); }
-.alerta-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.alerta-tipo { font-weight: 600; font-size: 13px; }
-.alerta-roja .alerta-tipo { color: var(--color-error); }
-.alerta-amarilla .alerta-tipo { color: #856404; }
-.alerta-dias {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--color-texto-suave);
-}
-.alerta-card-body p { font-size: 13px; margin-bottom: 4px; }
-
-/* ── reportes.css ── */
-.reportes-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
-}
-.reporte-card {
-    background: var(--color-blanco);
-    border-radius: var(--radio-lg);
-    padding: 28px 24px;
-    box-shadow: var(--sombra);
-    text-align: center;
-    border-top: 4px solid var(--color-secundario);
-}
-.reporte-card h3 {
-    font-size: 14px;
-    color: var(--color-texto-suave);
-    margin-bottom: 12px;
-    font-weight: 500;
-}
-.reporte-numero {
-    display: block;
-    font-size: 42px;
-    font-weight: 700;
-    color: var(--color-primario);
-    margin-bottom: 10px;
-}
-.reporte-card p { font-size: 12px; color: var(--color-texto-suave); }
-
-/* ── modales.css ── */
+/* ====================================================================
+   OVERLAY
+   ==================================================================== */
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
     padding: 20px;
+    animation: overlayIn 0.2s ease;
 }
-.modal {
-    background: var(--color-blanco);
-    border-radius: var(--radio-lg);
+
+@keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ====================================================================
+   CONTENEDOR
+   ==================================================================== */
+.modal-content {
+    background: #ffffff;
+    border-radius: 20px;
     width: 100%;
-    max-width: 480px;
-    box-shadow: var(--sombra-hover);
+    max-width: 500px;
+    box-shadow:
+        0 4px 6px rgba(15, 23, 42, 0.04),
+        0 20px 50px rgba(15, 23, 42, 0.16);
+    border: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
+    animation: modalIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
 }
+
+@keyframes modalIn {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ====================================================================
+   HEADER
+   ==================================================================== */
 .modal-header {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--color-borde);
+    padding: 24px 24px 20px;
+    gap: 16px;
 }
-.modal-header h2 { font-size: 16px; color: var(--color-primario); }
-.modal-cerrar {
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: var(--color-texto-suave);
+
+.modal-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px;
+    letter-spacing: -0.2px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.3;
+}
+
+.modal-subtitulo {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 400;
+    display: block;
+}
+
+.modal-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
     line-height: 1;
 }
-.modal-cerrar:hover { color: var(--color-error); }
-.modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+
+.modal-close:hover {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
+.modal-close:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ====================================================================
+   BODY
+   ==================================================================== */
+.modal-body {
+    padding: 0 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Aviso informativo */
+.modal-aviso {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: #eef3ff;
+    border: 1px solid #c7d7fd;
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.modal-aviso-icono {
+    width: 30px;
+    height: 30px;
+    background: #1a56db;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.modal-aviso p {
+    font-size: 0.82rem;
+    color: #1e40af;
+    margin: 0;
+    line-height: 1.55;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 500;
+}
+
+/* Pasos numerados */
+.modal-pasos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.modal-paso {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.paso-numero {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #1a56db;
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.paso-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.paso-texto strong {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e293b;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.4;
+}
+
+.paso-texto span {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.5;
+}
+
+/* ====================================================================
+   CAMPOS
+   ==================================================================== */
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.campo label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #475569;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.campo-requerido {
+    color: #dc2626;
+    margin-left: 2px;
+}
+
+.campo input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-family: 'Consolas', 'Cascadia Code', 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #1e293b;
+    background: #f8fafc;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    box-sizing: border-box;
+}
+
+.campo input::placeholder {
+    color: #cbd5e1;
+    font-family: 'Consolas', 'Cascadia Code', 'Courier New', monospace;
+}
+
+.campo input:focus {
+    outline: none;
+    border-color: #1a56db;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.campo input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.campo input.input-valido {
+    border-color: #0d9669;
+    background: #f0fdf9;
+    box-shadow: 0 0 0 3px rgba(13, 150, 105, 0.09);
+}
+
+.campo input.input-invalido {
+    border-color: #ef4444;
+    background: #fef2f2;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.09);
+}
+
+.campo-ayuda {
+    font-size: 0.73rem;
+    color: #94a3b8;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.4;
+}
+
+.campo-ayuda--ok    { color: #0d9669; font-weight: 600; }
+.campo-ayuda--error { color: #dc2626; font-weight: 600; }
+
+/* ====================================================================
+   ERROR GENERAL
+   ==================================================================== */
+.error-mensaje {
+    padding: 11px 15px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    color: #dc2626;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ====================================================================
+   FOOTER
+   ==================================================================== */
 .modal-footer {
-    padding: 16px 24px;
-    border-top: 1px solid var(--color-borde);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+    padding: 18px 24px;
+    border-top: 1px solid #f1f5f9;
 }
-.modal-info { background: var(--color-fondo); padding: 12px; border-radius: var(--radio); }
-.modal-info p { font-size: 13px; margin-bottom: 4px; }
-.modal-error {
-    background: #fdecea;
-    color: var(--color-error);
-    padding: 10px;
-    border-radius: var(--radio);
-    font-size: 13px;
+
+.btn-cancelar,
+.btn-confirmar {
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.1px;
 }
-.modal-advertencia {
-    background: #fff3cd;
-    color: #856404;
-    padding: 10px;
-    border-radius: var(--radio);
-    font-size: 13px;
-}
-.campo label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; }
-.campo input,
-.campo textarea,
-.campo select {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
-    outline: none;
-    resize: vertical;
-    transition: border 0.2s;
-}
-.campo input:focus,
-.campo textarea:focus { border-color: var(--color-secundario); }
-.campo-readonly label { font-size: 11px; color: var(--color-texto-suave); text-transform: uppercase; margin-bottom: 4px; }
-.campo-readonly p { font-size: 13px; }
-.requerido { color: var(--color-error); }
-.resolucion-detalle { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
-.resolucion-detalle hr { border: none; border-top: 1px solid var(--color-borde); }
 
 .btn-cancelar {
-    padding: 9px 20px;
-    background: var(--color-fondo);
-    color: var(--color-texto);
-    border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
-    font-size: 13px;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    color: #475569;
 }
-.btn-cancelar:hover { background: var(--color-borde); }
+
+.btn-cancelar:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
 .btn-confirmar {
-    padding: 9px 20px;
-    background: var(--color-primario);
-    color: white;
+    background: #1a56db;
     border: none;
-    border-radius: var(--radio);
-    font-size: 13px;
-    font-weight: 500;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(26, 86, 219, .28);
 }
-.btn-confirmar:hover:not(:disabled) { background: var(--color-secundario); }
-.btn-confirmar:disabled { opacity: 0.7; }
-.btn-desbloquear {
-    padding: 9px 20px;
-    background: var(--color-error);
-    color: white;
-    border: none;
-    border-radius: var(--radio);
-    font-size: 13px;
-    font-weight: 500;
+
+.btn-confirmar:hover:not(:disabled) {
+    background: #1044b5;
+    box-shadow: 0 4px 14px rgba(26, 86, 219, .36);
+    transform: translateY(-1px);
 }
-.btn-desbloquear:hover:not(:disabled) { background: #b02a37; }
-.btn-desbloquear:disabled { opacity: 0.7; }
+
+.btn-cancelar:disabled,
+.btn-confirmar:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ====================================================================
+   RESPONSIVE
+   ==================================================================== */
+@media (max-width: 540px) {
+    .modal-content  { border-radius: 16px; }
+    .modal-header,
+    .modal-body     { padding-left: 18px; padding-right: 18px; }
+    .modal-footer   { flex-direction: column-reverse; padding: 16px 18px; }
+    .btn-cancelar,
+    .btn-confirmar  { width: 100%; justify-content: center; }
+}

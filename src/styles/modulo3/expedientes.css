@@ -1,345 +1,479 @@
 /* ====================================================================
-   ESTILOS PARA VINCULAR EXPEDIENTES Y EXPEDIENTES ACTIVOS
+   VARIABLES Y ESTILOS BASE
    ==================================================================== */
+:root {
+    --primary:        #1a56db;
+    --primary-dark:   #1044b5;
+    --primary-light:  #eef3ff;
+    --primary-mid:    #c7d7fd;
+    --success:        #0d9669;
+    --success-bg:     #ecfdf5;
+    --warning:        #d97706;
+    --warning-bg:     #fffbeb;
+    --danger:         #dc2626;
+    --danger-bg:      #fef2f2;
 
-/* Layout principal */
-.layout {
-  display: flex;
-  min-height: 100vh;
-  background: #f8fafc;
+    --gray-50:  #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-150: #eaeff6;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+    --white:    #ffffff;
+
+    --shadow-xs: 0 1px 2px rgba(15,23,42,.04);
+    --shadow-sm: 0 2px 6px rgba(15,23,42,.06);
+    --shadow-md: 0 6px 16px rgba(15,23,42,.08);
+    --shadow-lg: 0 16px 32px rgba(15,23,42,.10);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+
+    --font-ui:   -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
 }
 
-.contenido {
-  flex: 1;
-  margin-left: 280px;
-  padding: 2rem;
-  background: #f8fafc;
-  min-height: 100vh;
+/* ====================================================================
+   LAYOUT BASE
+   ==================================================================== */
+.contenido-modulo3 {
+    font-family: var(--font-ui);
+    padding: 32px 36px;
+    max-width: 1440px;
+    background: var(--gray-50);
+    min-height: 100vh;
+    color: var(--gray-800);
 }
 
-/* Header de página */
+/* ====================================================================
+   CABECERA DE PÁGINA
+   ==================================================================== */
 .pagina-header {
-  margin-bottom: 2rem;
+    margin-bottom: 32px;
 }
 
 .pagina-header h1 {
-  font-size: 1.8rem;
-  color: #1e293b;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
+    font-family: var(--font-ui);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: -0.3px;
+    margin: 0 0 4px;
 }
 
 .pagina-header p {
-  color: #94a3b8;
-  font-size: 0.875rem;
+    font-size: 0.88rem;
+    color: var(--gray-500);
+    margin: 0;
+    font-weight: 400;
 }
 
 /* ====================================================================
    PANEL DE FILTROS
    ==================================================================== */
-
 .filtros-panel {
-  background: white;
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-  margin-bottom: 1rem;
-  border: 1px solid #e2e8f0;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-200);
+    transition: box-shadow 0.25s ease;
+}
+
+.filtros-panel:hover {
+    box-shadow: var(--shadow-md);
 }
 
 .filtros-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.75rem;
-  align-items: flex-end;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px 18px;
+    align-items: flex-end;
 }
 
 .filtro-grupo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
 }
 
 .filtro-grupo label {
-  font-size: 0.7rem;
-  color: #94a3b8;
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
 }
 
 .filtro-grupo input,
 .filtro-grupo select {
-  padding: 0.375rem 0.625rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  font-size: 0.8125rem;
-  transition: border-color 0.2s;
-  background: white;
-  color: #1e293b;
+    width: 100%;
+    padding: 10px 13px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    color: var(--gray-800);
+    background: var(--gray-50);
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.filtro-grupo select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 34px;
+}
+
+.filtro-grupo input::placeholder {
+    color: var(--gray-300);
+}
+
+.filtro-grupo input:hover,
+.filtro-grupo select:hover {
+    border-color: var(--gray-300);
+    background: var(--white);
 }
 
 .filtro-grupo input:focus,
 .filtro-grupo select:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.filtro-grupo input::placeholder {
-  color: #cbd5e1;
+    outline: none;
+    border-color: var(--primary);
+    background: var(--white);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.09);
 }
 
 .acciones-filtros {
-  display: flex;
-  justify-content: flex-end;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
 }
 
+.btn-buscar,
 .btn-limpiar {
-  padding: 0.375rem 0.875rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  color: #64748b;
-  font-size: 0.8125rem;
-  cursor: pointer;
-  transition: background 0.2s;
-  height: 32px;
-}
-
-.btn-limpiar:hover {
-  background: #e2e8f0;
-}
-
-/* Resultados info */
-.resultados-info {
-  margin-bottom: 0.625rem;
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-
-/* ====================================================================
-   TABLA PRINCIPAL
-   ==================================================================== */
-
-.tabla-container {
-  overflow-x: auto;
-  background: white;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-}
-
-.tabla {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 750px;
-}
-
-.tabla thead {
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.tabla th {
-  padding: 0.625rem 0.875rem;
-  text-align: left;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #64748b;
-}
-
-.tabla td {
-  padding: 0.6875rem 0.875rem;
-  border-bottom: 0.5px solid #f1f5f9;
-  vertical-align: middle;
-}
-
-.tabla tr:last-child td {
-  border-bottom: none;
-}
-
-.tabla tbody tr:hover td {
-  background: #fafbff;
-}
-
-/* ====================================================================
-   COLUMNAS
-   ==================================================================== */
-
-/* Código */
-.codigo-cell {
-  font-family: monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #6366f1;
-}
-
-/* Nombres */
-.nombre-solicitante {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.nombre-demandado {
-  font-size: 0.8125rem;
-  color: #64748b;
-}
-
-/* DNI */
-.dni-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.dni-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-family: monospace;
-  font-size: 0.75rem;
-  color: #475569;
-}
-
-.dni-tag {
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: #94a3b8;
-  min-width: 12px;
-}
-
-/* Fecha */
-.fecha-cell {
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-/* ====================================================================
-   BOTONES
-   ==================================================================== */
-
-.btn-vincular-tabla {
-  padding: 0.3125rem 0.875rem;
-  background: #6366f1;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: opacity 0.15s;
-}
-
-.btn-vincular-tabla:hover {
-  opacity: 0.85;
-}
-
-.btn-ver {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 0.3125rem 0.875rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: opacity 0.15s;
-}
-
-.btn-ver:hover {
-  opacity: 0.85;
+    padding: 0 20px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    letter-spacing: 0.1px;
 }
 
 .btn-buscar {
-  padding: 0.375rem 1rem;
-  background: #6366f1;
-  color: white;
-  border: none;
-  border-radius: 7px;
-  cursor: pointer;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  transition: opacity 0.15s;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    box-shadow: 0 2px 6px rgba(26, 86, 219, .22);
 }
 
 .btn-buscar:hover {
-  opacity: 0.85;
+    background: var(--primary-dark);
+    box-shadow: 0 4px 12px rgba(26, 86, 219, .30);
+    transform: translateY(-1px);
+}
+
+.btn-limpiar {
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    color: var(--gray-600);
+}
+
+.btn-limpiar:hover {
+    background: var(--gray-100);
+    border-color: var(--gray-300);
+    transform: translateY(-1px);
 }
 
 /* ====================================================================
-   BADGES
+   BARRA DE RESULTADOS
    ==================================================================== */
-
-.badge-vinculado {
-  display: inline-block;
-  padding: 0.2rem 0.625rem;
-  background: #10b981;
-  color: white;
-  border-radius: 20px;
-  font-size: 0.6875rem;
-  font-weight: 500;
+.resultados-info {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 0 2px;
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    color: var(--gray-400);
+    font-weight: 500;
 }
-
-.badge-pendiente {
-  display: inline-block;
-  padding: 0.2rem 0.625rem;
-  background: #f59e0b;
-  color: white;
-  border-radius: 20px;
-  font-size: 0.6875rem;
-  font-weight: 500;
-}
-
-.badge-recibido    { background: #e0f2fe; color: #0369a1; }
-.badge-evaluacion  { background: #fef3c7; color: #b45309; }
-.badge-res_separacion { background: #d9f99d; color: #3f6212; }
-.badge-res_disolucion { background: #fed7aa; color: #9a3412; }
-.badge-archivo     { background: #e2e8f0; color: #475569; }
 
 /* ====================================================================
-   ESTADOS VACÍOS Y CARGANDO
+   CONTENEDOR DE TABLA
    ==================================================================== */
+.tabla-container {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
 
+/* ====================================================================
+   TABLAS
+   ==================================================================== */
+.tabla-vincular,
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-ui);
+    font-size: 0.84rem;
+}
+
+.tabla-vincular thead,
+.tabla thead {
+    background: var(--gray-50);
+    border-bottom: 1.5px solid var(--gray-150);
+}
+
+.tabla-vincular th,
+.tabla th {
+    padding: 13px 18px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--gray-400);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    white-space: nowrap;
+}
+
+.tabla-vincular td,
+.tabla td {
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-700);
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+.tabla-vincular tbody tr,
+.tabla tbody tr {
+    transition: background 0.15s ease;
+}
+
+.tabla-vincular tbody tr:hover,
+.tabla tbody tr:hover {
+    background: var(--primary-light);
+}
+
+.tabla-vincular tbody tr:last-child td,
+.tabla tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ====================================================================
+   CELDAS ESPECÍFICAS
+   ==================================================================== */
+.codigo-cell {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--primary);
+}
+
+.nombre-solicitante {
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.nombre-demandado {
+    color: var(--gray-500);
+    font-size: 0.82rem;
+}
+
+.dni-cell {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--gray-500);
+    letter-spacing: 0.4px;
+}
+
+.fecha-cell {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--gray-400);
+    white-space: nowrap;
+}
+
+/* ====================================================================
+   BADGES DE ESTADO
+   ==================================================================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 11px;
+    border-radius: 20px;
+    font-family: var(--font-ui);
+    font-size: 0.69rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.65;
+    flex-shrink: 0;
+}
+
+.badge-recibido       { background: #dbeafe; color: #1d4ed8; }
+.badge-evaluacion     { background: var(--warning-bg); color: var(--warning); }
+.badge-res_separacion { background: #ecfdf5; color: #065f46; }
+.badge-res_disolucion { background: #ede9fe; color: #5b21b6; }
+.badge-archivo        { background: var(--gray-100); color: var(--gray-500); }
+
+/* ====================================================================
+   BLOQUEADO
+   ==================================================================== */
+.bloqueado-si,
+.bloqueado-no {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 11px;
+    border-radius: 20px;
+    font-family: var(--font-ui);
+    font-size: 0.69rem;
+    font-weight: 700;
+}
+
+.bloqueado-si { background: var(--danger-bg);  color: var(--danger); }
+.bloqueado-no { background: var(--success-bg); color: var(--success); }
+
+/* ====================================================================
+   BOTONES DE ACCIÓN EN TABLA
+   ==================================================================== */
+.btn-vincular-tabla,
+.btn-ver {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-family: var(--font-ui);
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.btn-vincular-tabla {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--primary-mid);
+}
+
+.btn-vincular-tabla:hover {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+    box-shadow: 0 3px 10px rgba(26, 86, 219, .25);
+    transform: translateY(-1px);
+}
+
+.btn-ver {
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    box-shadow: 0 2px 5px rgba(26, 86, 219, .2);
+}
+
+.btn-ver:hover {
+    background: var(--primary-dark);
+    box-shadow: 0 4px 12px rgba(26, 86, 219, .30);
+    transform: translateY(-1px);
+}
+
+.btn-vincular-tabla:active,
+.btn-ver:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* ====================================================================
+   ESTADOS VACÍO Y CARGANDO
+   ==================================================================== */
 .vacio {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: white;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  color: #94a3b8;
-  font-size: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    padding: 64px 20px;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    border: 1.5px dashed var(--gray-200);
+    color: var(--gray-400);
+}
+
+.vacio p {
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+    margin: 0;
+    font-weight: 500;
 }
 
 .cargando {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #94a3b8;
-  font-size: 0.875rem;
+    text-align: center;
+    padding: 64px 20px;
+    color: var(--gray-400);
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+    font-weight: 500;
 }
 
 /* ====================================================================
    RESPONSIVE
    ==================================================================== */
-
-@media (max-width: 768px) {
-  .contenido {
-    margin-left: 80px;
-    padding: 1rem;
-  }
-
-  .filtros-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .acciones-filtros {
-    justify-content: stretch;
-  }
-
-  .btn-limpiar {
-    width: 100%;
-  }
-
-  .tabla {
-    min-width: 650px;
-  }
+@media (max-width: 1100px) {
+    .contenido-modulo3 { padding: 24px; }
 }
 
+@media (max-width: 900px) {
+    .filtros-grid { grid-template-columns: repeat(2, 1fr); }
+}
 
+@media (max-width: 768px) {
+    .contenido-modulo3 { padding: 20px 16px; }
+    .tabla-container { overflow-x: auto; }
+    .tabla-vincular,
+    .tabla { min-width: 680px; }
+    .btn-vincular-tabla,
+    .btn-ver { padding: 6px 12px; font-size: 0.72rem; }
+}
+
+@media (max-width: 600px) {
+    .filtros-grid { grid-template-columns: 1fr; }
+    .acciones-filtros { flex-direction: column; gap: 8px; }
+    .btn-buscar,
+    .btn-limpiar { width: 100%; justify-content: center; }
+    .resultados-info { justify-content: flex-start; }
+    .pagina-header h1 { font-size: 1.3rem; }
+}
