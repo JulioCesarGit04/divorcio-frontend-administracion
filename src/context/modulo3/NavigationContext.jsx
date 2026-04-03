@@ -1,17 +1,20 @@
 import { createContext, useContext, useState } from 'react'
+//generado por julio borra despues2
 
 const NavigationContext = createContext()
 
 export function NavigationProvider({ children }) {
-    const [paginaActual, setPaginaActual] = useState('login')
+    const [paginaActual, setPaginaActual] = useState('dashboard')
     const [expedienteId, setExpedienteId] = useState(null)
 
     const cambiarPagina = (pagina, id = null) => {
+        console.log('🔵 cambiarPagina llamada:', pagina, id);  // ← AGREGAR
         setPaginaActual(pagina)
         if (id) setExpedienteId(id)
     }
 
     const verDetalleExpediente = (id) => {
+        console.log('🔵 verDetalleExpediente llamada:', id);  // ← AGREGAR
         setExpedienteId(id)
         setPaginaActual('detalle')
     }
@@ -31,7 +34,7 @@ export function NavigationProvider({ children }) {
 export function useNavigation() {
     const context = useContext(NavigationContext)
     if (!context) {
-        throw new Error('useNavigation debe usarse dentroo de NavigationProvider')
+        throw new Error('useNavigation debe usarse dentro de NavigationProvider')
     }
     return context
 }
