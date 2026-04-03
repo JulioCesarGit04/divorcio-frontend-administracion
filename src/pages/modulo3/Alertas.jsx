@@ -31,7 +31,7 @@ export default function Alertas({ cambiarPagina, paginaActual, verDetalle }) {
                     <p>Expedientes que requieren atención</p>
                 </div>
                 {cargando ? <p className="cargando">Cargando...</p> : alertas.length === 0 ? (
-                    <div className="vacio"><p>No hay alertas activas.</p></div>
+                    <div className="vacio"><p>No hay alertas activas...</p></div>
                 ) : (
                     <div className="alertas-lista">
                         {alertas.map((a, i) => (
