@@ -10,7 +10,7 @@ export default function ModalDesbloquear({ expedienteId, onCerrar, onDesbloquead
 
     const handleConfirmar = async () => {
         if (!motivo.trim()) {
-            setError('El motivo es obligatorio para desbloquear')
+            setError('¡El motivo es obligatorio para desbloquear!')
             return
         }
         setError('')
