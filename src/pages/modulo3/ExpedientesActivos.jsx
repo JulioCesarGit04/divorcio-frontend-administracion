@@ -18,7 +18,10 @@ export default function ExpedientesActivos({ cambiarPagina, paginaActual, verDet
     const [cargando, setCargando] = useState(true)
     const [filtros, setFiltros] = useState({ estado: '', nro_mesa_partes: '', dni: '' })
 
-   
+    useEffect(() => {
+        const usuario = localStorage.getItem('usuario')
+        if (!usuario) cambiarPagina('login')
+    }, [cambiarPagina])
 
     const cargar = async () => {
         setCargando(true)

@@ -64,33 +64,6 @@ export default function Layout({ children }) {
           }}>
             Panel Administrativo
           </span>
-
-
-            {/* ========================================================= */}
-            {/* AGREGADO: Botón para Módulo 3 */}
-            {/* ========================================================= */}
-            <button
-              onClick={() => navigate('/modulo3')}
-              style={{
-                background: '#40916c',
-                border: 'none',
-                color: '#ffffff',
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '3px 12px',
-                borderRadius: 20,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                marginLeft: 'auto',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={(e) => { e.target.style.background = '#2d6a4f'; }}
-              onMouseLeave={(e) => { e.target.style.background = '#40916c'; }}
-            >
-              📋 Gestión de Expedientes
-            </button>
-
-
         </div>
         <div style={{ display: 'flex', alignItems: 'stretch', flexShrink: 0 }}>
           <div style={{

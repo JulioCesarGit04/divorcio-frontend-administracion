@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react'
 import Sidebar from '../../components/modulo3/Sidebar'
 import ModalVincular from '../../components/modulo3/ModalVincular'
 import { getPreExpedientes } from '../../services/ProcedimientoService'
-import { useNavigation } from '../../context/modulo3/NavigationContext'
 import '../../styles/modulo3/expedientes.css'
 
-export default function VincularExpedientes() {  // ← ELIMINA las props
-    const { cambiarPagina, paginaActual } = useNavigation()  // ← usa el contexto
+export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
     const [preExpedientes, setPreExpedientes] = useState([])
     const [preExpedientesFiltrados, setPreExpedientesFiltrados] = useState([])
     const [cargando, setCargando] = useState(true)
@@ -20,7 +18,10 @@ export default function VincularExpedientes() {  // ← ELIMINA las props
         fechaHasta: ''
     })
 
-    
+    useEffect(() => {
+        const usuario = localStorage.getItem('usuario')
+        if (!usuario) cambiarPagina('login')
+    }, [cambiarPagina])
 
     const cargar = async () => {
         setCargando(true)

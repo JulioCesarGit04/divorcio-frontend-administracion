@@ -7,7 +7,9 @@ export default function Alertas({ cambiarPagina, paginaActual, verDetalle }) {
     const [alertas, setAlertas] = useState([])
     const [cargando, setCargando] = useState(true)
 
-    
+    useEffect(() => {
+        if (!localStorage.getItem('usuario')) cambiarPagina('login')
+    }, [cambiarPagina])
 
     useEffect(() => {
         getAlertas()
