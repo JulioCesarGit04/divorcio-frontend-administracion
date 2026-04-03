@@ -32,7 +32,7 @@ export default function ExpedientesActivos({ cambiarPagina, paginaActual, verDet
             const data = await getExpedientes(filtrosLimpios)
             setExpedientes(Array.isArray(data) ? data : [])
         } catch {
-            console.error('Error cargando expedientes')
+            console.error('Error cargando expedientes.')
         } finally {
             setCargando(false)
         }
