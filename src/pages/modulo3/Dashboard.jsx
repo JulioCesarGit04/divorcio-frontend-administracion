@@ -8,10 +8,7 @@ export default function Dashboard({ cambiarPagina, paginaActual }) {
     const [alertas, setAlertas] = useState([])
     const [cargando, setCargando] = useState(true)
 
-    useEffect(() => {
-        const usuario = localStorage.getItem('usuario')
-        if (!usuario) cambiarPagina('login')
-    }, [cambiarPagina])
+    
 
     useEffect(() => {
         const cargar = async () => {

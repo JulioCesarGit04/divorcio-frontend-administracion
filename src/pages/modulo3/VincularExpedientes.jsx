@@ -18,10 +18,7 @@ export default function VincularExpedientes({ cambiarPagina, paginaActual }) {
         fechaHasta: ''
     })
 
-    useEffect(() => {
-        const usuario = localStorage.getItem('usuario')
-        if (!usuario) cambiarPagina('login')
-    }, [cambiarPagina])
+    
 
     const cargar = async () => {
         setCargando(true)

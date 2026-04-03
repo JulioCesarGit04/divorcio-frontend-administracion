@@ -1,58 +1,48 @@
-import { useState } from 'react'
-import Dashboard from './pages/modulo3/Dashboard'
-import VincularExpedientes from './pages/modulo3/VincularExpedientes'
-import ExpedientesActivos from './pages/modulo3/ExpedientesActivos'
-import DetalleExpediente from './pages/modulo3/DetalleExpediente'
-import Historial from './pages/modulo3/Historial'
-import Alertas from './pages/modulo3/Alertas'
-import Reportes from './pages/modulo3/Reportes'
-import Login from './pages/modulo3/Login'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import RutaProtegida from './components/RutaProtegida';
+import LoginPage from './pages/LoginPage';
+import ListadoPage from './pages/ListadoPage';
+import DetallePage from './pages/DetallePage';
+import Modulo3Router from './pages/modulo3/Modulo3Router';
+
+import './App.css';
+
 
 function App() {
-  const [paginaActual, setPaginaActual] = useState('login')
-  const [expedienteId, setExpedienteId] = useState(null)
-
-  const cambiarPagina = (pagina, id = null) => {
-    setPaginaActual(pagina)
-    if (id) setExpedienteId(id)
-  }
-
-  const verDetalleExpediente = (id) => {
-    setExpedienteId(id)
-    setPaginaActual('detalle')
-  }
-
-  const renderComponente = () => {
-    const propsComunes = { 
-      cambiarPagina, 
-      paginaActual,
-      verDetalle: verDetalleExpediente
-    }
-
-    switch(paginaActual) {
-      case 'login':
-        return <Login cambiarPagina={cambiarPagina} />
-      case 'dashboard':
-        return <Dashboard {...propsComunes} />
-      case 'vincular':
-        return <VincularExpedientes {...propsComunes} />
-      case 'expedientes':
-        return <ExpedientesActivos {...propsComunes} />
-      case 'detalle':
-        return <DetalleExpediente id={expedienteId} {...propsComunes} />
-      case 'historial':
-        return <Historial {...propsComunes} />
-      case 'alertas':
-        return <Alertas {...propsComunes} />
-      case 'reportes':
-        return <Reportes {...propsComunes} />
-      default:
-        return <Login cambiarPagina={cambiarPagina} />
-    }
-  }
-
-  return renderComponente()
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* Ruta pública */}
+          <Route path="/login" element={<LoginPage />} />
+          
+          {/* Rutas protegidas (Módulo 2 de tu compañero) */}
+          <Route path="/solicitudes" element={
+            <RutaProtegida>
+              <ListadoPage />
+            </RutaProtegida>
+          } />
+          <Route path="/solicitudes/:id" element={
+            <RutaProtegida>
+              <DetallePage />
+            </RutaProtegida>
+          } />
+          
+          {/* Tu Módulo 3 */}
+          <Route path="/modulo3/*" element={
+            <RutaProtegida>
+              <Modulo3Router />
+            </RutaProtegida>
+          } />
+          
+          {/* Redirección por defecto */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
