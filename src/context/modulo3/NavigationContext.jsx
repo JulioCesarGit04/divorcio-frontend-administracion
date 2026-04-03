@@ -31,7 +31,7 @@ export function NavigationProvider({ children }) {
 export function useNavigation() {
     const context = useContext(NavigationContext)
     if (!context) {
-        throw new Error('useNavigation debe usarse dentro de NavigationProvider')
+        throw new Error('useNavigation debe usarse dentroo de NavigationProvider')
     }
     return context
 }
