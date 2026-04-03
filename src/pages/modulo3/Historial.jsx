@@ -33,7 +33,7 @@ export default function Historial({ cambiarPagina, paginaActual }) {
                     grupos[nroExp].acciones.push(item)
                 })
                 
-                // Convertir a array y ordenar por fecha descendente (el más reciente primero)
+                // Convertir a array y ordenar por fecha descendente (el más reciente primero)...
                 const agrupado = Object.values(grupos)
                 agrupado.sort((a, b) => {
                     const fechaA = new Date(a.acciones[0]?.historial_fecha_hora || 0)
