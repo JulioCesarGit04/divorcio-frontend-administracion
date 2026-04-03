@@ -20,7 +20,7 @@ export default function Dashboard({ cambiarPagina, paginaActual }) {
                 setReportes(r)
                 setAlertas(a)
             } catch {
-                console.error('Error cargando dashboard')
+                console.error('Error cargando dashboard.')
             } finally {
                 setCargando(false)
             }
