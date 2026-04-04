@@ -7,16 +7,23 @@ import ModalVerResolucion from '../../components/modulo3/ModalVerResolucion'
 import ModalDesbloquear from '../../components/modulo3/ModalDesbloquear'
 import { getExpedienteById } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/detalle.css'
+import ModalDesvincular from '../../components/modulo3/ModalDesvincular';
+import { useAuth } from '../../context/AuthContext';
+
+
+
 
 export default function DetalleExpediente() {
+    const { usuario } = useAuth();   
     const { id } = useParams()
     const navigate = useNavigate()
     const [data, setData] = useState(null)
     const [cargando, setCargando] = useState(true)
     const [modal, setModal] = useState(null)
-    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
 
     console.log('🔵 DetalleExpediente - ID recibido de URL:', id)
+
+    
 
     const cargar = async () => {
         if (!id) {
@@ -178,9 +185,8 @@ export default function DetalleExpediente() {
                                 </div>
                             </div>
                         )}
-
                         {!expediente.expedientes_bloqueado && (
-                            <div className="seccion acciones">
+                            <div className="seccion acciones">  
                                 <h2>⚡ Acciones</h2>
                                 <div className="botones-accion">
                                     {expediente.expedientes_estado_actual === 'RECIBIDO' && (
@@ -203,7 +209,15 @@ export default function DetalleExpediente() {
                                             📦 Archivar expediente
                                         </button>
                                     )}
-                                </div>
+                                    {/* Mostrar desvincular solo en RECIBIDO o EVALUACION */}
+                                    {(usuario?.rol === 'ADMINISTRADOR' && 
+                                    (expediente.expedientes_estado_actual === 'RECIBIDO' || 
+                                    expediente.expedientes_estado_actual === 'EVALUACION')) && (
+                                        <button className="btn-accion btn-desvincular" onClick={() => setModal('desvincular')}>
+                                            🔄 Desvincular expediente
+                                        </button>
+                                    )}
+                                                                    </div>
                             </div>
                         )}
 
@@ -281,6 +295,18 @@ export default function DetalleExpediente() {
                         onDesbloqueado={() => { setModal(null); cargar() }}
                     />
                 )}
+                {modal === 'desvincular' && (
+                <ModalDesvincular
+                    expedienteId={id}
+                    expedienteNro={expediente.expedientes_nro_mesa_partes}
+                    onCerrar={() => setModal(null)}
+                    onDesvinculado={() => {
+                        setModal(null);
+                        navigate('/modulo3/expedientes');
+                    }}
+                />
+            )}
+                
             </main>
         </>
     )
