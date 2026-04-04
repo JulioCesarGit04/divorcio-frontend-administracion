@@ -2,14 +2,14 @@ const API_URL = 'http://localhost:3000/api/procedimiento';
 const AUTH_URL = 'http://localhost:3000/api/auth';
 
 // ====================================================================
-// AUTH - 
+// AUTH
 // ====================================================================
 export const login = async (correo, password) => {
     try {
         const response = await fetch(`${AUTH_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // ← IMPORTANTE: envía cookies de sesión
+            credentials: 'include',
             body: JSON.stringify({ correo, password })
         });
 
@@ -23,7 +23,6 @@ export const login = async (correo, password) => {
         const data = await response.json();
         console.log('Datos recibidos:', data);
         
-        // Guardar usuario en localStorage (para mostrar en el sidebar)
         if (data.usuario) {
             localStorage.setItem('usuario', JSON.stringify({
                 id: data.usuario.id,
@@ -76,9 +75,6 @@ export const getSesion = async () => {
     }
 };
 
-// ====================================================================
-// OBTENER USUARIO DE SESIÓN (desde tu backend)
-// ====================================================================
 export const getUsuarioSesion = async () => {
     try {
         const response = await fetch(`${API_URL}/usuario-sesion`, {
@@ -104,7 +100,7 @@ export const getUsuarioSesion = async () => {
 export const getPreExpedientes = async () => {
     const response = await fetch(`${API_URL}/pre-expedientes`, {
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        credentials: 'include'
     });
     
     if (!response.ok) {
@@ -115,18 +111,14 @@ export const getPreExpedientes = async () => {
 };
 
 // ====================================================================
-// EXPEDIENTES (ya no se envía usuario_id, lo toma de la sesión)
+// EXPEDIENTES
 // ====================================================================
 export const vincularExpediente = async (pre_solicitud_id, nro_mesa_partes) => {
     const response = await fetch(`${API_URL}/expedientes/vincular`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
-        body: JSON.stringify({ 
-            pre_solicitud_id, 
-            nro_mesa_partes
-            // ❌ Ya NO se envía usuario_id, el backend lo toma de la sesión
-        })
+        credentials: 'include',
+        body: JSON.stringify({ pre_solicitud_id, nro_mesa_partes })
     });
     
     if (!response.ok) {
@@ -146,7 +138,7 @@ export const getExpedientes = async (filtros = {}) => {
     
     const response = await fetch(url, {
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        credentials: 'include'
     });
     
     if (!response.ok) {
@@ -159,7 +151,7 @@ export const getExpedientes = async (filtros = {}) => {
 export const getExpedienteById = async (id) => {
     const response = await fetch(`${API_URL}/expedientes/${id}`, {
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        credentials: 'include'
     });
     
     if (!response.ok) {
@@ -173,9 +165,8 @@ export const avanzarEtapa = async (id, observaciones = '') => {
     const response = await fetch(`${API_URL}/expedientes/${id}/avanzar`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
+        credentials: 'include',
         body: JSON.stringify({ observaciones })
-        // ❌ Ya NO se envía usuario_id
     });
     
     if (!response.ok) {
@@ -190,9 +181,8 @@ export const generarResolucion = async (id, tipo) => {
     const response = await fetch(`${API_URL}/expedientes/${id}/resoluciones`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
+        credentials: 'include',
         body: JSON.stringify({ tipo })
-        // ❌ Ya NO se envía usuario_id
     });
     
     if (!response.ok) {
@@ -207,9 +197,8 @@ export const archivarExpediente = async (id, ubicacion_fisica) => {
     const response = await fetch(`${API_URL}/expedientes/${id}/archivar`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
+        credentials: 'include',
         body: JSON.stringify({ ubicacion_fisica })
-        // ❌ Ya NO se envía usuario_id
     });
     
     if (!response.ok) {
@@ -224,9 +213,8 @@ export const desbloquearExpediente = async (id, motivo) => {
     const response = await fetch(`${API_URL}/expedientes/${id}/desbloquear`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',  // ← IMPORTANTE
+        credentials: 'include',
         body: JSON.stringify({ motivo })
-        // ❌ Ya NO se envía usuario_id
     });
     
     if (!response.ok) {
@@ -238,12 +226,31 @@ export const desbloquearExpediente = async (id, motivo) => {
 };
 
 // ====================================================================
+// ← CAMBIO: desvincularExpediente (NO envía usuario_id, el backend lo toma de la sesión)
+// ====================================================================
+export const desvincularExpediente = async (id, motivo) => {
+    const response = await fetch(`${API_URL}/expedientes/${id}/desvincular`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ motivo })  // ← CAMBIO: ya NO envía usuario_id
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al desvincular expediente');
+    }
+    
+    return response.json();
+};
+
+// ====================================================================
 // HISTORIAL
 // ====================================================================
 export const getHistorial = async (id) => {
     const response = await fetch(`${API_URL}/expedientes/${id}/historial`, {
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        credentials: 'include'
     });
     
     if (!response.ok) {
@@ -256,7 +263,7 @@ export const getHistorial = async (id) => {
 export const getHistorialGlobal = async () => {
     const response = await fetch(`${API_URL}/historial`, {
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        credentials: 'include'
     });
     
     if (!response.ok) {
@@ -272,7 +279,7 @@ export const getHistorialGlobal = async () => {
 export const getAlertas = async () => {
     const response = await fetch(`${API_URL}/alertas`, {
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        credentials: 'include'
     });
     
     if (!response.ok) {
@@ -288,7 +295,7 @@ export const getAlertas = async () => {
 export const getReportes = async () => {
     const response = await fetch(`${API_URL}/reportes`, {
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'  // ← IMPORTANTE
+        credentials: 'include'
     });
     
     if (!response.ok) {

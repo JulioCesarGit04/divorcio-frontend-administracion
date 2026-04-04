@@ -353,3 +353,51 @@
     .btn-cancelar,
     .btn-confirmar  { width: 100%; justify-content: center; }
 }
+
+
+
+/* Modal de desvinculación */
+.alerta-importante {
+    background: #fef2f2;
+    border-left: 4px solid #dc2626;
+    padding: 16px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+.alerta-importante p {
+    margin: 8px 0;
+    color: #991b1b;
+}
+
+.alerta-importante ul {
+    margin: 8px 0;
+    padding-left: 20px;
+    color: #991b1b;
+}
+
+.alerta-importante li {
+    margin: 4px 0;
+}
+
+.btn-peligro {
+    background: #dc2626 !important;
+}
+
+.btn-peligro:hover {
+    background: #b91c1c !important;
+}
+
+.modal-error {
+    background: #fef2f2;
+    border: 1px solid #dc2626;
+    border-radius: 8px;
+    padding: 10px;
+    color: #dc2626;
+    font-size: 0.8rem;
+    margin-top: 12px;
+}
+
+.requerido {
+    color: #dc2626;
+}

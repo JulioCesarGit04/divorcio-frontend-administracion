@@ -3,59 +3,52 @@ import Sidebar from '../../components/modulo3/Sidebar'
 import { getHistorialGlobal } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/historial.css'
 
-export default function Historial({ cambiarPagina, paginaActual }) {
-    const [historial, setHistorial] = useState([])
-    const [expedientesAgrupados, setExpedientesAgrupados] = useState([])
-    const [expedienteExpandido, setExpedienteExpandido] = useState(null)
+export default function Historial() {
+    const [preExpedientes, setPreExpedientes] = useState([])
+    const [expandido, setExpandido] = useState(null)
     const [cargando, setCargando] = useState(true)
-
-    
 
     useEffect(() => {
         getHistorialGlobal()
             .then(data => {
                 const historialData = Array.isArray(data) ? data : []
-                setHistorial(historialData)
                 
-                // Agrupar por expediente
+                // ← CAMBIO: Agrupar por pre_solicitud_id (NO por número de expediente)
                 const grupos = {}
                 historialData.forEach(item => {
-                    const nroExp = item.expedientes_nro_mesa_partes
-                    if (!grupos[nroExp]) {
-                        grupos[nroExp] = {
-                            expediente_nro: nroExp,
-                            expediente_id: item.historial_expediente_id,
+                    const preId = item.pre_solicitud_id
+                    if (!grupos[preId]) {
+                        grupos[preId] = {
+                            pre_solicitud_id: preId,
+                            pre_solicitud_codigo: item.pre_solicitud_codigo,
+                            solicitante: `${item.solicitante_nombres || ''} ${item.solicitante_apellidos || ''}`,
+                            demandado: `${item.demandado_nombres || ''} ${item.demandado_apellidos || ''}`,
                             acciones: []
                         }
                     }
-                    grupos[nroExp].acciones.push(item)
+                    grupos[preId].acciones.push(item)
                 })
                 
-                // Convertir a array y ordenar por fecha descendente (el más reciente primero)...
-                const agrupado = Object.values(grupos)
-                agrupado.sort((a, b) => {
-                    const fechaA = new Date(a.acciones[0]?.historial_fecha_hora || 0)
-                    const fechaB = new Date(b.acciones[0]?.historial_fecha_hora || 0)
-                    return fechaB - fechaA
+                // Ordenar acciones dentro de cada grupo por fecha ascendente
+                Object.values(grupos).forEach(grupo => {
+                    grupo.acciones.sort((a, b) => 
+                        new Date(a.historial_fecha_hora) - new Date(b.historial_fecha_hora)
+                    )
                 })
                 
-                setExpedientesAgrupados(agrupado)
+                setPreExpedientes(Object.values(grupos))
             })
             .catch(console.error)
             .finally(() => setCargando(false))
     }, [])
 
-    const toggleExpandir = (expedienteNro) => {
-        if (expedienteExpandido === expedienteNro) {
-            setExpedienteExpandido(null)
-        } else {
-            setExpedienteExpandido(expedienteNro)
-        }
+    const toggleExpandir = (id) => {
+        setExpandido(expandido === id ? null : id)
     }
 
-    // Función para obtener el ícono según la acción
     const getIconoAccion = (accion) => {
         if (accion === 'VINCULACION') return '🔗'
+        if (accion === 'DESVINCULACION_ADMIN') return '🔄'
         if (accion === 'AVANCE_ETAPA') return '➡️'
         if (accion === 'GENERACION_RESOLUCION') return '📄'
         if (accion === 'ARCHIVO') return '📦'
@@ -63,9 +56,9 @@ export default function Historial({ cambiarPagina, paginaActual }) {
         return '📌'
     }
 
-    // Función para obtener el color del badge según la acción
     const getColorAccion = (accion) => {
         if (accion === 'VINCULACION') return 'badge-vinculacion'
+        if (accion === 'DESVINCULACION_ADMIN') return 'badge-desvinculacion'
         if (accion === 'AVANCE_ETAPA') return 'badge-avance'
         if (accion === 'GENERACION_RESOLUCION') return 'badge-resolucion'
         if (accion === 'ARCHIVO') return 'badge-archivo'
@@ -73,81 +66,89 @@ export default function Historial({ cambiarPagina, paginaActual }) {
         return 'badge-accion'
     }
 
+    const getColorEstado = (estado) => {
+        if (estado === 'RECIBIDO') return 'estado-recibido'
+        if (estado === 'EVALUACION') return 'estado-evaluacion'
+        if (estado === 'RES_SEPARACION') return 'estado-separacion'
+        if (estado === 'RES_DISOLUCION') return 'estado-disolucion'
+        if (estado === 'ARCHIVO') return 'estado-archivo'
+        if (estado === 'ANULADO') return 'estado-anulado'
+        return ''
+    }
+
     return (
         <>
-            <Sidebar cambiarPagina={cambiarPagina} paginaActual={paginaActual} />
-            <main className="contenido">
+            <Sidebar />
+            <main className="contenido-modulo3">
                 <div className="pagina-header">
-                    <h1>Historial global</h1>
-                    <p>Registro inalterable de todas las acciones agrupadas por expediente</p>
+                    <h1>Historial por pre-expediente</h1>
+                    <p>Todos los intentos de vinculación y acciones de cada solicitud</p>
                 </div>
 
                 {cargando ? (
                     <p className="cargando">Cargando...</p>
-                ) : expedientesAgrupados.length === 0 ? (
+                ) : preExpedientes.length === 0 ? (
                     <div className="vacio">
                         <p>No hay registros en el historial.</p>
                     </div>
                 ) : (
                     <div className="historial-acordeon">
-                        {expedientesAgrupados.map(exp => (
-                            <div key={exp.expediente_nro} className="expediente-grupo">
+                        {preExpedientes.map(pre => (
+                            <div key={pre.pre_solicitud_id} className="expediente-grupo">
                                 <div 
-                                    className={`expediente-header ${expedienteExpandido === exp.expediente_nro ? 'expandido' : ''}`}
-                                    onClick={() => toggleExpandir(exp.expediente_nro)}
+                                    className={`expediente-header ${expandido === pre.pre_solicitud_id ? 'expandido' : ''}`}
+                                    onClick={() => toggleExpandir(pre.pre_solicitud_id)}
                                 >
                                     <div className="expediente-info">
                                         <span className="expediente-icono">
-                                            {expedienteExpandido === exp.expediente_nro ? '▼' : '▶'}
+                                            {expandido === pre.pre_solicitud_id ? '▼' : '▶'}
                                         </span>
                                         <span className="expediente-nro">
-                                            📁 Expediente {exp.expediente_nro}
+                                            📋 {pre.pre_solicitud_codigo}
+                                        </span>
+                                        <span className="expediente-subtitulo">
+                                            {pre.solicitante} vs {pre.demandado}
                                         </span>
                                         <span className="expediente-total">
-                                            {exp.acciones.length} {exp.acciones.length === 1 ? 'movimiento' : 'movimientos'}
-                                        </span>
-                                    </div>
-                                    <div className="expediente-resumen">
-                                        <span className="expediente-fecha">
-                                            Último: {new Date(exp.acciones[0]?.historial_fecha_hora).toLocaleDateString('es-PE')}
+                                            {pre.acciones.length} movimientos
                                         </span>
                                     </div>
                                 </div>
                                 
-                                {expedienteExpandido === exp.expediente_nro && (
+                                {expandido === pre.pre_solicitud_id && (
                                     <div className="expediente-contenido">
                                         <table className="tabla-historial">
                                             <thead>
                                                 <tr>
                                                     <th>Fecha y hora</th>
+                                                    <th>N° Mesa</th>
                                                     <th>Acción</th>
-                                                    <th>Estado anterior</th>
-                                                    <th>Estado nuevo</th>
+                                                    <th>Estado</th>
                                                     <th>Detalle</th>
                                                     <th>Usuario</th>
-                                                    <th>Rol</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {exp.acciones.map(h => (
-                                                    <tr key={h.historial_id}>
+                                                {pre.acciones.map(acc => (
+                                                    <tr key={acc.historial_id}>
                                                         <td className="fecha-cell">
-                                                            {new Date(h.historial_fecha_hora).toLocaleString('es-PE')}
+                                                            {new Date(acc.historial_fecha_hora).toLocaleString('es-PE')}
+                                                        </td>
+                                                        <td className="mesa-cell">
+                                                            {acc.expedientes_nro_mesa_partes || '—'}
                                                         </td>
                                                         <td>
-                                                            <span className={`badge ${getColorAccion(h.historial_accion)}`}>
-                                                                {getIconoAccion(h.historial_accion)} {h.historial_accion}
+                                                            <span className={`badge ${getColorAccion(acc.historial_accion)}`}>
+                                                                {getIconoAccion(acc.historial_accion)} {acc.historial_accion}
                                                             </span>
                                                         </td>
-                                                        <td>{h.historial_estado_anterior || '—'}</td>
-                                                        <td>{h.historial_estado_nuevo || '—'}</td>
-                                                        <td className="detalle-cell">{h.historial_detalle || '—'}</td>
-                                                        <td>{h.Usuario}</td>
                                                         <td>
-                                                            <span className={`badge-rol ${h.Rol === 'ADMINISTRADOR' ? 'rol-admin' : 'rol-asistente'}`}>
-                                                                {h.Rol}
+                                                            <span className={`estado-badge ${getColorEstado(acc.historial_estado_nuevo)}`}>
+                                                                {acc.historial_estado_nuevo || '—'}
                                                             </span>
                                                         </td>
+                                                        <td className="detalle-cell">{acc.historial_detalle || '—'}</td>
+                                                        <td>{acc.Usuario}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
