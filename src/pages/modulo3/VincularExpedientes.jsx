@@ -78,7 +78,7 @@ export default function VincularExpedientes() {
                     {/* PRIMERA FILA: Código, Solicitante/Demandado, DNI */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
                         <div className="filtro-grupo">
-                            <label>📋 Código</label>
+                            <label> Código</label>
                             <input
                                 type="text"
                                 placeholder="Buscar por código"
@@ -88,7 +88,7 @@ export default function VincularExpedientes() {
                         </div>
 
                         <div className="filtro-grupo">
-                            <label>👥 Solicitante / Demandado</label>
+                            <label> Solicitante / Demandado</label>
                             <input
                                 type="text"
                                 placeholder="Nombre del cónyuge"
@@ -98,7 +98,7 @@ export default function VincularExpedientes() {
                         </div>
 
                         <div className="filtro-grupo">
-                            <label>🆔 DNI</label>
+                            <label> DNI</label>
                             <input
                                 type="text"
                                 placeholder="DNI del cónyuge"
@@ -111,7 +111,7 @@ export default function VincularExpedientes() {
                     {/* SEGUNDA FILA: Desde, Hasta, Botones */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr) auto', gap: '16px', alignItems: 'flex-end' }}>
                         <div className="filtro-grupo">
-                            <label>📅 Desde</label>
+                            <label> Desde</label>
                             <input
                                 type="date"
                                 value={filtros.fechaDesde}
@@ -120,7 +120,7 @@ export default function VincularExpedientes() {
                         </div>
 
                         <div className="filtro-grupo">
-                            <label>📅 Hasta</label>
+                            <label> Hasta</label>
                             <input
                                 type="date"
                                 value={filtros.fechaHasta}

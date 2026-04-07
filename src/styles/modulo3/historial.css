@@ -1,213 +1,461 @@
 /* ====================================================================
-   HISTORIAL - ESTILOS DE ACORDEÓN
+   HISTORIAL - ESTILO MODERNO CON TARJETAS
    ==================================================================== */
 
-.historial-acordeon {
+.contenido-modulo3 {
+    padding: 24px 32px;
+    background: #f0f2f5;
+    min-height: calc(100vh - 52px);
+}
+
+/* Header */
+.pagina-header {
+    margin-bottom: 28px;
+}
+
+.pagina-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 6px;
+}
+
+.pagina-header p {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* ====================================================================
+   FILTROS
+   ==================================================================== */
+
+.historial-filtros {
+    background: white;
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.filtros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.filtro-grupo {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
 }
 
-/* Grupo de expediente */
-.expediente-grupo {
-    background: white;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    overflow: hidden;
-    transition: all 0.2s;
-}
-
-.expediente-grupo:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-/* Header del expediente (clickeable) */
-.expediente-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    background: #f8fafc;
-    cursor: pointer;
-    transition: background 0.2s;
-    border-left: 4px solid #6366f1;
-}
-
-.expediente-header:hover {
-    background: #f1f5f9;
-}
-
-.expediente-header.expandido {
-    background: #fef9f5;
-    border-left-color: #f59e0b;
-}
-
-.expediente-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.expediente-icono {
-    font-size: 12px;
-    color: #64748b;
-    width: 20px;
-}
-
-.expediente-nro {
-    font-weight: 600;
-    color: #1e293b;
-    font-size: 0.95rem;
-}
-
-.expediente-total {
-    font-size: 0.75rem;
-    color: #64748b;
-    background: #e2e8f0;
-    padding: 2px 8px;
-    border-radius: 20px;
-}
-
-.expediente-resumen {
-    display: flex;
-    gap: 16px;
-}
-
-.expediente-fecha {
-    font-size: 0.75rem;
-    color: #94a3b8;
-}
-
-/* Contenido expandido */
-.expediente-contenido {
-    padding: 0;
-    overflow-x: auto;
-    border-top: 1px solid #e2e8f0;
-}
-
-.tabla-historial {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 800px;
-}
-
-.tabla-historial th {
-    padding: 12px 16px;
-    text-align: left;
+.filtro-grupo label {
     font-size: 0.7rem;
     font-weight: 600;
     color: #64748b;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filtro-grupo input {
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.filtro-grupo input:focus {
+    outline: none;
+    border-color: #0054a6;
+    box-shadow: 0 0 0 3px rgba(0, 84, 166, 0.1);
+}
+
+.acciones-filtros {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-limpiar {
+    padding: 10px 20px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-limpiar:hover {
+    background: #e2e8f0;
+}
+
+/* Resultados info */
+.resultados-info {
+    margin-bottom: 20px;
+    font-size: 0.8rem;
+    color: #64748b;
+    text-align: right;
+}
+
+/* ====================================================================
+   TARJETAS DE HISTORIAL
+   ==================================================================== */
+
+.historial-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.historial-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s;
+}
+
+.historial-card:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Header de la tarjeta */
+.historial-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 24px;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.historial-card-header:hover {
+    background: #f1f5f9;
+}
+
+.historial-card-header.expandido {
     background: #fef9f5;
     border-bottom: 1px solid #e2e8f0;
 }
 
-.tabla-historial td {
-    padding: 10px 16px;
+.card-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.card-icono {
     font-size: 0.8rem;
-    color: #334155;
-    border-bottom: 0.5px solid #f1f5f9;
-    vertical-align: middle;
+    color: #64748b;
+    width: 24px;
 }
 
-.tabla-historial tr:last-child td {
-    border-bottom: none;
+.card-titulo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.tabla-historial tr:hover td {
-    background: #fafbff;
+.card-codigo {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0054a6;
+    font-family: monospace;
 }
 
-/* Badges de acciones */
-.badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.7rem;
+.card-conyuges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+}
+
+.solicitante {
+    color: #1e293b;
     font-weight: 500;
 }
 
-.badge-vinculacion {
+.demandado {
+    color: #64748b;
+}
+
+.separador {
+    color: #cbd5e1;
+}
+
+.card-header-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.card-movimientos {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #0054a6;
+    background: #e0f2fe;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.card-ultimo {
+    font-size: 0.65rem;
+    color: #64748b;
+}
+
+/* Cuerpo de la tarjeta (timeline) */
+.historial-card-body {
+    padding: 24px;
+    background: white;
+}
+
+/* Timeline */
+.timeline {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.timeline-item {
+    display: flex;
+    gap: 16px;
+    position: relative;
+}
+
+.timeline-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 32px;
+    position: relative;
+}
+
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #0054a6;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #e2e8f0;
+    z-index: 2;
+}
+
+.timeline-line {
+    width: 2px;
+    flex: 1;
+    background: #e2e8f0;
+    margin: 4px 0;
+    min-height: 20px;
+}
+
+.timeline-content {
+    flex: 1;
+    padding-bottom: 24px;
+}
+
+.timeline-item:last-child .timeline-content {
+    padding-bottom: 0;
+}
+
+.timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.timeline-fecha {
+    font-size: 0.7rem;
+    font-family: monospace;
+    color: #64748b;
+}
+
+.timeline-nro-mesa {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #0054a6;
+    background: #e0f2fe;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: monospace;
+}
+
+.timeline-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.timeline-accion {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+.accion-icono {
+    font-size: 0.75rem;
+}
+
+.accion-texto {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #475569;
+}
+
+.timeline-estado {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.estado-recibido {
     background: #dbeafe;
     color: #1e40af;
 }
 
-.badge-avance {
-    background: #d9f99d;
-    color: #3f6212;
-}
-
-.badge-resolucion {
+.estado-evaluacion {
     background: #fed7aa;
     color: #9a3412;
 }
 
-.badge-archivo {
+.estado-separacion {
+    background: #d9f99d;
+    color: #3f6212;
+}
+
+.estado-disolucion {
+    background: #bfdbfe;
+    color: #1e3a8a;
+}
+
+.estado-archivo {
     background: #e2e8f0;
     color: #475569;
 }
 
-.badge-desbloqueo {
-    background: #fecaca;
-    color: #991b1b;
+.estado-anulado {
+    background: #fee2e2;
+    color: #b91c1c;
 }
 
-.badge-accion {
+.timeline-detalle {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-style: italic;
+}
+
+.timeline-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.timeline-usuario {
+    font-size: 0.65rem;
+    color: #64748b;
+}
+
+.timeline-rol {
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 12px;
     background: #f1f5f9;
     color: #475569;
 }
 
-/* Badges de rol */
-.badge-rol {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.65rem;
-    font-weight: 600;
+/* Skeleton loader */
+.skeleton-historial {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.rol-admin {
-    background: #fef3c7;
-    color: #b45309;
+.skeleton-card-h {
+    height: 100px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 16px;
 }
 
-.rol-asistente {
-    background: #e0f2fe;
-    color: #0369a1;
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
-/* Fecha */
-.fecha-cell {
-    font-family: monospace;
-    font-size: 0.7rem;
-    color: #64748b;
-    white-space: nowrap;
+/* Estados vacíos */
+.vacio {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 16px;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
 }
 
-/* Detalle */
-.detalle-cell {
-    max-width: 250px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #64748b;
-    font-size: 0.75rem;
+.cargando {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-    .expediente-header {
+    .contenido-modulo3 {
+        padding: 16px;
+    }
+    
+    .filtros-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .acciones-filtros {
+        justify-content: stretch;
+    }
+    
+    .btn-limpiar {
+        width: 100%;
+    }
+    
+    .historial-card-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 8px;
+        gap: 12px;
     }
     
-    .expediente-resumen {
-        width: 100%;
-        justify-content: flex-start;
+    .card-header-stats {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
     }
     
-    .tabla-historial {
-        min-width: 700px;
+    .timeline-header {
+        flex-direction: column;
+    }
+    
+    .timeline-body {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
