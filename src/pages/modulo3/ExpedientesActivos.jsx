@@ -111,7 +111,7 @@ export default function ExpedientesActivos() {
                         {/* PRIMERA FILA: Estado, N° Mesa, DNI, Solicitante/Demandado */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
                             <div className="filtro-grupo">
-                                <label>📋 Estado</label>
+                                <label> Estado</label>
                                 <select
                                     value={filtros.estado}
                                     onChange={e => setFiltros({ ...filtros, estado: e.target.value })}
@@ -123,7 +123,7 @@ export default function ExpedientesActivos() {
                             </div>
                             
                             <div className="filtro-grupo">
-                                <label>🔢 N° Mesa de Partes</label>
+                                <label> N° Mesa de Partes</label>
                                 <input
                                     type="text"
                                     placeholder="Ej: EXP-001-2026"
@@ -133,7 +133,7 @@ export default function ExpedientesActivos() {
                             </div>
                             
                             <div className="filtro-grupo">
-                                <label>🆔 DNI</label>
+                                <label> DNI</label>
                                 <input
                                     type="text"
                                     placeholder="DNI del solicitante o demandado"
@@ -143,7 +143,7 @@ export default function ExpedientesActivos() {
                             </div>
                             
                             <div className="filtro-grupo">
-                                <label>👥 Solicitante/Demandado</label>
+                                <label> Solicitante/Demandado</label>
                                 <input
                                     type="text"
                                     placeholder="Nombre del cónyuge"
@@ -156,7 +156,7 @@ export default function ExpedientesActivos() {
                         {/* SEGUNDA FILA: Fecha desde, Fecha hasta, Bloqueado, Botones */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) auto', gap: '16px', alignItems: 'flex-end' }}>
                             <div className="filtro-grupo">
-                                <label>📅 Fecha desde</label>
+                                <label> Fecha desde</label>
                                 <input
                                     type="date"
                                     value={filtros.fechaDesde}
@@ -165,7 +165,7 @@ export default function ExpedientesActivos() {
                             </div>
                             
                             <div className="filtro-grupo">
-                                <label>📅 Fecha hasta</label>
+                                <label> Fecha hasta</label>
                                 <input
                                     type="date"
                                     value={filtros.fechaHasta}
@@ -174,7 +174,7 @@ export default function ExpedientesActivos() {
                             </div>
                             
                             <div className="filtro-grupo">
-                                <label>🔒 Bloqueado</label>
+                                <label> Bloqueado</label>
                                 <select
                                     value={filtros.bloqueado}
                                     onChange={e => setFiltros({ ...filtros, bloqueado: e.target.value })}

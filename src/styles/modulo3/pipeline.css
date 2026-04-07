@@ -1,225 +1,181 @@
 /* ── pipeline.css ── */
 
-:root {
-    --pipeline-completado: #10b981;
-    --pipeline-activo: #0054a6;
-    --pipeline-pendiente: #e2e8f0;
-    --pipeline-texto: #1e293b;
-    --pipeline-texto-suave: #64748b;
-}
-
 .pipeline {
-    background: white;
+    background: var(--color-background-primary, #ffffff);
+    border: 0.5px solid var(--color-border-tertiary, #e2e8f0);
     border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e2e8f0;
+    padding: 20px 24px;
 }
 
-/* Header */
+/* ── Header ── */
 .pipeline-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 14px;
 }
 
 .pipeline-header h3 {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--pipeline-texto);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-primary, #1e293b);
     margin: 0;
 }
 
 .pipeline-progreso-texto {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--pipeline-texto-suave);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #64748b);
 }
 
-/* Barra de progreso */
+/* ── Barra de progreso ── */
 .pipeline-barra-progreso {
-    width: 100%;
-    height: 6px;
-    background: var(--pipeline-pendiente);
-    border-radius: 10px;
-    margin-bottom: 24px;
+    height: 4px;
+    background: var(--color-background-secondary, #f1f5f9);
+    border-radius: 99px;
+    margin-bottom: 22px;
     overflow: hidden;
 }
 
 .pipeline-barra-lleno {
     height: 100%;
-    background: linear-gradient(90deg, #0054a6, #40916c);
-    border-radius: 10px;
-    transition: width 0.3s ease;
+    background: #1D9E75;
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Contenedor de etapas */
+/* ── Lista de pasos ── */
 .pipeline-etapas {
     display: flex;
     flex-direction: column;
 }
 
-/* Cada item (etapa + línea) */
 .pipeline-item {
     display: flex;
+    gap: 0;
+}
+
+/*
+  CLAVE: la .pipeline-spine contiene el nodo y el segmento
+  en una sola columna flex, así la línea siempre arranca
+  exactamente del borde inferior del círculo hasta
+  el borde superior del siguiente.
+*/
+.pipeline-spine {
+    display: flex;
     flex-direction: column;
+    align-items: center;
+    width: 38px;
+    flex-shrink: 0;
 }
 
-/* Fila del círculo y contenido */
-.pipeline-fila {
-    display: flex;
-    gap: 16px;
-}
-
-/* Columna del círculo - ancho fijo */
-.pipeline-columna-circulo {
-    width: 32px;
-    display: flex;
-    justify-content: center;
-}
-
-/* Círculo */
-.pipeline-circulo {
-    width: 32px;
-    height: 32px;
+/* ── Nodo / círculo ── */
+.pipeline-nodo {
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    transition: all 0.2s;
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
 }
 
-/* Círculo completado */
-.pipeline-circulo.completado {
-    background: var(--pipeline-completado);
-    border: 2px solid var(--pipeline-completado);
-    color: white;
+.pipeline-nodo.completado {
+    background: #1D9E75;
+    color: #ffffff;
 }
 
-/* Círculo activo */
-.pipeline-circulo.activo {
-    background: var(--pipeline-activo);
-    border: 2px solid var(--pipeline-activo);
-    color: white;
-    box-shadow: 0 0 0 3px rgba(0, 84, 166, 0.2);
-    animation: pulse 2s infinite;
+.pipeline-nodo.activo {
+    background: #185FA5;
+    color: #ffffff;
+    animation: pp-pulse 2.5s infinite;
 }
 
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(0, 84, 166, 0.4); }
-    70% { box-shadow: 0 0 0 6px rgba(0, 84, 166, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(0, 84, 166, 0); }
+@keyframes pp-pulse {
+    0%   { box-shadow: 0 0 0 0   rgba(24, 95, 165, 0.35); }
+    60%  { box-shadow: 0 0 0 8px rgba(24, 95, 165, 0);    }
+    100% { box-shadow: 0 0 0 0   rgba(24, 95, 165, 0);    }
 }
 
-/* Círculo pendiente */
-.pipeline-circulo.pendiente {
-    background: white;
-    border: 2px solid var(--pipeline-pendiente);
-    color: var(--pipeline-texto-suave);
+.pipeline-nodo.pendiente {
+    background: var(--color-background-secondary, #f8fafc);
+    border: 1.5px solid var(--color-border-secondary, #cbd5e1);
+    color: var(--color-text-tertiary, #94a3b8);
 }
 
-/* Contenido de la etapa */
-.pipeline-columna-contenido {
+/* ── Segmento de línea ── */
+.pipeline-segmento {
     flex: 1;
-    padding-bottom: 16px;
+    width: 2px;
+    min-height: 28px;
+    margin: 2px 0;
+    border-radius: 99px;
+    background: var(--color-border-tertiary, #e2e8f0);
+    position: relative;
+    overflow: hidden;
 }
 
-/* Etiqueta */
+.pipeline-segmento::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 0;
+    background: #1D9E75;
+    border-radius: 99px;
+    transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+}
+
+.pipeline-segmento.lleno::after { height: 100%; }
+.pipeline-segmento.mitad::after { height: 50%;  }
+
+/* ── Contenido ── */
+.pipeline-contenido {
+    flex: 1;
+    padding: 6px 0 22px 14px;
+}
+
 .pipeline-label {
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.8125rem;
+    font-weight: 500;
     margin-bottom: 2px;
+    line-height: 1.3;
 }
 
-.pipeline-label.completado {
-    color: var(--pipeline-completado);
-}
+.pipeline-label.completado { color: #0F6E56; }
+.pipeline-label.activo     { color: #185FA5; }
+.pipeline-label.pendiente  { color: var(--color-text-secondary, #64748b); }
 
-.pipeline-label.activo {
-    color: var(--pipeline-activo);
-}
-
-.pipeline-label.pendiente {
-    color: var(--pipeline-texto-suave);
-}
-
-/* Descripción */
 .pipeline-descripcion {
-    font-size: 0.7rem;
-    color: var(--pipeline-texto-suave);
-    margin-bottom: 4px;
+    font-size: 0.72rem;
+    color: var(--color-text-tertiary, #94a3b8);
+    line-height: 1.4;
 }
 
-/* Fecha */
 .pipeline-fecha {
-    font-size: 0.65rem;
-    color: var(--pipeline-texto-suave);
+    font-size: 0.68rem;
+    color: var(--color-text-tertiary, #94a3b8);
     font-family: monospace;
     margin-top: 4px;
 }
 
-/* Badges */
-.pipeline-activo-badge {
+/* ── Badges ── */
+.pipeline-badge {
     display: inline-block;
-    background: #e0f2fe;
-    color: #0369a1;
-    font-size: 0.6rem;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    padding: 2px 10px;
+    border-radius: 99px;
     margin-top: 6px;
 }
 
-.pipeline-completado-badge {
-    display: inline-block;
-    background: #dcfce7;
-    color: #166534;
-    font-size: 0.6rem;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 20px;
-    margin-top: 6px;
-}
+.pipeline-badge.completado { background: #E1F5EE; color: #0F6E56; }
+.pipeline-badge.activo     { background: #E6F1FB; color: #185FA5; }
 
-/* Contenedor de la línea vertical */
-.pipeline-linea-container {
-    display: flex;
-    justify-content: center;
-    padding-left: 0;
-}
-
-/* Línea vertical - CENTRADA EXACTAMENTE */
-.pipeline-linea {
-    width: 2px;
-    height: 24px;
-    background: var(--pipeline-pendiente);
-    margin: 0 auto;
-}
-
-.pipeline-linea.linea-completada {
-    background: var(--pipeline-completado);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .pipeline {
-        padding: 16px;
-    }
-    
-    .pipeline-descripcion {
-        display: none;
-    }
-    
-    .pipeline-label {
-        font-size: 0.75rem;
-    }
-    
-    .pipeline-linea {
-        height: 16px;
-    }
+/* ── Responsive ── */
+@media (max-width: 480px) {
+    .pipeline { padding: 16px; }
+    .pipeline-descripcion { display: none; }
 }

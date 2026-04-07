@@ -236,6 +236,7 @@ export default function DetalleExpediente() {
                             <PipelineEtapas
                                 estadoActual={expediente.expedientes_estado_actual}
                                 etapas={etapas}
+                                resoluciones={resoluciones}  // ← AGREGAR ESTA LÍNEA
                             />
                         </div>
                     </div>
@@ -304,8 +305,12 @@ export default function DetalleExpediente() {
                         setModal(null);
                         navigate('/modulo3/expedientes');
                     }}
+
+
                 />
             )}
+
+            
                 
             </main>
         </>
