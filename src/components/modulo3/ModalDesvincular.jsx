@@ -16,7 +16,6 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
         setError('');
         
         try {
-            // ← CAMBIO: Ya NO envía usuario_id (el backend lo toma de la sesión)
             await desvincularExpediente(expedienteId, motivo);
             onDesvinculado();
             onCerrar();
@@ -27,37 +26,108 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
         }
     };
 
+    // Sugerencias rápidas para el motivo
+    const sugerencias = [
+        'Número de Mesa de Partes incorrecto',
+        'Documentos incompletos o incorrectos',
+        'Error de tipeo del asistente',
+        'El ciudadano canceló el trámite',
+        'Se asignó a otro pre-expediente por error',
+    ];
+
+    const aplicarSugerencia = (texto) => {
+        setMotivo(texto);
+    };
+
     return (
         <div className="modal-overlay">
-            <div className="modal">
-                <div className="modal-header">
-                    <h2>⚠️ Desvincular expediente</h2>
-                    <button className="modal-cerrar" onClick={onCerrar}>✕</button>
-                </div>
-                <div className="modal-body">
-                    <div className="alerta-importante">
-                        <p><strong>⚠️ Esta acción es irreversible</strong></p>
-                        <p>Se eliminará el expediente <strong>{expedienteNro}</strong> y todas sus etapas, resoluciones y documentos asociados.</p>
-                        <p>El pre-expediente volverá a estar disponible para vincular nuevamente.</p>
+            <div className="modal-desvincular">
+                {/* Header con icono de advertencia */}
+                <div className="modal-header-desvincular">
+                    <div className="header-icono">⚠️</div>
+                    <div className="header-texto">
+                        <h2>Desvincular expediente</h2>
+                        <p>Esta acción no se puede deshacer</p>
                     </div>
-                    
-                    <div className="campo">
-                        <label>Motivo de desvinculación <span className="requerido">*</span></label>
+                    <button className="modal-cerrar-desvincular" onClick={onCerrar}>✕</button>
+                </div>
+
+                <div className="modal-body-desvincular">
+                    {/* Alerta de advertencia */}
+                    <div className="alerta-desvincular">
+                        <div className="alerta-icono">🔴</div>
+                        <div className="alerta-contenido">
+                            <div className="alerta-titulo">¡Atención! Esta acción es irreversible</div>
+                            <div className="alerta-descripcion">
+                                Se eliminará permanentemente el expediente <strong>{expedienteNro}</strong> y toda su información asociada:
+                            </div>
+                            <ul className="alerta-lista">
+                                <li>📋 Datos del expediente</li>
+                                <li>📊 Etapas y progreso</li>
+                                <li>📜 Resoluciones generadas</li>
+                                <li>📎 Documentos adjuntos</li>
+                                <li>⏱️ Contadores de plazo</li>
+                            </ul>
+                            <div className="alerta-nota">
+                                💡 El pre-expediente volverá a estar disponible para vincular nuevamente con un número correcto.
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Campo de motivo */}
+                    <div className="campo-motivo">
+                        <label>
+                            Motivo de desvinculación <span className="requerido">*</span>
+                        </label>
                         <textarea
                             rows={4}
-                            placeholder="Ej: Número de Mesa de Partes incorrecto, documentos incompletos, error de vinculación, etc."
+                            placeholder="Describa detalladamente por qué se desvincula este expediente..."
                             value={motivo}
                             onChange={e => setMotivo(e.target.value)}
                         />
-                        <small>Este motivo quedará registrado en el historial.</small>
+                        <div className="campo-ayuda">
+                            📝 Este motivo quedará registrado en el historial del sistema para auditoría.
+                        </div>
                     </div>
 
-                    {error && <div className="modal-error">{error}</div>}
+                    {/* Sugerencias rápidas */}
+                    <div className="sugerencias">
+                        <label>⚡ Sugerencias rápidas:</label>
+                        <div className="sugerencias-botones">
+                            {sugerencias.map((sug, idx) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    className="btn-sugerencia"
+                                    onClick={() => aplicarSugerencia(sug)}
+                                >
+                                    {sug}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="modal-error-desvincular">
+                            <span>❌</span> {error}
+                        </div>
+                    )}
                 </div>
-                <div className="modal-footer">
-                    <button className="btn-cancelar" onClick={onCerrar}>Cancelar</button>
-                    <button className="btn-confirmar btn-peligro" onClick={handleConfirmar} disabled={cargando}>
-                        {cargando ? 'Procesando...' : 'Confirmar desvinculación'}
+
+                <div className="modal-footer-desvincular">
+                    <button className="btn-cancelar-desvincular" onClick={onCerrar} disabled={cargando}>
+                        Cancelar
+                    </button>
+                    <button className="btn-confirmar-desvincular" onClick={handleConfirmar} disabled={cargando}>
+                        {cargando ? (
+                            <>
+                                <span className="spinner"></span> Procesando...
+                            </>
+                        ) : (
+                            <>
+                                ⚠️ Confirmar desvinculación
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

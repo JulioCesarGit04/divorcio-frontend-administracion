@@ -29,7 +29,7 @@ function App() {
             </RutaProtegida>
           } />
           
-          {/* Tu Módulo 3 */}
+          {/* Módulo 3 */}
           <Route path="/modulo3/*" element={
             <RutaProtegida>
               <Modulo3Router />
@@ -42,6 +42,9 @@ function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+
+
+
   );
 }
 

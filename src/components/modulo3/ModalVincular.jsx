@@ -5,16 +5,45 @@ import '../../styles/modulo3/modales.css';
 export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) {
     const [nroMesaPartes, setNroMesaPartes] = useState('');
     const [nroMesaPartesConfirm, setNroMesaPartesConfirm] = useState('');
+    const [fechaPago, setFechaPago] = useState('');
     const [error, setError] = useState('');
     const [cargando, setCargando] = useState(false);
 
+    // Validar que la fecha no sea futura
+    const validarFechaPago = (fecha) => {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const fechaSeleccionada = new Date(fecha);
+        
+        if (fechaSeleccionada > hoy) {
+            return 'La fecha de pago no puede ser futura';
+        }
+        return null;
+    };
+
     const handleConfirmar = async () => {
+        // Validación 1: Número de Mesa de Partes
         if (!nroMesaPartes.trim()) {
             setError('El número de Mesa de Partes es requerido.');
             return;
         }
+        
+        // Validación 2: Confirmación del número
         if (nroMesaPartes.trim() !== nroMesaPartesConfirm.trim()) {
             setError('Los números de Mesa de Partes no coinciden.');
+            return;
+        }
+        
+        // Validación 3: Fecha de pago
+        if (!fechaPago) {
+            setError('La fecha de pago es requerida.');
+            return;
+        }
+        
+        // Validación 4: Fecha de pago no futura
+        const errorFecha = validarFechaPago(fechaPago);
+        if (errorFecha) {
+            setError(errorFecha);
             return;
         }
 
@@ -22,10 +51,15 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
         setError('');
 
         try {
-            await vincularExpediente(preExpediente.PreSolicitudes_Id, nroMesaPartes);
+            await vincularExpediente(
+                preExpediente.PreSolicitudes_Id, 
+                nroMesaPartes,
+                fechaPago
+            );
             onVinculado();
             onCerrar();
         } catch (error) {
+            console.error('Error:', error);
             setError(error.message || 'Error al vincular expediente');
         } finally {
             setCargando(false);
@@ -68,50 +102,26 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                             </svg>
                         </div>
                         <p>
-                            El Área Jurídica recibió por correo el número de expediente asignado
-                            por Mesa de Partes Virtual. Ingréselo a continuación para activar el procedimiento.
+                            Ingrese el número de Mesa de Partes y la fecha de pago según el voucher
+                            que recibió el ciudadano.
                         </p>
                     </div>
 
-                    {/* Pasos */}
-                    <ol className="modal-pasos">
-                        <li className="modal-paso">
-                            <span className="paso-numero">1</span>
-                            <div className="paso-texto">
-                                <strong>Ubique el correo de Mesa de Partes</strong>
-                                <span>Mesa de Partes Virtual le envió un correo al Área Jurídica con el número de expediente asignado.</span>
-                            </div>
-                        </li>
-                        <li className="modal-paso">
-                            <span className="paso-numero">2</span>
-                            <div className="paso-texto">
-                                <strong>Ingrese el número exactamente como aparece</strong>
-                                <span>Escríbalo tal como figura en el correo recibido.</span>
-                            </div>
-                        </li>
-                        <li className="modal-paso">
-                            <span className="paso-numero">3</span>
-                            <div className="paso-texto">
-                                <strong>El sistema activará el expediente automáticamente</strong>
-                                <span>El pre-expediente se convertirá en "Expediente Recibido" y podrá iniciar el procedimiento.</span>
-                            </div>
-                        </li>
-                    </ol>
-
-                    {/* Campos */}
+                    {/* Número de Mesa de Partes */}
                     <div className="campo">
-                        <label>Número de expediente (Mesa de Partes) <span className="campo-requerido">*</span></label>
+                        <label>Número de Mesa de Partes <span className="campo-requerido">*</span></label>
                         <input
                             type="text"
-                            placeholder="Ej: EXP-2026-013"
+                            placeholder="Ej: MESA-001"
                             value={nroMesaPartes}
                             onChange={e => { setNroMesaPartes(e.target.value); setError(''); }}
                             autoFocus
                             disabled={cargando}
                         />
-                        <span className="campo-ayuda">Escríbalo exactamente como aparece en el correo de Mesa de Partes</span>
+                        <span className="campo-ayuda">Escríbalo exactamente como aparece en el correo</span>
                     </div>
 
+                    {/* Confirmación del número */}
                     <div className="campo">
                         <label>Confirme el número <span className="campo-requerido">*</span></label>
                         <input
@@ -136,6 +146,21 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                         </span>
                     </div>
 
+                    {/* Fecha de Pago - NUEVO CAMPO */}
+                    <div className="campo">
+                        <label>Fecha de pago <span className="campo-requerido">*</span></label>
+                        <input
+                            type="date"
+                            value={fechaPago}
+                            onChange={e => { setFechaPago(e.target.value); setError(''); }}
+                            disabled={cargando}
+                            max={new Date().toISOString().split('T')[0]} // No permite fechas futuras
+                        />
+                        <span className="campo-ayuda">
+                            Fecha del voucher de pago (no puede ser futura)
+                        </span>
+                    </div>
+
                     {error && <div className="error-mensaje">{error}</div>}
                 </div>
 
@@ -147,7 +172,7 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                     <button
                         className="btn-confirmar"
                         onClick={handleConfirmar}
-                        disabled={cargando || !coinciden}
+                        disabled={cargando || !coinciden || !fechaPago}
                     >
                         {cargando ? 'Vinculando...' : 'Vincular expediente →'}
                     </button>

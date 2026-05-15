@@ -1,42 +1,52 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/modulo3/Sidebar'
-import PipelineEtapas from '../../components/modulo3/PipelineEtapas'
-import ModalActualizarEtapa from '../../components/modulo3/ModalActualizarEtapa'
-import ModalVerResolucion from '../../components/modulo3/ModalVerResolucion'
-import ModalDesbloquear from '../../components/modulo3/ModalDesbloquear'
-import { getExpedienteById } from '../../services/ProcedimientoService'
+import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
+import { getExpedienteById, avanzarAAudiencia } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/detalle.css'
-import ModalDesvincular from '../../components/modulo3/ModalDesvincular';
-import { useAuth } from '../../context/AuthContext';
-
-
-
+import PipelineVisual from '../../components/modulo3/PipelineVisual'
 
 export default function DetalleExpediente() {
-    const { usuario } = useAuth();   
     const { id } = useParams()
     const navigate = useNavigate()
-    const [data, setData] = useState(null)
+    const [expediente, setExpediente] = useState(null)
+    const [documentos, setDocumentos] = useState([])
     const [cargando, setCargando] = useState(true)
-    const [modal, setModal] = useState(null)
+    const [error, setError] = useState(null)
+    const [refresh, setRefresh] = useState(false)
+    const [confirmado, setConfirmado] = useState(false)
 
-    console.log('🔵 DetalleExpediente - ID recibido de URL:', id)
-
-    
+    const getPipelineEtapa = () => {
+        switch(etapaActual) {
+            case 'EVALUACION': return 'revision'
+            case 'DOCUMENTOS_INTERNOS': return 'documentos'
+            case 'AUDIENCIA': return 'audiencia'
+            case 'ESPERA_LEGAL': return 'resolucion'
+            case 'DISOLUCION': return 'disolucion'
+            default: return 'revision'
+        }
+    }
 
     const cargar = async () => {
         if (!id) {
-            console.error('❌ No hay ID en la URL')
+            setError('No hay ID')
+            setCargando(false)
             return
         }
+        
         setCargando(true)
+        setError(null)
+        
         try {
             const res = await getExpedienteById(id)
-            console.log('✅ Datos del expediente:', res)
-            setData(res)
+            const data = res?.data || res
+            const expedienteData = data?.expediente || data
+            const documentosData = data?.documentos_ciudadano || data?.documentos || []
+            
+            setExpediente(expedienteData)
+            setDocumentos(documentosData)
         } catch (error) {
-            console.error('❌ Error cargando expediente:', error)
+            setError(error.message)
         } finally {
             setCargando(false)
         }
@@ -44,274 +54,363 @@ export default function DetalleExpediente() {
 
     useEffect(() => { 
         if (id) cargar() 
-    }, [id])
+    }, [id, refresh])
 
     const handleVolver = () => {
         navigate('/modulo3/expedientes')
     }
 
-    if (cargando) return (
-        <>
-            <Sidebar />
-            <main className="contenido-modulo3">
-                <p className="cargando">Cargando expediente...</p>
-            </main>
-        </>
-    )
-    
-    if (!data?.expediente) return (
-        <>
-            <Sidebar />
-            <main className="contenido-modulo3">
-                <div className="vacio">
-                    <p>Expediente no encontrado. ID: {id}</p>
-                    <button className="btn-volver" onClick={handleVolver}>← Volver a expedientes</button>
-                </div>
-            </main>
-        </>
-    )
+    const handleConfirmarRevision = async () => {
+        const confirmar = window.confirm(
+            'Atención\n\n' +
+            'Una vez que confirme la revisión documentaria:\n\n' +
+            'Los documentos del ciudadano quedarán BLOQUEADOS\n' +
+            'No podrá reemplazar ningún documento después\n\n' +
+            '¿Está seguro de que todos los documentos están correctos?'
+        )
+        
+        if (confirmar) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/procedimiento/expedientes/${id}/estado`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                        nueva_etapa: 'DOCUMENTOS_INTERNOS',
+                        motivo: 'Revisión documentaria confirmada'
+                    })
+                })
 
-    const { expediente, etapas, resoluciones, contadores } = data
-    const contadorTresMeses = contadores?.find(c => c.contadores_tipo === 'TRES_MESES')
+                const data = await response.json()
+
+                if (data.ok) {
+                    setConfirmado(true)
+                    alert('Revisión documentaria confirmada')
+                    window.location.reload()
+                } else {
+                    alert('Error: ' + data.mensaje)
+                }
+            } catch (error) {
+                console.error('Error:', error)
+                alert('Error al confirmar la revisión')
+            }
+        }
+    }
+
+    const getPdfUrl = (ruta) => {
+        if (!ruta) return '#';
+        if (ruta.startsWith('http')) return ruta;
+        if (ruta.startsWith('/uploads')) return `http://localhost:3000${ruta}`;
+        if (ruta.includes(':\\') || ruta.includes(':/')) {
+            const fileName = ruta.split(/[\\/]/).pop();
+            return `http://localhost:3000/uploads/${fileName}`;
+        }
+        return `http://localhost:3000/uploads/${ruta}`;
+    };
+
+    const calcularDiasRestantes = () => {
+        if (!expediente?.fecha_limite_audiencia) return null
+        const hoy = new Date()
+        hoy.setHours(0, 0, 0, 0)
+        const fechaLimite = new Date(expediente.fecha_limite_audiencia)
+        const diffTime = fechaLimite - hoy
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        return diffDays
+    }
+
+    const DocumentoItem = ({ doc, onReemplazado, bloqueado }) => {
+        const [mostrarModal, setMostrarModal] = useState(false)
+        const [archivo, setArchivo] = useState(null)
+        const [cargandoDoc, setCargandoDoc] = useState(false)
+        const [errorDoc, setErrorDoc] = useState('')
+        const [exitoDoc, setExitoDoc] = useState('')
+
+        const handleReemplazar = async () => {
+            if (!archivo) {
+                setErrorDoc('Debe seleccionar un archivo PDF')
+                return
+            }
+            if (archivo.type !== 'application/pdf') {
+                setErrorDoc('Solo se permiten archivos PDF')
+                return
+            }
+
+            setCargandoDoc(true)
+            setErrorDoc('')
+            setExitoDoc('')
+
+            try {
+                const formData = new FormData()
+                formData.append('documento', archivo)
+
+                const response = await fetch(`http://localhost:3000/api/procedimiento/documentos-ciudadano/${doc.id}/reemplazar`, {
+                    method: 'PUT',
+                    body: formData,
+                    credentials: 'include'
+                })
+                
+                const data = await response.json()
+                
+                if (!response.ok) {
+                    throw new Error(data.mensaje || 'Error al reemplazar')
+                }
+                
+                setExitoDoc('Documento reemplazado correctamente')
+                setTimeout(() => {
+                    setMostrarModal(false)
+                    setArchivo(null)
+                    setExitoDoc('')
+                    onReemplazado()
+                }, 1500)
+            } catch (err) {
+                setErrorDoc(err.message)
+            } finally {
+                setCargandoDoc(false)
+            }
+        }
+
+        return (
+            <>
+                <div className="documento-item">
+                    <div className="documento-info">
+                        <div className="documento-icono">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div className="documento-nombre">{doc.tipo_documento || 'Documento'}</div>
+                            <div className="documento-archivo">{doc.nombre_archivo}</div>
+                            <div className="documento-fecha">
+                                Subido: {doc.subido_en ? new Date(doc.subido_en).toLocaleDateString('es-PE') : '—'}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="documento-acciones">
+                        <button className="btn-ver" onClick={() => {
+                            const url = getPdfUrl(doc.ruta_archivo)
+                            if (url !== '#') window.open(url, '_blank')
+                            else alert('No se puede abrir el PDF')
+                        }}>
+                            Ver PDF
+                        </button>
+                        <button 
+                            className="btn-reemplazar" 
+                            onClick={() => setMostrarModal(true)}
+                            disabled={bloqueado}
+                            style={{ opacity: bloqueado ? 0.5 : 1, cursor: bloqueado ? 'not-allowed' : 'pointer' }}
+                        >
+                            Reemplazar
+                        </button>
+                    </div>
+                </div>
+
+                {mostrarModal && !bloqueado && (
+                    <div className="modal-overlay" onClick={() => !cargandoDoc && setMostrarModal(false)}>
+                        <div className="modal-contenido" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Reemplazar documento</h3>
+                                <button className="modal-cerrar" onClick={() => !cargandoDoc && setMostrarModal(false)}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <p><strong>Documento actual:</strong> {doc.nombre_archivo}</p>
+                                <div className="campo">
+                                    <label>Seleccione el nuevo archivo PDF:</label>
+                                    <input type="file" accept=".pdf" onChange={(e) => setArchivo(e.target.files[0])} />
+                                </div>
+                                {errorDoc && <div className="error-mensaje">{errorDoc}</div>}
+                                {exitoDoc && <div className="exito-mensaje">{exitoDoc}</div>}
+                            </div>
+                            <div className="modal-footer">
+                                <button onClick={() => setMostrarModal(false)}>Cancelar</button>
+                                <button onClick={handleReemplazar} disabled={!archivo}>{cargandoDoc ? 'Reemplazando...' : 'Reemplazar'}</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </>
+        )
+    }
+
+    if (cargando) {
+        return (
+            <>
+                <Sidebar />
+                <main className="contenido-modulo3">
+                    <div className="pagina-header"><h1>Detalle del Expediente</h1></div>
+                    <div className="loading-spinner"></div>
+                    <p>Cargando...</p>
+                </main>
+            </>
+        )
+    }
+
+    if (error) {
+        return (
+            <>
+                <Sidebar />
+                <main className="contenido-modulo3">
+                    <div className="pagina-header">
+                        <button className="btn-volver" onClick={handleVolver}>← Volver</button>
+                        <h1>Detalle del Expediente</h1>
+                    </div>
+                    <div className="error-message">{error}</div>
+                </main>
+            </>
+        )
+    }
+
+    if (!expediente) {
+        return (
+            <>
+                <Sidebar />
+                <main className="contenido-modulo3">
+                    <div className="pagina-header">
+                        <button className="btn-volver" onClick={handleVolver}>← Volver</button>
+                        <h1>Detalle del Expediente</h1>
+                    </div>
+                    <div className="warning-message">Expediente no encontrado</div>
+                </main>
+            </>
+        )
+    }
+
+    const etapaActual = expediente.etapa || expediente.expedientes_estado_actual
+    const numeroMesaPartes = expediente.numero_mesa_partes || expediente.expedientes_nro_mesa_partes
+    const estadoActual = expediente.estado || expediente.expedientes_estado_actual
+    const fechaPago = expediente.fecha_pago
+    const fechaRecepcion = expediente.fecha_recepcion || expediente.expedientes_creado_en
+    const registradoPor = expediente.registrado_por || expediente.Usuario_Vinculo
+    const fechaLimiteAudiencia = expediente.fecha_limite_audiencia
+    const diasRestantes = calcularDiasRestantes()
+    
+    const getColorDias = () => {
+        if (diasRestantes === null) return '#64748b'
+        if (diasRestantes < 3) return '#dc2626'
+        if (diasRestantes <= 7) return '#eab308'
+        return '#22c55e'
+    }
 
     return (
         <>
             <Sidebar />
             <main className="contenido-modulo3">
-                <div className="pagina-header">
+                <div className="detalle-header">
                     <button className="btn-volver" onClick={handleVolver}>← Volver</button>
-                    <h1>Expediente {expediente.expedientes_nro_mesa_partes}</h1>
-                    {expediente.expedientes_bloqueado === true && (
-                        <span className="badge badge-bloqueado">BLOQUEADO</span>
-                    )}
+                    <h1>Expediente {numeroMesaPartes || '—'}</h1>
+                    <span className={`estado-badge estado-${(estadoActual || 'ACTIVO').toLowerCase()}`}>
+                        {estadoActual || 'ACTIVO'}
+                    </span>
                 </div>
 
                 <div className="detalle-grid">
+                    {/* COLUMNA IZQUIERDA */}
                     <div className="detalle-izquierda">
+                        {/* Datos del expediente */}
                         <div className="seccion">
-                            <h2>📋 Datos del expediente</h2>
+                            <h2>Datos del expediente</h2>
                             <div className="datos-grid">
-                                <div><label>N° Mesa de Partes</label><p>{expediente.expedientes_nro_mesa_partes}</p></div>
-                                <div>
+                                <div className="dato-item">
+                                    <label>N° Mesa de Partes</label>
+                                    <p>{numeroMesaPartes || '—'}</p>
+                                </div>
+                                <div className="dato-item">
                                     <label>Estado</label>
-                                    <p>
-                                        <span className={`estado-badge estado-${expediente.expedientes_estado_actual.toLowerCase()}`}>
-                                            {expediente.expedientes_estado_actual === 'RECIBIDO' ? 'RECIBIDO' :
-                                             expediente.expedientes_estado_actual === 'EVALUACION' ? 'EVALUACIÓN' :
-                                             expediente.expedientes_estado_actual === 'RES_SEPARACION' ? 'RES. SEPARACIÓN' :
-                                             expediente.expedientes_estado_actual === 'RES_DISOLUCION' ? 'RES. DISOLUCIÓN' : 'ARCHIVADO'}
-                                        </span>
-                                    </p>
+                                    <p>{estadoActual || '—'}</p>
                                 </div>
-                                <div><label>Fecha vinculación</label><p>{new Date(expediente.expedientes_creado_en).toLocaleDateString('es-PE')}</p></div>
-                                <div><label>Vinculado por</label><p>{expediente.Usuario_Vinculo}</p></div>
-                                {expediente.expedientes_ubicacion_fisica && (
-                                    <div><label>Ubicación física</label><p>{expediente.expedientes_ubicacion_fisica}</p></div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="seccion">
-                            <h2>👥 Cónyuges</h2>
-                            <div className="datos-grid">
-                                <div>
-                                    <label>Solicitante</label>
-                                    <p><strong>{expediente.Solicitante_Nombres} {expediente.Solicitante_Apellidos}</strong></p>
-                                    <p>DNI: {expediente.Solicitante_Dni}</p>
-                                    <p>Tel: {expediente.Solicitante_Telefono}</p>
+                                <div className="dato-item">
+                                    <label>Etapa</label>
+                                    <p>{etapaActual || '—'}</p>
                                 </div>
-                                <div>
-                                    <label>Demandado</label>
-                                    <p><strong>{expediente.Demandado_Nombres} {expediente.Demandado_Apellidos}</strong></p>
-                                    <p>DNI: {expediente.Demandado_Dni}</p>
-                                    <p>Tel: {expediente.Demandado_Telefono}</p>
+                                <div className="dato-item">
+                                    <label>Fecha pago</label>
+                                    <p>{fechaPago ? new Date(fechaPago).toLocaleDateString('es-PE') : '—'}</p>
+                                </div>
+                                <div className="dato-item">
+                                    <label>Fecha recepción</label>
+                                    <p>{fechaRecepcion ? new Date(fechaRecepcion).toLocaleDateString('es-PE') : '—'}</p>
+                                </div>
+                                <div className="dato-item">
+                                    <label>Vinculado por</label>
+                                    <p>{registradoPor || '—'}</p>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="seccion">
-                            <h2>📜 Resoluciones</h2>
-                            {resoluciones.length === 0 ? (
-                                <p className="texto-suave">No se han generado resoluciones aún.</p>
-                            ) : (
-                                resoluciones.map(r => (
-                                    <div key={r.resoluciones_id} className="resolucion-item">
-                                        <div className="resolucion-info">
-                                            <span className={`badge-resolucion ${r.resoluciones_tipo === 'SEPARACION' ? 'badge-separacion' : 'badge-disolucion'}`}>
-                                                {r.resoluciones_tipo === 'SEPARACION' ? 'Separación' : 'Disolución'}
-                                            </span>
-                                            <span>{r.resoluciones_nro_correlativo}</span>
-                                            <span>{new Date(r.resoluciones_fecha_emision).toLocaleDateString('es-PE')}</span>
-                                        </div>
-                                        {r.resoluciones_url_documento && (
-                                            <a href={r.resoluciones_url_documento} target="_blank" className="btn-ver-resolucion">Ver PDF</a>
-                                        )}
+                            {fechaLimiteAudiencia && (
+                                <div className="plazo-audiencia" style={{ borderLeftColor: getColorDias() }}>
+                                    <div className="plazo-info">
+                                        <span className="plazo-label">Plazo para audiencia:</span>
+                                        <span className="plazo-dias" style={{ color: getColorDias() }}>{diasRestantes} días restantes</span>
                                     </div>
-                                ))
+                                    <span className="plazo-fecha">Fecha límite: {new Date(fechaLimiteAudiencia).toLocaleDateString('es-PE')}</span>
+                                </div>
                             )}
                         </div>
 
-                        {contadorTresMeses && (
-                            <div className={`alerta-plazo ${contadorTresMeses.Dias_Restantes <= 0 ? 'vencido' : ''}`}>
-                                <div className="alerta-icono">
-                                    {contadorTresMeses.Dias_Restantes <= 0 ? '⚠️' : '⏰'}
-                                </div>
-                                <div className="alerta-contenido">
-                                    <div className="alerta-titulo">
-                                        {contadorTresMeses.Dias_Restantes <= 0 
-                                            ? 'PLAZO VENCIDO' 
-                                            : 'PLAZO PRÓXIMO A VENCER'}
+                        {/* Cónyuges */}
+                        <div className="seccion">
+                            <h2>Cónyuges</h2>
+                            <div className="conyuges-grid">
+                                <div className="conyuge-card">
+                                    <div className="conyuge-header">
+                                        <div className="conyuge-icon solicitante"></div>
+                                        <h3>Solicitante</h3>
                                     </div>
-                                    <div className="alerta-descripcion">
-                                        {contadorTresMeses.Dias_Restantes <= 0
-                                            ? 'El plazo de 3 meses ya venció. Se debe generar la Resolución de Disolución.'
-                                            : `Faltan ${contadorTresMeses.Dias_Restantes} días para poder generar la Resolución de Disolución.`}
+                                    <div className="conyuge-content">
+                                        <p><strong>{expediente.Solicitante_Nombres || '—'} {expediente.Solicitante_Apellidos || ''}</strong></p>
+                                        <p>DNI: {expediente.Solicitante_Dni || '—'}</p>
+                                        <p>Tel: {expediente.Solicitante_Telefono || '—'}</p>
+                                        <p>Correo: {expediente.Solicitante_Correo || '—'}</p>
+                                        <p>Dirección: {expediente.Solicitante_Direccion || '—'}</p>
+                                    </div>
+                                </div>
+                                <div className="conyuge-card">
+                                    <div className="conyuge-header">
+                                        <div className="conyuge-icon demandado"></div>
+                                        <h3>Demandado</h3>
+                                    </div>
+                                    <div className="conyuge-content">
+                                        <p><strong>{expediente.Demandado_Nombres || '—'} {expediente.Demandado_Apellidos || ''}</strong></p>
+                                        <p>DNI: {expediente.Demandado_Dni || '—'}</p>
+                                        <p>Tel: {expediente.Demandado_Telefono || '—'}</p>
+                                        <p>Correo: {expediente.Demandado_Correo || '—'}</p>
+                                        <p>Dirección: {expediente.Demandado_Direccion || '—'}</p>
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        </div>
 
-                        {contadorTresMeses && (
-                            <div className={`seccion seccion-plazo ${contadorTresMeses.Dias_Restantes <= 0 ? 'vencido' : ''}`}>
-                                <h2>⏱️ Plazo de 3 meses</h2>
-                                <p><strong>Fecha límite:</strong> {new Date(contadorTresMeses.contadores_fecha_limite).toLocaleDateString('es-PE')}</p>
-                                <div className="contador-dias">
-                                    <span className="dias-numero">
-                                        {contadorTresMeses.Dias_Restantes > 0 ? contadorTresMeses.Dias_Restantes : 0}
-                                    </span>
-                                    <span className="dias-label">
-                                        {contadorTresMeses.Dias_Restantes === 1 ? 'día restante' : 'días restantes'}
-                                    </span>
+                        {/* Documentos */}
+                        <div className="seccion">
+                            <h2>Documentos del ciudadano</h2>
+                            {documentos.length === 0 ? (
+                                <div className="empty-state">No hay documentos registrados</div>
+                            ) : (
+                                <div className="documentos-lista">
+                                    {documentos.map((doc, idx) => (
+                                        <DocumentoItem key={doc.id || idx} doc={doc} onReemplazado={() => setRefresh(prev => !prev)} bloqueado={confirmado || etapaActual !== 'EVALUACION'} />
+                                    ))}
                                 </div>
-                            </div>
-                        )}
-                        {!expediente.expedientes_bloqueado && (
-                            <div className="seccion acciones">  
-                                <h2>⚡ Acciones</h2>
-                                <div className="botones-accion">
-                                    {expediente.expedientes_estado_actual === 'RECIBIDO' && (
-                                        <button className="btn-accion" onClick={() => setModal('etapa')}>
-                                            📌 Avanzar a Evaluación
-                                        </button>
-                                    )}
-                                    {expediente.expedientes_estado_actual === 'EVALUACION' && (
-                                        <button className="btn-accion btn-resolucion" onClick={() => setModal('separacion')}>
-                                            📄 Generar Res. Separación
-                                        </button>
-                                    )}
-                                    {expediente.expedientes_estado_actual === 'RES_SEPARACION' && contadorTresMeses?.Dias_Restantes <= 0 && (
-                                        <button className="btn-accion btn-resolucion" onClick={() => setModal('disolucion')}>
-                                            📄 Generar Res. Disolución
-                                        </button>
-                                    )}
-                                    {expediente.expedientes_estado_actual === 'RES_DISOLUCION' && (
-                                        <button className="btn-accion btn-archivar" onClick={() => setModal('archivar')}>
-                                            📦 Archivar expediente
-                                        </button>
-                                    )}
-                                    {/* Mostrar desvincular solo en RECIBIDO o EVALUACION */}
-                                    {(usuario?.rol === 'ADMINISTRADOR' && 
-                                    (expediente.expedientes_estado_actual === 'RECIBIDO' || 
-                                    expediente.expedientes_estado_actual === 'EVALUACION')) && (
-                                        <button className="btn-accion btn-desvincular" onClick={() => setModal('desvincular')}>
-                                            🔄 Desvincular expediente
-                                        </button>
-                                    )}
-                                                                    </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
-                        {expediente.expedientes_bloqueado && usuario.rol === 'ADMINISTRADOR' && (
+                        {/* Botón Continuar */}
+                        {!confirmado && etapaActual === 'EVALUACION' && (
                             <div className="seccion acciones">
-                                <button className="btn-accion btn-desbloquear" onClick={() => setModal('desbloquear')}>
-                                    🔓 Desbloquear expediente
+                                <button className="btn-continuar" onClick={handleConfirmarRevision}>
+                                    Continuar revisión
                                 </button>
+                                <p className="texto-ayuda">Revise todos los documentos antes de continuar</p>
                             </div>
                         )}
                     </div>
 
+                    {/* COLUMNA DERECHA */}
                     <div className="detalle-derecha">
-                        <div className="seccion">
-                            <h2></h2>
-                            <PipelineEtapas
-                                estadoActual={expediente.expedientes_estado_actual}
-                                etapas={etapas}
-                                resoluciones={resoluciones}  // ← AGREGAR ESTA LÍNEA
-                            />
-                        </div>
+                        <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
+                        <PipelineVisual etapaActual={getPipelineEtapa()} />
                     </div>
                 </div>
-
-                {modal === 'etapa' && (
-                    <ModalActualizarEtapa
-                        expedienteId={id}
-                        estadoActual={expediente.expedientes_estado_actual}
-                        tipoAccion="avanzar"
-                        onCerrar={() => setModal(null)}
-                        onActualizado={() => { setModal(null); cargar() }}
-                    />
-                )}
-
-                {modal === 'separacion' && (
-                    <ModalActualizarEtapa
-                        expedienteId={id}
-                        estadoActual={expediente.expedientes_estado_actual}
-                        tipoAccion="separacion"
-                        onCerrar={() => setModal(null)}
-                        onActualizado={() => { setModal(null); cargar() }}
-                    />
-                )}
-
-                {modal === 'disolucion' && (
-                    <ModalActualizarEtapa
-                        expedienteId={id}
-                        estadoActual={expediente.expedientes_estado_actual}
-                        tipoAccion="disolucion"
-                        onCerrar={() => setModal(null)}
-                        onActualizado={() => { setModal(null); cargar() }}
-                    />
-                )}
-
-                {modal === 'archivar' && (
-                    <ModalActualizarEtapa
-                        expedienteId={id}
-                        estadoActual={expediente.expedientes_estado_actual}
-                        tipoAccion="archivar"
-                        onCerrar={() => setModal(null)}
-                        onActualizado={() => { setModal(null); cargar() }}
-                    />
-                )}
-
-                {modal === 'resolucion' && (
-                    <ModalVerResolucion
-                        resoluciones={resoluciones}
-                        onCerrar={() => setModal(null)}
-                    />
-                )}
-
-                {modal === 'desbloquear' && (
-                    <ModalDesbloquear
-                        expedienteId={id}
-                        onCerrar={() => setModal(null)}
-                        onDesbloqueado={() => { setModal(null); cargar() }}
-                    />
-                )}
-                {modal === 'desvincular' && (
-                <ModalDesvincular
-                    expedienteId={id}
-                    expedienteNro={expediente.expedientes_nro_mesa_partes}
-                    onCerrar={() => setModal(null)}
-                    onDesvinculado={() => {
-                        setModal(null);
-                        navigate('/modulo3/expedientes');
-                    }}
-
-
-                />
-            )}
-
-            
-                
             </main>
         </>
     )

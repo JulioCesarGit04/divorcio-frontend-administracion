@@ -1,0 +1,349 @@
+/* registrar-audiencia.css */
+
+.info-audiencia {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.info-item {
+    flex: 1;
+    padding: 12px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+}
+
+.info-item label {
+    display: block;
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+
+.info-item span {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.asistencia-grid {
+    display: flex;
+    gap: 24px;
+}
+
+.asistencia-item {
+    flex: 1;
+    text-align: center;
+}
+
+.asistencia-item label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #1e293b;
+}
+
+.asistencia-botones {
+    display: flex;
+    justify-content: center;
+}
+
+.btn-asistencia {
+    padding: 10px 20px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background-color: white;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-asistencia.activo {
+    background-color: #22c55e;
+    color: white;
+    border-color: #22c55e;
+}
+
+.resultado-opciones {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.opcion-resultado {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.opcion-resultado:hover {
+    background-color: #f8fafc;
+}
+
+.opcion-resultado.seleccionado {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+.opcion-resultado input {
+    margin: 0;
+}
+
+.opcion-resultado span {
+    font-weight: 600;
+    min-width: 120px;
+}
+
+.opcion-resultado small {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.actas-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.acta-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.acta-item label {
+    width: 80px;
+    font-weight: 600;
+}
+
+.acta-item input {
+    flex: 1;
+}
+
+.archivo-ok {
+    color: #22c55e;
+    font-size: 12px;
+}
+
+.btn-registrar {
+    width: 100%;
+    padding: 12px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-registrar:hover:not(:disabled) {
+    background-color: #2563eb;
+}
+
+.btn-registrar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.mensaje {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.mensaje.success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.mensaje.error {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+/* Alertas */
+.alerta-documentos {
+    background-color: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+}
+
+.alerta-icono {
+    font-size: 24px;
+}
+
+.alerta-contenido ul {
+    margin: 8px 0 0 20px;
+    padding: 0;
+}
+
+/* Expediente grid */
+.expediente-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.expediente-grid div {
+    padding: 8px;
+    background-color: #f8fafc;
+    border-radius: 6px;
+}
+
+.expediente-grid label {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.expediente-grid span {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.etapa-badge {
+    display: inline-block;
+    background-color: #e0e7ff;
+    color: #3730a3;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+/* Cónyuges info */
+.conyuges-info {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.conyuge-card {
+    padding: 16px;
+    background-color: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.conyuge-titulo {
+    font-weight: 700;
+    color: #3b82f6;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.conyuge-card div {
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+/* Historial de audiencias */
+.historial-audiencias {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.historial-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.historial-fecha {
+    font-weight: 500;
+}
+
+.historial-estado {
+    color: #64748b;
+}
+
+.historial-resultado {
+    font-weight: 500;
+}
+
+/* Observaciones */
+.observaciones-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: vertical;
+}
+
+.observaciones-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+.acta-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background-color: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.acta-item label {
+    width: 70px;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.acta-upload {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.acta-existente {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-ver-acta, .btn-descargar-acta {
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    border: none;
+}
+
+.btn-ver-acta {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-descargar-acta {
+    background-color: #10b981;
+    color: white;
+}
+
+.btn-ver-acta:hover, .btn-descargar-acta:hover {
+    opacity: 0.9;
+}
