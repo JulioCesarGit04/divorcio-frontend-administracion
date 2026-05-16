@@ -3,16 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/modulo3/Sidebar'
 import { getExpedientes } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/expedientes.css'
+import PipelineVisual from '../../components/modulo3/PipelineVisual'
 
-const ESTADOS = ['', 'RECIBIDO', 'EVALUACION', 'RES_SEPARACION', 'RES_DISOLUCION', 'ARCHIVO']
+const ESTADOS = ['', 'ACTIVO', 'CANCELADO', 'ARCHIVADO']
 
 const etiquetaEstado = {
-    RECIBIDO: 'Recibido',
-    EVALUACION: 'Evaluación',
-    RES_SEPARACION: 'Res. Separación',
-    RES_DISOLUCION: 'Res. Disolución',
-    ARCHIVO: 'Archivado'
+    ACTIVO: 'Activo',
+    CANCELADO: 'Cancelado',
+    ARCHIVADO: 'Archivado'
 }
+
+const etiquetaEtapa = {
+    ADMISION: 'Admisión',
+    AUDIENCIA: 'Audiencia',
+    ESPERA_LEGAL: 'Espera Legal',
+    DISOLUCION: 'Disolución'
+}
+
 
 export default function ExpedientesActivos() {
     const navigate = useNavigate()
@@ -22,25 +29,31 @@ export default function ExpedientesActivos() {
     
     const [filtros, setFiltros] = useState({ 
         estado: '', 
-        nro_mesa_partes: '', 
+        etapa: '',
+        numero_mesa_partes: '', 
         dni: '',
-        solicitante: '',
         fechaDesde: '',
-        fechaHasta: '',
-        bloqueado: ''
+        fechaHasta: ''
     })
 
     const cargar = async () => {
         setCargando(true)
         try {
-            const filtrosLimpios = Object.fromEntries(
-                Object.entries(filtros).filter(([, v]) => v !== '')
-            )
-            const data = await getExpedientes(filtrosLimpios)
-            setExpedientes(Array.isArray(data) ? data : [])
-            setExpedientesFiltrados(Array.isArray(data) ? data : [])
+            const filtrosLimpios = {}
+            if (filtros.estado) filtrosLimpios.estado = filtros.estado
+            if (filtros.etapa) filtrosLimpios.etapa = filtros.etapa
+            if (filtros.numero_mesa_partes) filtrosLimpios.numero_mesa_partes = filtros.numero_mesa_partes
+            if (filtros.dni) filtrosLimpios.dni = filtros.dni
+            
+            const response = await getExpedientes(filtrosLimpios)
+            console.log('📦 Respuesta expedientes:', response)
+            
+            // CORRECCIÓN: Extraer el array de datos
+            const data = response.data || []
+            setExpedientes(data)
+            setExpedientesFiltrados(data)
         } catch (error) {
-            console.error('Error cargando expedientes.', error)
+            console.error('Error cargando expedientes:', error)
         } finally {
             setCargando(false)
         }
@@ -50,46 +63,43 @@ export default function ExpedientesActivos() {
         cargar() 
     }, [])
 
+    // Filtrar por fechas localmente
     useEffect(() => {
         let filtrados = [...expedientes]
         
-        if (filtros.solicitante) {
-            const busqueda = filtros.solicitante.toLowerCase()
-            filtrados = filtrados.filter(e => 
-                `${e.Solicitante_Nombres} ${e.Solicitante_Apellidos}`.toLowerCase().includes(busqueda) ||
-                `${e.Demandado_Nombres} ${e.Demandado_Apellidos}`.toLowerCase().includes(busqueda)
-            )
-        }
-        
         if (filtros.fechaDesde) {
             const fechaDesde = new Date(filtros.fechaDesde)
-            filtrados = filtrados.filter(e => new Date(e.expedientes_creado_en) >= fechaDesde)
+            fechaDesde.setHours(0, 0, 0, 0)
+            filtrados = filtrados.filter(e => new Date(e.fecha_recepcion) >= fechaDesde)
         }
         
         if (filtros.fechaHasta) {
             const fechaHasta = new Date(filtros.fechaHasta)
             fechaHasta.setHours(23, 59, 59)
-            filtrados = filtrados.filter(e => new Date(e.expedientes_creado_en) <= fechaHasta)
-        }
-        
-        if (filtros.bloqueado !== '') {
-            filtrados = filtrados.filter(e => e.expedientes_bloqueado === (filtros.bloqueado === 'true'))
+            filtrados = filtrados.filter(e => new Date(e.fecha_recepcion) <= fechaHasta)
         }
         
         setExpedientesFiltrados(filtrados)
-    }, [filtros, expedientes])
+    }, [filtros.fechaDesde, filtros.fechaHasta, expedientes])
+
+    const handleFiltroChange = (campo, valor) => {
+        setFiltros({ ...filtros, [campo]: valor })
+    }
+
+    const aplicarFiltros = () => {
+        cargar()
+    }
 
     const limpiarFiltros = () => {
         setFiltros({ 
             estado: '', 
-            nro_mesa_partes: '', 
+            etapa: '',
+            numero_mesa_partes: '', 
             dni: '',
-            solicitante: '',
             fechaDesde: '',
-            fechaHasta: '',
-            bloqueado: ''
+            fechaHasta: ''
         })
-        cargar()
+        setTimeout(() => cargar(), 100)
     }
 
     const handleVerExpediente = (id) => {
@@ -102,106 +112,66 @@ export default function ExpedientesActivos() {
             <Sidebar />
             <main className="contenido-modulo3">
                 <div className="pagina-header">
-                    <h1>Expedientes activos</h1>
+                    <h1>Expedientes</h1>
                     <p>Todos los expedientes del Módulo 3</p>
                 </div>
 
-                {/* Panel de filtros - 2 FILAS */}
-                    <div className="filtros-panel">
-                        {/* PRIMERA FILA: Estado, N° Mesa, DNI, Solicitante/Demandado */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
-                            <div className="filtro-grupo">
-                                <label> Estado</label>
-                                <select
-                                    value={filtros.estado}
-                                    onChange={e => setFiltros({ ...filtros, estado: e.target.value })}
-                                >
-                                    {ESTADOS.map(e => (
-                                        <option key={e} value={e}>{e === '' ? 'Todos los estados' : etiquetaEstado[e]}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            
-                            <div className="filtro-grupo">
-                                <label> N° Mesa de Partes</label>
-                                <input
-                                    type="text"
-                                    placeholder="Ej: EXP-001-2026"
-                                    value={filtros.nro_mesa_partes}
-                                    onChange={e => setFiltros({ ...filtros, nro_mesa_partes: e.target.value })}
-                                />
-                            </div>
-                            
-                            <div className="filtro-grupo">
-                                <label> DNI</label>
-                                <input
-                                    type="text"
-                                    placeholder="DNI del solicitante o demandado"
-                                    value={filtros.dni}
-                                    onChange={e => setFiltros({ ...filtros, dni: e.target.value })}
-                                />
-                            </div>
-                            
-                            <div className="filtro-grupo">
-                                <label> Solicitante/Demandado</label>
-                                <input
-                                    type="text"
-                                    placeholder="Nombre del cónyuge"
-                                    value={filtros.solicitante}
-                                    onChange={e => setFiltros({ ...filtros, solicitante: e.target.value })}
-                                />
-                            </div>
+                <div className="filtros-panel">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
+                        <div className="filtro-grupo">
+                            <label>Estado</label>
+                            <select value={filtros.estado} onChange={e => handleFiltroChange('estado', e.target.value)}>
+                                <option value="">Todos</option>
+                                <option value="ACTIVO">Activo</option>
+                                <option value="CANCELADO">Cancelado</option>
+                                <option value="ARCHIVADO">Archivado</option>
+                            </select>
                         </div>
-
-                        {/* SEGUNDA FILA: Fecha desde, Fecha hasta, Bloqueado, Botones */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) auto', gap: '16px', alignItems: 'flex-end' }}>
-                            <div className="filtro-grupo">
-                                <label> Fecha desde</label>
-                                <input
-                                    type="date"
-                                    value={filtros.fechaDesde}
-                                    onChange={e => setFiltros({ ...filtros, fechaDesde: e.target.value })}
-                                />
-                            </div>
-                            
-                            <div className="filtro-grupo">
-                                <label> Fecha hasta</label>
-                                <input
-                                    type="date"
-                                    value={filtros.fechaHasta}
-                                    onChange={e => setFiltros({ ...filtros, fechaHasta: e.target.value })}
-                                />
-                            </div>
-                            
-                            <div className="filtro-grupo">
-                                <label> Bloqueado</label>
-                                <select
-                                    value={filtros.bloqueado}
-                                    onChange={e => setFiltros({ ...filtros, bloqueado: e.target.value })}
-                                >
-                                    <option value="">Todos</option>
-                                    <option value="true">Sí</option>
-                                    <option value="false">No</option>
-                                </select>
-                            </div>
-                            
-                            <div className="acciones-filtros">
-                                <button onClick={cargar} className="btn-buscar">
-                                    🔍 Buscar
-                                </button>
-                                <button onClick={limpiarFiltros} className="btn-limpiar">
-                                    🗑️ Limpiar
-                                </button>
-                            </div>
+                        
+                        <div className="filtro-grupo">
+                            <label>Etapa</label>
+                            <select value={filtros.etapa} onChange={e => handleFiltroChange('etapa', e.target.value)}>
+                                <option value="">Todas</option>
+                                <option value="ADMISION">Admisión</option>
+                                <option value="AUDIENCIA">Audiencia</option>
+                                <option value="ESPERA_LEGAL">Espera Legal</option>
+                                <option value="DISOLUCION">Disolución</option>
+                            </select>
+                        </div>
+                        
+                        <div className="filtro-grupo">
+                            <label>N° Mesa de Partes</label>
+                            <input type="text" placeholder="Ej: MESA-001" value={filtros.numero_mesa_partes} onChange={e => handleFiltroChange('numero_mesa_partes', e.target.value)} />
+                        </div>
+                        
+                        <div className="filtro-grupo">
+                            <label>DNI</label>
+                            <input type="text" placeholder="DNI del cónyuge" value={filtros.dni} onChange={e => handleFiltroChange('dni', e.target.value)} />
                         </div>
                     </div>
 
-                {/* Resultados info */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr) auto', gap: '16px', alignItems: 'flex-end' }}>
+                        <div className="filtro-grupo">
+                            <label>Fecha desde</label>
+                            <input type="date" value={filtros.fechaDesde} onChange={e => handleFiltroChange('fechaDesde', e.target.value)} />
+                        </div>
+                        
+                        <div className="filtro-grupo">
+                            <label>Fecha hasta</label>
+                            <input type="date" value={filtros.fechaHasta} onChange={e => handleFiltroChange('fechaHasta', e.target.value)} />
+                        </div>
+                        
+                        <div className="acciones-filtros">
+                            <button onClick={aplicarFiltros} className="btn-buscar">🔍 Buscar</button>
+                            <button onClick={limpiarFiltros} className="btn-limpiar">🗑️ Limpiar</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="resultados-info">
                     Mostrando {expedientesFiltrados.length} de {expedientes.length} expediente{expedientes.length !== 1 ? 's' : ''}
                 </div>
 
-                {/* Tabla */}
                 {cargando ? (
                     <p className="cargando">Cargando...</p>
                 ) : expedientesFiltrados.length === 0 ? (
@@ -213,51 +183,34 @@ export default function ExpedientesActivos() {
                         <table className="tabla">
                             <thead>
                                 <tr>
-                                    <th>N° Mesa de Partes</th>
+                                    <th>N° Expediente</th>
+                                    <th>N° Mesa Partes</th>
                                     <th>Solicitante</th>
                                     <th>DNI</th>
                                     <th>Demandado</th>
+                                    <th>DNI Demandado</th>
                                     <th>Estado</th>
-                                    <th>Bloqueado</th>
+                                    <th>Etapa</th>
                                     <th>Fecha</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {expedientesFiltrados.map((e) => (
-                                    <tr key={e.expedientes_id}>
-                                        <td className="codigo-cell">{e.expedientes_nro_mesa_partes || '—'}</td>
-                                        <td className="nombre-solicitante">
-                                            {e.Solicitante_Nombres || ''} {e.Solicitante_Apellidos || ''}
-                                        </td>
-                                        <td className="dni-cell">{e.Solicitante_Dni || '—'}</td>
-                                        <td className="nombre-demandado">
-                                            {e.Demandado_Nombres || ''} {e.Demandado_Apellidos || ''}
-                                        </td>
-                                        <td>
-                                            <span className={`badge badge-${(e.expedientes_estado_actual || 'recibido').toLowerCase()}`}>
-                                                {etiquetaEstado[e.expedientes_estado_actual] || e.expedientes_estado_actual}
-                                            </span>
-                                        </td>
-                                        <td className="bloqueado-cell">
-                                            <span className={e.expedientes_bloqueado ? 'bloqueado-si' : 'bloqueado-no'}>
-                                                {e.expedientes_bloqueado ? 'Sí' : 'No'}
-                                            </span>
-                                        </td>
-                                        <td className="fecha-cell">
-                                            {new Date(e.expedientes_creado_en).toLocaleDateString('es-PE')}
-                                        </td>
-                                        <td>
-                                            <button
-                                                className="btn-ver"
-                                                onClick={() => handleVerExpediente(e.expedientes_id)}
-                                            >
-                                                Ver
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
+                                    {expedientesFiltrados.map((e) => (
+                                        <tr key={e.id}>
+                                            <td>{e.numero_expediente || '—'}</td>
+                                            <td>{e.numero_mesa_partes || '—'}</td>
+                                            <td>{e.Solicitante_Nombres || ''} {e.Solicitante_Apellidos || ''}</td>
+                                            <td>{e.Solicitante_Dni || '—'}</td>
+                                            <td>{e.Demandado_Nombres || ''} {e.Demandado_Apellidos || ''}</td>
+                                            <td>{e.Demandado_Dni || '—'}</td>      {/* ← Agrega esta línea */}
+                                            <td><span className="badge">{etiquetaEstado[e.estado] || e.estado}</span></td>
+                                            <td>{etiquetaEtapa[e.etapa] || e.etapa}</td>
+                                            <td>{new Date(e.fecha_recepcion).toLocaleDateString('es-PE')}</td>
+                                            <td><button className="btn-ver" onClick={() => handleVerExpediente(e.id)}>Ver</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
                         </table>
                     </div>
                 )}

@@ -40,6 +40,67 @@ export const login = async (correo, password) => {
     }
 };
 
+
+
+export const getCronograma = async () => {
+    const response = await fetch(`${API_URL}/cronograma`, {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.mensaje || 'Error al obtener cronograma');
+    return data;
+};
+
+export const programarAudiencia = async (expediente_id, fecha_hora) => {
+    const response = await fetch(`${API_URL}/expedientes/${expediente_id}/audiencias/programar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ fecha_hora: fecha_hora.toISOString() })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.mensaje || 'Error al programar audiencia');
+    return data;
+};
+
+export const registrarResultadoAudiencia = async (audiencia_id, resultado, asistio_c1, asistio_c2, conyuge1_id, conyuge2_id) => {
+    const response = await fetch(`${API_URL}/audiencias/${audiencia_id}/resultado`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+            resultado, 
+            asistio_c1, 
+            asistio_c2, 
+            conyuge1_id, 
+            conyuge2_id 
+        })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+        throw new Error(data.mensaje || 'Error al registrar resultado de audiencia');
+    }
+    
+    return data;
+};
+
+
+export const getAudiencias = async (expediente_id) => {
+    const response = await fetch(`${API_URL}/expedientes/${expediente_id}/audiencias`, {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.mensaje || 'Error al obtener audiencias');
+    return data;
+};
+
+
+
+
 export const logout = async () => {
     try {
         const response = await fetch(`${AUTH_URL}/logout`, {
@@ -110,25 +171,93 @@ export const getPreExpedientes = async () => {
     return response.json();
 };
 
+
+
+export const avanzarAAudiencia = async (expediente_id, usuario) => {
+    const response = await fetch(`${API_URL}/expediente/${expediente_id}/avanzar-a-audiencia`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ usuario })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+        throw new Error(data.mensaje || 'Error al avanzar a audiencia');
+    }
+    
+    return data;
+};
+
+export const getDocumentosInternos = async (expediente_id) => {
+    const response = await fetch(`${API_URL}/expedientes/${expediente_id}/documentos`, {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    });
+    
+    const result = await response.json();
+    console.log('🔍 getDocumentosInternos - Respuesta completa:', result);
+    
+    if (!response.ok) {
+        throw new Error(result.mensaje || 'Error al obtener documentos');
+    }
+    
+    // Extraer el array de datos correctamente
+    const documentos = result?.data || result || [];
+    console.log('🔍 Documentos internos extraídos:', documentos);
+    
+    return documentos;
+};
+
+export const subirDocumentoInterno = async (expediente_id, tipo_documento, numero_documento, fecha_elaboracion, archivo) => {
+    const formData = new FormData();
+    formData.append('tipo_documento', tipo_documento);
+    formData.append('numero_documento', numero_documento);
+    formData.append('fecha_elaboracion', fecha_elaboracion);
+    formData.append('archivo', archivo);
+
+    const response = await fetch(`${API_URL}/expedientes/${expediente_id}/documentos`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+    });
+    
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.mensaje || 'Error al subir documento');
+    }
+    return data;
+};
+
+
+
+
+
 // ====================================================================
 // EXPEDIENTES
 // ====================================================================
-export const vincularExpediente = async (pre_solicitud_id, nro_mesa_partes) => {
+export const vincularExpediente = async (pre_solicitud_id, nro_mesa_partes, fecha_pago) => {
+    console.log('📡 Enviando petición:', { pre_solicitud_id, nro_mesa_partes, fecha_pago });
+    
     const response = await fetch(`${API_URL}/expedientes/vincular`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ pre_solicitud_id, nro_mesa_partes })
+        body: JSON.stringify({ 
+            pre_solicitud_id, 
+            nro_mesa_partes,
+            fecha_pago 
+        })
     });
     
-    if (!response.ok) {
-        const error = await response.json();
-        console.error('❌ Error en vincular:', error);
-        throw new Error(error.error || 'Error al vincular expediente');
+    const data = await response.json();
+    console.log('📥 Respuesta del backend:', data);
+    
+    if (!response.ok || data.data?.resultado === 'ERROR') {
+        throw new Error(data.data?.mensaje || data.mensaje || 'Error al vincular expediente');
     }
     
-    const data = await response.json();
-    console.log('✅ Vinculación exitosa:', data);
     return data;
 };
 
@@ -176,6 +305,8 @@ export const avanzarEtapa = async (id, observaciones = '') => {
     
     return response.json();
 };
+
+
 
 export const generarResolucion = async (id, tipo) => {
     const response = await fetch(`${API_URL}/expedientes/${id}/resoluciones`, {

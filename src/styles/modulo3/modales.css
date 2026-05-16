@@ -354,50 +354,342 @@
     .btn-confirmar  { width: 100%; justify-content: center; }
 }
 
+/* ====================================================================
+   MODAL DE DESVINCULACIÓN - ESTILO MODERNO
+   ==================================================================== */
 
-
-/* Modal de desvinculación */
-.alerta-importante {
-    background: #fef2f2;
-    border-left: 4px solid #dc2626;
-    padding: 16px;
-    margin-bottom: 20px;
-    border-radius: 8px;
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
-.alerta-importante p {
-    margin: 8px 0;
+.modal-desvincular {
+    background: white;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 550px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Header */
+.modal-header-desvincular {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-bottom: 1px solid #fecaca;
+    position: relative;
+}
+
+.header-icono {
+    font-size: 2rem;
+}
+
+.header-texto {
+    flex: 1;
+}
+
+.header-texto h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
     color: #991b1b;
+    margin: 0 0 4px;
 }
 
-.alerta-importante ul {
+.header-texto p {
+    font-size: 0.75rem;
+    color: #b91c1c;
+    margin: 0;
+}
+
+.modal-cerrar-desvincular {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: #991b1b;
+    transition: all 0.2s;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-cerrar-desvincular:hover {
+    background: rgba(153, 27, 27, 0.1);
+    transform: scale(1.05);
+}
+
+/* Cuerpo del modal */
+.modal-body-desvincular {
+    padding: 24px;
+}
+
+/* Alerta */
+.alerta-desvincular {
+    display: flex;
+    gap: 16px;
+    background: #fef2f2;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 24px;
+    border-left: 4px solid #dc2626;
+}
+
+.alerta-icono {
+    font-size: 1.5rem;
+}
+
+.alerta-contenido {
+    flex: 1;
+}
+
+.alerta-titulo {
+    font-weight: 700;
+    color: #991b1b;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.alerta-descripcion {
+    font-size: 0.8rem;
+    color: #7f1d1d;
+    margin-bottom: 8px;
+}
+
+.alerta-lista {
     margin: 8px 0;
     padding-left: 20px;
-    color: #991b1b;
+    font-size: 0.75rem;
+    color: #7f1d1d;
 }
 
-.alerta-importante li {
+.alerta-lista li {
     margin: 4px 0;
 }
 
-.btn-peligro {
-    background: #dc2626 !important;
+.alerta-nota {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #fecaca;
+    font-size: 0.7rem;
+    color: #991b1b;
+    font-style: italic;
 }
 
-.btn-peligro:hover {
-    background: #b91c1c !important;
+/* Campo motivo */
+.campo-motivo {
+    margin-bottom: 20px;
 }
 
-.modal-error {
-    background: #fef2f2;
-    border: 1px solid #dc2626;
-    border-radius: 8px;
-    padding: 10px;
-    color: #dc2626;
-    font-size: 0.8rem;
-    margin-top: 12px;
+.campo-motivo label {
+    display: block;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
 }
 
 .requerido {
     color: #dc2626;
 }
+
+.campo-motivo textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: all 0.2s;
+}
+
+.campo-motivo textarea:focus {
+    outline: none;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.campo-ayuda {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 6px;
+}
+
+/* Sugerencias */
+.sugerencias {
+    margin-bottom: 20px;
+}
+
+.sugerencias label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.sugerencias-botones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.btn-sugerencia {
+    padding: 6px 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-sugerencia:hover {
+    background: #e2e8f0;
+    transform: translateY(-1px);
+}
+
+/* Error */
+.modal-error-desvincular {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 0.8rem;
+    margin-top: 16px;
+}
+
+/* Footer */
+.modal-footer-desvincular {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+.btn-cancelar-desvincular {
+    padding: 10px 20px;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancelar-desvincular:hover {
+    background: #f1f5f9;
+    transform: translateY(-1px);
+}
+
+.btn-confirmar-desvincular {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border: none;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-confirmar-desvincular:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.btn-confirmar-desvincular:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Spinner */
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .modal-desvincular {
+        width: 95%;
+        margin: 16px;
+    }
+    
+    .alerta-desvincular {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .sugerencias-botones {
+        flex-direction: column;
+    }
+    
+    .btn-sugerencia {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .modal-footer-desvincular {
+        flex-direction: column;
+    }
+    
+    .btn-cancelar-desvincular,
+    .btn-confirmar-desvincular {
+        width: 100%;
+        justify-content: center;
+    }
+}
+

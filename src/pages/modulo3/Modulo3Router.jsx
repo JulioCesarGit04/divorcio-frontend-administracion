@@ -6,21 +6,31 @@ import DetalleExpediente from './DetalleExpediente';
 import Historial from './Historial';
 import Alertas from './Alertas';
 import Reportes from './Reportes';
+import DocumentosInternos from './DocumentosInternos';
+import ProgramarAudiencia from './ProgramarAudiencia';
+import ResolucionFundada from './ResolucionFundada';
+import RegistrarAudiencia from './RegistrarAudiencia';
 import Layout from '../../components/Layout';
 
 export default function Modulo3Router() {
-  return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/vincular" element={<VincularExpedientes />} />
-        <Route path="/expedientes" element={<ExpedientesActivos />} />
-        <Route path="/detalle/:id/*" element={<DetalleExpediente />} />
-        <Route path="/historial" element={<Historial />} />
-        <Route path="/alertas" element={<Alertas />} />
-        <Route path="/reportes" element={<Reportes />} />
-      </Routes>
-    </Layout>
-  );
+    return (
+        <Layout>
+            <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/vincular" element={<VincularExpedientes />} />
+                <Route path="/expedientes" element={<ExpedientesActivos />} />
+                <Route path="/detalle/:id" element={<DetalleExpediente />} />
+                <Route path="/historial" element={<Historial />} />
+                <Route path="/alertas" element={<Alertas />} />
+                <Route path="/reportes" element={<Reportes />} />
+                
+                {/* RUTAS DEL MÓDULO 03 */}
+                <Route path="/expediente/:id/documentos-internos" element={<DocumentosInternos />} />
+                <Route path="/expediente/:id/programar-audiencia" element={<ProgramarAudiencia />} />
+                <Route path="/expediente/:id/resolucion-fundada" element={<ResolucionFundada />} />
+                <Route path="/expediente/:id/registrar-audiencia" element={<RegistrarAudiencia />} />
+            </Routes>
+        </Layout>
+    );
 }

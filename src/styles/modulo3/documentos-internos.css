@@ -1,0 +1,117 @@
+.documentos-internos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.datos-expediente .datos-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.documentos-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.documento-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.documento-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 2;
+}
+
+.documento-icono {
+    font-size: 28px;
+}
+
+.documento-nombre {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.documento-descripcion {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.documento-estado {
+    min-width: 120px;
+}
+
+.estado-subido {
+    color: #065f46;
+    background-color: #d1fae5;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.estado-pendiente {
+    color: #92400e;
+    background-color: #fed7aa;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.documento-acciones {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-ver, .btn-subir {
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    border: none;
+}
+
+.btn-ver {
+    background-color: #e2e8f0;
+    color: #1e293b;
+}
+
+.btn-subir {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-subir:hover {
+    background-color: #2563eb;
+}
+
+.btn-continuar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.mensaje {
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 16px;
+}
+
+.mensaje.success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.mensaje.error {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
