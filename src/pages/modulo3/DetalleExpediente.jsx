@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/modulo3/Sidebar'
 import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
-import { getExpedienteById, avanzarAAudiencia } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/detalle.css'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
+import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
+import { getExpedienteById, avanzarAAudiencia, getAudiencias } from '../../services/ProcedimientoService'
 
 export default function DetalleExpediente() {
     const { id } = useParams()
@@ -15,6 +16,8 @@ export default function DetalleExpediente() {
     const [error, setError] = useState(null)
     const [refresh, setRefresh] = useState(false)
     const [confirmado, setConfirmado] = useState(false)
+    const [audienciaVigente, setAudienciaVigente] = useState(null)
+
 
     const getPipelineEtapa = () => {
         switch(etapaActual) {
@@ -28,29 +31,40 @@ export default function DetalleExpediente() {
     }
 
     const cargar = async () => {
-        if (!id) {
-            setError('No hay ID')
-            setCargando(false)
-            return
-        }
-        
-        setCargando(true)
-        setError(null)
-        
-        try {
-            const res = await getExpedienteById(id)
-            const data = res?.data || res
-            const expedienteData = data?.expediente || data
-            const documentosData = data?.documentos_ciudadano || data?.documentos || []
-            
-            setExpediente(expedienteData)
-            setDocumentos(documentosData)
-        } catch (error) {
-            setError(error.message)
-        } finally {
-            setCargando(false)
-        }
+    if (!id) {
+        setError('No hay ID')
+        setCargando(false)
+        return
     }
+    
+    setCargando(true)
+    setError(null)
+    
+    try {
+        // Cargar expediente
+        const res = await getExpedienteById(id)
+        const data = res?.data || res
+        const expedienteData = data?.expediente || data
+        const documentosData = data?.documentos_ciudadano || data?.documentos || []
+        
+        setExpediente(expedienteData)
+        setDocumentos(documentosData)
+        
+        // Cargar audiencias
+        const resAudiencias = await getAudiencias(id)
+        const audienciasData = resAudiencias?.data || resAudiencias || []
+        
+        // Buscar audiencia vigente (PROGRAMADA o REPROGRAMADA)
+        // Buscar la audiencia vigente (la que tiene es_actual = true)
+const audienciaVigente = audienciasData.find(a => a.es_actual === true)
+setAudienciaVigente(audienciaVigente)
+        
+    } catch (error) {
+        setError(error.message)
+    } finally {
+        setCargando(false)
+    }
+}
 
     useEffect(() => { 
         if (id) cargar() 
@@ -62,11 +76,11 @@ export default function DetalleExpediente() {
 
     const handleConfirmarRevision = async () => {
         const confirmar = window.confirm(
-            'Atención\n\n' +
-            'Una vez que confirme la revisión documentaria:\n\n' +
-            'Los documentos del ciudadano quedarán BLOQUEADOS\n' +
-            'No podrá reemplazar ningún documento después\n\n' +
-            '¿Está seguro de que todos los documentos están correctos?'
+            'Atencion\n\n' +
+            'Una vez que confirme la revision documentaria:\n\n' +
+            'Los documentos del ciudadano quedaran BLOQUEADOS\n' +
+            'No podra reemplazar ningun documento despues\n\n' +
+            'Esta seguro de que todos los documentos estan correctos?'
         )
         
         if (confirmar) {
@@ -77,7 +91,7 @@ export default function DetalleExpediente() {
                     credentials: 'include',
                     body: JSON.stringify({ 
                         nueva_etapa: 'DOCUMENTOS_INTERNOS',
-                        motivo: 'Revisión documentaria confirmada'
+                        motivo: 'Revision documentaria confirmada'
                     })
                 })
 
@@ -85,14 +99,14 @@ export default function DetalleExpediente() {
 
                 if (data.ok) {
                     setConfirmado(true)
-                    alert('Revisión documentaria confirmada')
+                    alert('Revision documentaria confirmada')
                     window.location.reload()
                 } else {
                     alert('Error: ' + data.mensaje)
                 }
             } catch (error) {
                 console.error('Error:', error)
-                alert('Error al confirmar la revisión')
+                alert('Error al confirmar la revision')
             }
         }
     }
@@ -108,15 +122,49 @@ export default function DetalleExpediente() {
         return `http://localhost:3000/uploads/${ruta}`;
     };
 
+    const esDiaHabil = (fecha) => {
+        const diaSemana = fecha.getDay();
+        return diaSemana !== 0 && diaSemana !== 6;
+    };
+
+    const calcularTotalDiasHabiles = () => {
+        if (!expediente?.fecha_pago || !expediente?.fecha_limite_audiencia) return null;
+        
+        const fechaPago = new Date(expediente.fecha_pago);
+        const fechaLimite = new Date(expediente.fecha_limite_audiencia);
+        
+        let contador = 0;
+        let fecha = new Date(fechaPago);
+        
+        while (fecha <= fechaLimite) {
+            if (esDiaHabil(fecha)) {
+                contador++;
+            }
+            fecha.setDate(fecha.getDate() + 1);
+        }
+        
+        return contador;
+    };
+
     const calcularDiasRestantes = () => {
-        if (!expediente?.fecha_limite_audiencia) return null
-        const hoy = new Date()
-        hoy.setHours(0, 0, 0, 0)
-        const fechaLimite = new Date(expediente.fecha_limite_audiencia)
-        const diffTime = fechaLimite - hoy
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-        return diffDays
-    }
+        if (!expediente?.fecha_limite_audiencia) return null;
+        
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const fechaLimite = new Date(expediente.fecha_limite_audiencia);
+        
+        let contador = 0;
+        let fecha = new Date(hoy);
+        
+        while (fecha <= fechaLimite) {
+            if (esDiaHabil(fecha)) {
+                contador++;
+            }
+            fecha.setDate(fecha.getDate() + 1);
+        }
+        
+        return contador;
+    };
 
     const DocumentoItem = ({ doc, onReemplazado, bloqueado }) => {
         const [mostrarModal, setMostrarModal] = useState(false)
@@ -292,6 +340,11 @@ export default function DetalleExpediente() {
         return '#22c55e'
     }
 
+    const formatFecha = (fecha) => {
+        if (!fecha) return '—'
+        return fecha.split('T')[0].split('-').reverse().join('/')
+    }
+
     return (
         <>
             <Sidebar />
@@ -308,6 +361,12 @@ export default function DetalleExpediente() {
                     {/* COLUMNA IZQUIERDA */}
                     <div className="detalle-izquierda">
                         {/* Datos del expediente */}
+                        {console.log('expediente:', expediente)}
+                            {console.log('audienciaVigente:', audienciaVigente)}
+                            <PlazoAlerta 
+                                expediente={expediente}
+                                audienciaActual={audienciaVigente}
+                            />
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
                             <div className="datos-grid">
@@ -325,56 +384,86 @@ export default function DetalleExpediente() {
                                 </div>
                                 <div className="dato-item">
                                     <label>Fecha pago</label>
-                                    <p>{fechaPago ? new Date(fechaPago).toLocaleDateString('es-PE') : '—'}</p>
+                                    <p>{formatFecha(fechaPago)}</p>
                                 </div>
                                 <div className="dato-item">
                                     <label>Fecha recepción</label>
-                                    <p>{fechaRecepcion ? new Date(fechaRecepcion).toLocaleDateString('es-PE') : '—'}</p>
+                                    <p>{formatFecha(fechaRecepcion)}</p>
                                 </div>
                                 <div className="dato-item">
                                     <label>Vinculado por</label>
                                     <p>{registradoPor || '—'}</p>
                                 </div>
                             </div>
-                            {fechaLimiteAudiencia && (
-                                <div className="plazo-audiencia" style={{ borderLeftColor: getColorDias() }}>
-                                    <div className="plazo-info">
-                                        <span className="plazo-label">Plazo para audiencia:</span>
-                                        <span className="plazo-dias" style={{ color: getColorDias() }}>{diasRestantes} días restantes</span>
-                                    </div>
-                                    <span className="plazo-fecha">Fecha límite: {new Date(fechaLimiteAudiencia).toLocaleDateString('es-PE')}</span>
-                                </div>
-                            )}
+                           
+                            
+
                         </div>
+                        
 
                         {/* Cónyuges */}
                         <div className="seccion">
                             <h2>Cónyuges</h2>
-                            <div className="conyuges-grid">
-                                <div className="conyuge-card">
-                                    <div className="conyuge-header">
-                                        <div className="conyuge-icon solicitante"></div>
-                                        <h3>Solicitante</h3>
+                            <div className="conyuges-grid-moderno">
+                                {/* Solicitante */}
+                                <div className="conyuge-card-moderno">
+                                    <div className="conyuge-header-moderno">
+                                        <div>
+                                            <h3>Solicitante</h3>
+                                            <span className="conyuge-rol">Inicia el tramite</span>
+                                        </div>
                                     </div>
-                                    <div className="conyuge-content">
-                                        <p><strong>{expediente.Solicitante_Nombres || '—'} {expediente.Solicitante_Apellidos || ''}</strong></p>
-                                        <p>DNI: {expediente.Solicitante_Dni || '—'}</p>
-                                        <p>Tel: {expediente.Solicitante_Telefono || '—'}</p>
-                                        <p>Correo: {expediente.Solicitante_Correo || '—'}</p>
-                                        <p>Dirección: {expediente.Solicitante_Direccion || '—'}</p>
+                                    <div className="conyuge-body">
+                                        <div className="conyuge-nombre">
+                                            {expediente.Solicitante_Nombres || '—'} {expediente.Solicitante_Apellidos || ''}
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">DNI:</span>
+                                            <span>{expediente.Solicitante_Dni || '—'}</span>
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Tel:</span>
+                                            <span>{expediente.Solicitante_Telefono || '—'}</span>
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Email:</span>
+                                            <span>{expediente.Solicitante_Correo || '—'}</span>
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Dir:</span>
+                                            <span>{expediente.Solicitante_Direccion || '—'}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="conyuge-card">
-                                    <div className="conyuge-header">
-                                        <div className="conyuge-icon demandado"></div>
-                                        <h3>Demandado</h3>
+
+                                {/* Demandado */}
+                                <div className="conyuge-card-moderno">
+                                    <div className="conyuge-header-moderno">
+                                        <div>
+                                            <h3>Demandado</h3>
+                                            <span className="conyuge-rol">Parte demandada</span>
+                                        </div>
                                     </div>
-                                    <div className="conyuge-content">
-                                        <p><strong>{expediente.Demandado_Nombres || '—'} {expediente.Demandado_Apellidos || ''}</strong></p>
-                                        <p>DNI: {expediente.Demandado_Dni || '—'}</p>
-                                        <p>Tel: {expediente.Demandado_Telefono || '—'}</p>
-                                        <p>Correo: {expediente.Demandado_Correo || '—'}</p>
-                                        <p>Dirección: {expediente.Demandado_Direccion || '—'}</p>
+                                    <div className="conyuge-body">
+                                        <div className="conyuge-nombre">
+                                            {expediente.Demandado_Nombres || '—'} {expediente.Demandado_Apellidos || ''}
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">DNI:</span>
+                                            <span>{expediente.Demandado_Dni || '—'}</span>
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Tel:</span>
+                                            <span>{expediente.Demandado_Telefono || '—'}</span>
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Email:</span>
+                                            <span>{expediente.Demandado_Correo || '—'}</span>
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Dir:</span>
+                                            <span>{expediente.Demandado_Direccion || '—'}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -398,7 +487,7 @@ export default function DetalleExpediente() {
                         {!confirmado && etapaActual === 'EVALUACION' && (
                             <div className="seccion acciones">
                                 <button className="btn-continuar" onClick={handleConfirmarRevision}>
-                                    Continuar revisión
+                                    Continuar revision
                                 </button>
                                 <p className="texto-ayuda">Revise todos los documentos antes de continuar</p>
                             </div>

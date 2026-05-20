@@ -46,7 +46,9 @@ export default function ExpedientesActivos() {
             if (filtros.dni) filtrosLimpios.dni = filtros.dni
             
             const response = await getExpedientes(filtrosLimpios)
-            console.log('📦 Respuesta expedientes:', response)
+            console.log(' Respuesta expedientes:', response)
+            console.log(' Respuesta expedientes:', JSON.stringify(response.data, null, 2))
+
             
             // CORRECCIÓN: Extraer el array de datos
             const data = response.data || []
@@ -181,7 +183,7 @@ export default function ExpedientesActivos() {
                 ) : (
                     <div className="tabla-container">
                         <table className="tabla">
-                            <thead>
+                           <thead>
                                 <tr>
                                     <th>N° Expediente</th>
                                     <th>N° Mesa Partes</th>
@@ -191,26 +193,36 @@ export default function ExpedientesActivos() {
                                     <th>DNI Demandado</th>
                                     <th>Estado</th>
                                     <th>Etapa</th>
-                                    <th>Fecha</th>
+                                    <th>Fecha Pago</th>
+                                    <th>Fecha Recepción</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                    {expedientesFiltrados.map((e) => (
-                                        <tr key={e.id}>
-                                            <td>{e.numero_expediente || '—'}</td>
-                                            <td>{e.numero_mesa_partes || '—'}</td>
-                                            <td>{e.Solicitante_Nombres || ''} {e.Solicitante_Apellidos || ''}</td>
-                                            <td>{e.Solicitante_Dni || '—'}</td>
-                                            <td>{e.Demandado_Nombres || ''} {e.Demandado_Apellidos || ''}</td>
-                                            <td>{e.Demandado_Dni || '—'}</td>      {/* ← Agrega esta línea */}
-                                            <td><span className="badge">{etiquetaEstado[e.estado] || e.estado}</span></td>
-                                            <td>{etiquetaEtapa[e.etapa] || e.etapa}</td>
-                                            <td>{new Date(e.fecha_recepcion).toLocaleDateString('es-PE')}</td>
-                                            <td><button className="btn-ver" onClick={() => handleVerExpediente(e.id)}>Ver</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
+                                {expedientesFiltrados.map((e) => (
+                                    <tr key={e.id}>
+                                        <td>{e.numero_expediente || '—'}</td>
+                                        <td>{e.numero_mesa_partes || '—'}</td>
+                                        <td>{e.Solicitante_Nombres || ''} {e.Solicitante_Apellidos || ''}</td>
+                                        <td>{e.Solicitante_Dni || '—'}</td>
+                                        <td>{e.Demandado_Nombres || ''} {e.Demandado_Apellidos || ''}</td>
+                                        <td>{e.Demandado_Dni || '—'}</td>
+                                        <td><span className="badge">{etiquetaEstado[e.estado] || e.estado}</span></td>
+                                        <td>{etiquetaEtapa[e.etapa] || e.etapa}</td>
+                                        <td>
+                                            {e.fecha_pago 
+                                                ? e.fecha_pago.split('T')[0].split('-').reverse().join('/') 
+                                                : '—'}
+                                        </td>
+                                        <td>
+                                            {e.fecha_recepcion 
+                                                ? e.fecha_recepcion.split('T')[0].split('-').reverse().join('/') 
+                                                : '—'}
+                                        </td>
+                                        <td><button className="btn-ver" onClick={() => handleVerExpediente(e.id)}>Ver</button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
                         </table>
                     </div>
                 )}

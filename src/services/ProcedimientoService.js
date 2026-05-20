@@ -197,12 +197,13 @@ export const getCronograma = async () => {
 };
 
 export const programarAudiencia = async (expediente_id, fecha_hora) => {
+    // fecha_hora ya es un string en formato "2026-05-21T09:00:00"
     const response = await fetchWithRetry(
         `${API_URL}/expedientes/${expediente_id}/audiencias/programar`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha_hora: fecha_hora.toISOString() })
+            body: JSON.stringify({ fecha_hora: fecha_hora })  // Enviar el string directamente
         },
         3,
         TIMEOUTS.MUTATION
