@@ -79,7 +79,6 @@ export default function Dashboard() {
                 <div className="dashboard-header">
                     <div>
                         <h1>Dashboard</h1>
-                        <p>Bienvenido al panel de gestión del Módulo 3</p>
                     </div>
                     <div className="dashboard-fecha">
                         {new Date().toLocaleDateString('es-PE', { 

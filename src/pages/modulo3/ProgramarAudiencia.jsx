@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/modulo3/Sidebar'
 import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
+import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getExpedienteById, getCronograma, programarAudiencia, getAudiencias } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/programar-audiencia.css'
 
@@ -12,15 +13,20 @@ export default function ProgramarAudiencia() {
     const [expediente, setExpediente] = useState(null)
     const [cargando, setCargando] = useState(true)
     const [error, setError] = useState(null)
-    const [fechaHora, setFechaHora] = useState('')
+    const [fechaSeleccionada, setFechaSeleccionada] = useState('')
+    const [horaSeleccionada, setHoraSeleccionada] = useState('')
     const [slotsOcupados, setSlotsOcupados] = useState([])
     const [fechaLimite, setFechaLimite] = useState(null)
-    const [diasRestantes, setDiasRestantes] = useState(null)
     const [enviando, setEnviando] = useState(false)
     const [mensaje, setMensaje] = useState(null)
+    const [audienciaVigente, setAudienciaVigente] = useState(null)
     const [audienciaProgramada, setAudienciaProgramada] = useState(null)
     const [audienciaRealizada, setAudienciaRealizada] = useState(null)
+    const [audienciaReprogramada, setAudienciaReprogramada] = useState(null)
     const [modoReprogramacion, setModoReprogramacion] = useState(false)
+    const [horasDisponibles, setHorasDisponibles] = useState(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'])
+
+    const horasDisponiblesBase = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
 
     const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
 
@@ -34,47 +40,107 @@ export default function ProgramarAudiencia() {
         }
     }
 
-    // Cargar datos del expediente y cronograma
+    const formatFecha = (fecha) => {
+        if (!fecha) return '—'
+        return fecha.split('T')[0].split('-').reverse().join('/')
+    }
+
+    const formatHora = (fecha) => {
+        if (!fecha) return '—'
+        const horaStr = fecha.includes('T') ? fecha.split('T')[1] : fecha.split(' ')[1]
+        const hora = horaStr.split(':')[0]
+        const minuto = horaStr.split(':')[1]
+        const hora12 = parseInt(hora) % 12 || 12
+        const ampm = parseInt(hora) >= 12 ? 'p. m.' : 'a. m.'
+        return `${hora12}:${minuto} ${ampm}`
+    }
+
+    const getHorasOcupadas = (fecha) => {
+        if (!fecha) return []
+        
+        const horasOcupadas = slotsOcupados
+            .filter(slot => {
+                const slotFecha = slot.fecha_hora.split('T')[0]
+                return slotFecha === fecha
+            })
+            .map(slot => slot.fecha_hora.split('T')[1].substring(0, 5))
+        
+        return horasOcupadas
+    }
+
+    useEffect(() => {
+        if (fechaSeleccionada) {
+            const horasOcupadas = getHorasOcupadas(fechaSeleccionada)
+            const horasFiltradas = horasDisponiblesBase.filter(hora => !horasOcupadas.includes(hora))
+            setHorasDisponibles(horasFiltradas)
+            
+            if (horaSeleccionada && horasOcupadas.includes(horaSeleccionada)) {
+                setHoraSeleccionada('')
+                setMensaje({ tipo: 'warning', texto: 'La hora seleccionada ya no está disponible' })
+            }
+        } else {
+            setHorasDisponibles(horasDisponiblesBase)
+        }
+    }, [fechaSeleccionada, slotsOcupados])
+
     useEffect(() => {
         const cargar = async () => {
             if (!id) return
             setCargando(true)
             try {
-                // Cargar expediente
+                console.log('========== INICIO CARGA ==========')
+                console.log('Expediente ID:', id)
+                
                 const resExp = await getExpedienteById(id)
                 const data = resExp?.data || resExp
                 const expedienteData = data?.expediente || data
                 setExpediente(expedienteData)
+                console.log('Expediente cargado:', expedienteData?.numero_expediente, 'etapa:', expedienteData?.etapa)
 
-                // Cargar fecha límite de audiencia
-                const fechaLimiteExp = expedienteData?.fecha_limite_audiencia
-                if (fechaLimiteExp) {
-                    setFechaLimite(new Date(fechaLimiteExp))
-                    const hoy = new Date()
-                    hoy.setHours(0, 0, 0, 0)
-                    const limite = new Date(fechaLimiteExp)
-                    const diffDays = Math.ceil((limite - hoy) / (1000 * 60 * 60 * 24))
-                    setDiasRestantes(diffDays)
+                if (expedienteData?.fecha_limite_audiencia) {
+                    setFechaLimite(expedienteData.fecha_limite_audiencia)
+                    console.log('Fecha límite:', expedienteData.fecha_limite_audiencia)
                 }
 
-                // Cargar slots ocupados
+                console.log('Cargando cronograma...')
                 const resCrono = await getCronograma()
                 const slots = resCrono?.data || resCrono || []
                 setSlotsOcupados(slots)
+                console.log('Slots ocupados:', slots.length)
 
-                // Cargar audiencias del expediente
                 const resAudiencias = await getAudiencias(id)
                 const audienciasData = resAudiencias?.data || resAudiencias || []
+                console.log('========== AUDIENCIAS CARGADAS ==========')
+                console.log('Total audiencias:', audienciasData.length)
+                console.log('Detalle:', JSON.stringify(audienciasData, null, 2))
                 
-                // Buscar audiencia PROGRAMADA y REALIZADA
-                const audienciaVigente = audienciasData.find(a => a.estado === 'PROGRAMADA')
-                const realizada = audienciasData.find(a => a.estado === 'REALIZADA')
+                // Buscar la audiencia con es_actual = 1 (la vigente)
+                const vigente = audienciasData.find(a => a.es_actual === true || a.es_actual === 1)
+                console.log('========== AUDIENCIA VIGENTE ==========')
+                console.log('es_actual=1:', vigente)
                 
-                setAudienciaProgramada(audienciaVigente)
+                if (!vigente) {
+                    console.log('⚠️ No se encontró audiencia con es_actual=1')
+                }
+                
+                // Clasificar por tipo
+                const realizada = vigente && vigente.estado === 'REALIZADA' ? vigente : null
+                const programada = vigente && vigente.estado === 'PROGRAMADA' ? vigente : null
+                const reprogramada = vigente && vigente.estado === 'REPROGRAMADA' ? vigente : null
+                
+                console.log('========== CLASIFICACIÓN ==========')
+                console.log('realizada:', realizada)
+                console.log('programada:', programada)
+                console.log('reprogramada:', reprogramada)
+                console.log('======================================')
+                
+                setAudienciaVigente(vigente)
                 setAudienciaRealizada(realizada)
+                setAudienciaProgramada(programada)
+                setAudienciaReprogramada(reprogramada)
 
             } catch (err) {
-                console.error('Error:', err)
+                console.error('Error en carga:', err)
                 setError(err.message)
             } finally {
                 setCargando(false)
@@ -83,77 +149,86 @@ export default function ProgramarAudiencia() {
         cargar()
     }, [id])
 
-    // Verificar si una fecha/hora está ocupada
-    const isSlotOcupado = (fecha) => {
+    const isSlotOcupado = (fecha, hora) => {
+        if (!fecha || !hora) return false
+        const fechaHoraStr = `${fecha}T${hora}:00.000Z`
+        const fechaObj = new Date(fechaHoraStr)
+        
         return slotsOcupados.some(slot => {
             const slotFecha = new Date(slot.fecha_hora)
-            return slotFecha.getTime() === fecha.getTime()
+            return slotFecha.getTime() === fechaObj.getTime()
         })
     }
 
-    // Validar la fecha seleccionada
     const validarFecha = () => {
-        if (!fechaHora) {
-            setMensaje({ tipo: 'error', texto: 'Debe seleccionar una fecha y hora' })
+        if (!fechaSeleccionada) {
+            setMensaje({ tipo: 'error', texto: 'Debe seleccionar una fecha' })
+            return false
+        }
+        if (!horaSeleccionada) {
+            setMensaje({ tipo: 'error', texto: 'Debe seleccionar una hora' })
             return false
         }
 
-        const fechaSeleccionada = new Date(fechaHora)
+        const fechaObj = new Date(`${fechaSeleccionada}T${horaSeleccionada}:00`)
         const hoy = new Date()
         hoy.setHours(0, 0, 0, 0)
 
-        if (fechaSeleccionada < hoy) {
+        if (fechaObj < hoy) {
             setMensaje({ tipo: 'error', texto: 'No puede seleccionar una fecha pasada' })
             return false
         }
 
-        // Verificar si la fecha está fuera del plazo
-        if (fechaLimite && fechaSeleccionada > fechaLimite) {
-            const diasExcedidos = Math.ceil((fechaSeleccionada - fechaLimite) / (1000 * 60 * 60 * 24))
-            const confirmar = window.confirm(
-                `⚠️ ADVERTENCIA\n\n` +
-                `La fecha seleccionada excede el plazo legal de 15 días en ${diasExcedidos} día(s).\n\n` +
-                `¿Desea programar la audiencia fuera de plazo?`
-            )
-            if (!confirmar) {
-                return false
+        if (fechaLimite) {
+            const fechaLimiteDate = new Date(fechaLimite)
+            if (fechaObj > fechaLimiteDate) {
+                const diasExcedidos = Math.ceil((fechaObj - fechaLimiteDate) / (1000 * 60 * 60 * 24))
+                const confirmar = window.confirm(
+                    `ADVERTENCIA\n\nLa fecha seleccionada excede el plazo legal en ${diasExcedidos} dia(s).\n\nDesea programar la audiencia fuera de plazo?`
+                )
+                if (!confirmar) return false
             }
         }
 
-        if (isSlotOcupado(fechaSeleccionada)) {
-            setMensaje({ tipo: 'error', texto: 'El horario ya está ocupado por otra audiencia' })
+        if (isSlotOcupado(fechaSeleccionada, horaSeleccionada)) {
+            setMensaje({ tipo: 'error', texto: 'El horario ya esta ocupado por otra audiencia' })
             return false
         }
 
         return true
     }
 
+    const puedeReprogramar = () => {
+        if (!audienciaProgramada) return true
+        const intentoActual = audienciaProgramada.numero_intento || 1
+        return intentoActual < 2
+    }
+
     const handleProgramar = async () => {
         if (!validarFecha()) return
+
+        if (modoReprogramacion && !puedeReprogramar()) {
+            setMensaje({ tipo: 'error', texto: 'No se puede reprogramar. Se ha alcanzado el maximo de intentos.' })
+            return
+        }
 
         setEnviando(true)
         setMensaje(null)
 
         try {
-            const fechaObj = new Date(fechaHora)
-            await programarAudiencia(id, fechaObj)
-            setMensaje({ tipo: 'success', texto: modoReprogramacion ? '✅ Audiencia reprogramada correctamente' : '✅ Audiencia programada correctamente' })
+            const fechaCompleta = `${fechaSeleccionada}T${horaSeleccionada}:00`
+            await programarAudiencia(id, fechaCompleta)
+            setMensaje({ tipo: 'success', texto: modoReprogramacion ? 'Audiencia reprogramada correctamente' : 'Audiencia programada correctamente' })
             
             setTimeout(() => {
                 window.location.reload()
             }, 1500)
         } catch (err) {
+            console.error('Error:', err)
             setMensaje({ tipo: 'error', texto: err.message || 'Error al programar audiencia' })
         } finally {
             setEnviando(false)
         }
-    }
-
-    const getColorDias = () => {
-        if (diasRestantes === null) return '#64748b'
-        if (diasRestantes < 3) return '#dc2626'
-        if (diasRestantes <= 7) return '#eab308'
-        return '#22c55e'
     }
 
     if (cargando) {
@@ -171,8 +246,29 @@ export default function ProgramarAudiencia() {
         )
     }
 
+    if (error) {
+        return (
+            <>
+                <Sidebar />
+                <main className="contenido-modulo3">
+                    <div className="pagina-header">
+                        <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
+                        <h1>Programar Audiencia</h1>
+                    </div>
+                    <p style={{ color: 'red' }}>Error: {error}</p>
+                </main>
+            </>
+        )
+    }
+
     const numeroMesaPartes = expediente?.numero_mesa_partes || expediente?.expedientes_nro_mesa_partes
-    const horasDisponibles = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
+    const estaCancelado = expediente?.estado === 'CANCELADO'
+
+    console.log('========== RENDER FINAL ==========')
+    console.log('audienciaVigente:', audienciaVigente)
+    console.log('audienciaProgramada:', audienciaProgramada)
+    console.log('audienciaRealizada:', audienciaRealizada)
+    console.log('==================================')
 
     return (
         <>
@@ -185,27 +281,14 @@ export default function ProgramarAudiencia() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '30px' }}>
-                    {/* COLUMNA IZQUIERDA */}
                     <div style={{ flex: 2 }}>
-                        {/* Alerta de plazo */}
-                        {diasRestantes !== null && (
-                            <div className="plazo-alerta" style={{ borderLeftColor: getColorDias(), marginBottom: '24px' }}>
-                                <div className="plazo-alerta-icono">⏰</div>
-                                <div className="plazo-alerta-contenido">
-                                    <div className="plazo-alerta-titulo">Plazo para programar audiencia</div>
-                                    <div className="plazo-alerta-dias" style={{ color: getColorDias() }}>
-                                        {diasRestantes} {diasRestantes === 1 ? 'día restante' : 'días restantes'}
-                                    </div>
-                                    <div className="plazo-alerta-fecha">
-                                        Fecha límite: {fechaLimite ? fechaLimite.toLocaleDateString('es-PE') : '—'}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        <PlazoAlerta 
+                            expediente={expediente}
+                            audienciaActual={audienciaVigente}
+                        />
 
-                        {/* Datos para las actas */}
                         <div className="seccion">
-                            <h2>📋 DATOS PARA LAS ACTAS DE AUDIENCIA</h2>
+                            <h2>Datos para las actas de audiencia</h2>
                             <div className="actas-datos">
                                 <div className="actas-dato">
                                     <label>N° Expediente:</label>
@@ -224,7 +307,7 @@ export default function ProgramarAudiencia() {
                                     <span>{expediente?.Solicitante_Dni || '—'}</span>
                                 </div>
                                 <div className="actas-dato">
-                                    <label>Dirección:</label>
+                                    <label>Direccion:</label>
                                     <span>{expediente?.Solicitante_Direccion || '—'}</span>
                                 </div>
                                 <div className="actas-dato">
@@ -236,45 +319,54 @@ export default function ProgramarAudiencia() {
                                     <span>{expediente?.Demandado_Dni || '—'}</span>
                                 </div>
                                 <div className="actas-dato">
-                                    <label>Dirección:</label>
+                                    <label>Direccion:</label>
                                     <span>{expediente?.Demandado_Direccion || '—'}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Sección de programación o resumen */}
                         <div className="seccion">
-                            {/* Si hay audiencia REALIZADA, mostrar mensaje y botón */}
-                            {audienciaRealizada ? (
+                            {estaCancelado ? (
                                 <>
-                                    <h2> AUDIENCIA YA REALIZADA</h2>
+                                    <div className="cancelado-mensaje">
+                                        <div className="cancelado-icono">❌</div>
+                                        <h3>Expediente Cancelado</h3>
+                                        <p>Este expediente ha sido cancelado.</p>
+                                        <p>No es posible programar o reprogramar una audiencia.</p>
+                                        <button 
+                                            className="btn-volver-detalle"
+                                            onClick={() => navigate(`/modulo3/detalle/${id}`)}
+                                        >
+                                            Volver al detalle del expediente
+                                        </button>
+                                    </div>
+                                </>
+                            ) : audienciaRealizada ? (
+                                <>
+                                    <h2>Audiencia ya realizada</h2>
                                     <div className="audiencia-resumen">
                                         <div className="resumen-card">
-                                            <div className="resumen-icono"></div>
                                             <div className="resumen-info">
                                                 <label>Estado</label>
                                                 <span style={{ color: '#22c55e', fontWeight: 'bold' }}>REALIZADA</span>
                                             </div>
                                         </div>
                                         <div className="resumen-card">
-                                            <div className="resumen-icono"></div>
                                             <div className="resumen-info">
-                                                <label>Fecha de realización</label>
-                                                <span>{new Date(audienciaRealizada.fecha_programada).toLocaleDateString('es-PE')}</span>
+                                                <label>Fecha</label>
+                                                <span>{formatFecha(audienciaRealizada.fecha_programada)}</span>
                                             </div>
                                         </div>
                                         <div className="resumen-card">
-                                            <div className="resumen-icono"></div>
                                             <div className="resumen-info">
                                                 <label>Hora</label>
-                                                <span>{new Date(audienciaRealizada.fecha_programada).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span>{formatHora(audienciaRealizada.fecha_programada)}</span>
                                             </div>
                                         </div>
                                         <div className="resumen-card">
-                                            <div className="resumen-icono"></div>
                                             <div className="resumen-info">
                                                 <label>Resultado</label>
-                                                <span>{audienciaRealizada.resultado === 'RATIFICACION' ? ' Ratificación' : ' Desistimiento'}</span>
+                                                <span>{audienciaRealizada.resultado === 'RATIFICACION' ? 'Ratificacion' : 'Desistimiento'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -283,37 +375,32 @@ export default function ProgramarAudiencia() {
                                         onClick={() => navigate(`/modulo3/expediente/${id}/registrar-audiencia`)}
                                         style={{ width: '100%', marginTop: '16px' }}
                                     >
-                                         Ver Registro de Audiencia
+                                        Ver Registro de Audiencia
                                     </button>
                                 </>
                             ) : audienciaProgramada && !modoReprogramacion ? (
-                                //  Resumen de audiencia programada
                                 <>
-                                    <h2> AUDIENCIA PROGRAMADA</h2>
+                                    <h2>Audiencia programada</h2>
                                     <div className="audiencia-resumen">
                                         <div className="resumen-card">
-                                            <div className="resumen-icono"></div>
                                             <div className="resumen-info">
                                                 <label>Fecha</label>
-                                                <span>{new Date(audienciaProgramada.fecha_programada).toLocaleDateString('es-PE')}</span>
+                                                <span>{formatFecha(audienciaProgramada.fecha_programada)}</span>
                                             </div>
                                         </div>
                                         <div className="resumen-card">
-                                            <div className="resumen-icono"></div>
                                             <div className="resumen-info">
                                                 <label>Hora</label>
-                                                <span>{new Date(audienciaProgramada.fecha_programada).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span>{formatHora(audienciaProgramada.fecha_programada)}</span>
                                             </div>
                                         </div>
                                         <div className="resumen-card">
-                                            <div className="resumen-icono"></div>
                                             <div className="resumen-info">
-                                                <label>Intento N°</label>
-                                                <span>{audienciaProgramada.numero_intento}</span>
+                                                <label>Intento</label>
+                                                <span>{audienciaProgramada.numero_intento}/2</span>
                                             </div>
                                         </div>
                                         <div className="resumen-card">
-                                            <div className="resumen-icono"></div>
                                             <div className="resumen-info">
                                                 <label>Estado</label>
                                                 <span className="estado-programada">PROGRAMADA</span>
@@ -325,28 +412,43 @@ export default function ProgramarAudiencia() {
                                             className="btn-registrar-audiencia"
                                             onClick={() => navigate(`/modulo3/expediente/${id}/registrar-audiencia`)}
                                         >
-                                            🎤 Registrar Audiencia
+                                            Registrar Audiencia
                                         </button>
-                                        <button 
-                                            className="btn-reprogramar"
-                                            onClick={() => {
-                                                setModoReprogramacion(true)
-                                                setFechaHora('')
-                                                setMensaje(null)
-                                            }}
-                                        >
-                                             Reprogramar Audiencia
-                                        </button>
+                                        {audienciaReprogramada && puedeReprogramar(
+                                            <button 
+                                                className="btn-reprogramar"
+                                                onClick={() => {
+                                                    setModoReprogramacion(true)
+                                                    setFechaSeleccionada('')
+                                                    setHoraSeleccionada('')
+                                                    setMensaje(null)
+                                                }}
+                                            >
+                                                Reprogramar Audiencia
+                                            </button>
+                                        )}
+                                        {!puedeReprogramar() && (
+                                            <div className="aviso-max-intentos">
+                                                Maximo de reprogramaciones alcanzado (2/2)
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             ) : (
-                                // Formulario de programación (nueva o reprogramación)
                                 <>
-                                    <h2>{modoReprogramacion ? ' REPROGRAMAR AUDIENCIA' : ' SELECCIONE FECHA Y HORA'}</h2>
+                                    <h2>{modoReprogramacion ? 'Reprogramar audiencia' : 'Seleccione fecha y hora'}</h2>
                                     
                                     {modoReprogramacion && (
                                         <div className="aviso-reprogramacion">
-                                             Está reprogramando la audiencia. La fecha anterior será liberada.
+                                            Esta reprogramando la audiencia. La fecha anterior sera liberada.
+                                            {audienciaProgramada && (
+                                                <div className="intento-info">
+                                                    Intento actual: {audienciaProgramada?.numero_intento || 1}/2
+                                                    {audienciaProgramada?.numero_intento >= 2 && (
+                                                        <span className="aviso-max"> (No se puede reprogramar mas)</span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                     
@@ -355,10 +457,10 @@ export default function ProgramarAudiencia() {
                                             <label>Fecha *</label>
                                             <input
                                                 type="date"
-                                                value={fechaHora ? fechaHora.split('T')[0] : ''}
+                                                value={fechaSeleccionada}
                                                 onChange={(e) => {
-                                                    const hora = fechaHora ? fechaHora.split('T')[1] : '10:00'
-                                                    setFechaHora(e.target.value ? `${e.target.value}T${hora}` : '')
+                                                    setFechaSeleccionada(e.target.value)
+                                                    setHoraSeleccionada('')
                                                     setMensaje(null)
                                                 }}
                                                 min={new Date().toISOString().split('T')[0]}
@@ -367,18 +469,23 @@ export default function ProgramarAudiencia() {
                                         <div className="campo">
                                             <label>Hora *</label>
                                             <select
-                                                value={fechaHora ? fechaHora.split('T')[1] : ''}
+                                                value={horaSeleccionada}
                                                 onChange={(e) => {
-                                                    const fecha = fechaHora ? fechaHora.split('T')[0] : ''
-                                                    setFechaHora(fecha ? `${fecha}T${e.target.value}` : '')
+                                                    setHoraSeleccionada(e.target.value)
                                                     setMensaje(null)
                                                 }}
+                                                disabled={!fechaSeleccionada}
                                             >
                                                 <option value="">Seleccione una hora</option>
                                                 {horasDisponibles.map(hora => (
                                                     <option key={hora} value={hora}>{hora}</option>
                                                 ))}
                                             </select>
+                                            {fechaSeleccionada && horasDisponibles.length === 0 && (
+                                                <div className="aviso-horas-ocupadas">
+                                                    No hay horas disponibles para esta fecha. Seleccione otra fecha.
+                                                </div>
+                                            )}
                                         </div>
 
                                         {mensaje && (
@@ -391,9 +498,9 @@ export default function ProgramarAudiencia() {
                                             <button
                                                 className="btn-programar"
                                                 onClick={handleProgramar}
-                                                disabled={enviando || !fechaHora}
+                                                disabled={enviando || !fechaSeleccionada || !horaSeleccionada || horasDisponibles.length === 0}
                                             >
-                                                {enviando ? 'Programando...' : modoReprogramacion ? ' Confirmar Reprogramación' : ' Programar Audiencia'}
+                                                {enviando ? 'Programando...' : modoReprogramacion ? 'Confirmar Reprogramacion' : 'Programar Audiencia'}
                                             </button>
                                             
                                             {modoReprogramacion && (
@@ -401,11 +508,12 @@ export default function ProgramarAudiencia() {
                                                     className="btn-cancelar-reprogramacion"
                                                     onClick={() => {
                                                         setModoReprogramacion(false)
-                                                        setFechaHora('')
+                                                        setFechaSeleccionada('')
+                                                        setHoraSeleccionada('')
                                                         setMensaje(null)
                                                     }}
                                                 >
-                                                    ❌ Cancelar
+                                                    Cancelar
                                                 </button>
                                             )}
                                         </div>
@@ -415,7 +523,6 @@ export default function ProgramarAudiencia() {
                         </div>
                     </div>
 
-                    {/* COLUMNA DERECHA */}
                     <div style={{ flex: 1 }}>
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
                         <PipelineVisual etapaActual={getPipelineEtapa()} />

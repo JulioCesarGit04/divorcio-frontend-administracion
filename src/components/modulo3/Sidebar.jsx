@@ -21,10 +21,7 @@ export default function Sidebar() {
     return (
         <nav className="navbar-horizontal">
             <div className="navbar-container">
-                <div className="navbar-brand">
-                    <h2>Módulo 3</h2>
-                    <p>Gestión del Procedimiento</p>
-                </div>
+               
 
                 <div className="navbar-menu">
                     <button onClick={() => navigate('/modulo3/dashboard')} className={esActivo('/dashboard')}>

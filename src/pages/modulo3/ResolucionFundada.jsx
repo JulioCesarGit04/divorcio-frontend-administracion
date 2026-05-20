@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/modulo3/Sidebar'
 import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
+import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { 
     getExpedienteById, 
     getDocumentosInternos, 
-    subirDocumentoInterno,
+    subirDocumentoInterno
 } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/resolucion-fundada.css'
 
@@ -18,15 +19,10 @@ export default function ResolucionFundada() {
     const [error, setError] = useState(null)
     const [enviando, setEnviando] = useState(false)
     const [mensaje, setMensaje] = useState(null)
-    
-    // Estado para la resolución fundada
     const [resolucionFundada, setResolucionFundada] = useState(null)
     const [archivo, setArchivo] = useState(null)
     const [numeroDocumento, setNumeroDocumento] = useState('')
     const [fechaElaboracion, setFechaElaboracion] = useState(new Date().toISOString().split('T')[0])
-    
-    // Estado para plazos
-    const [plazos, setPlazos] = useState(null)
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [puedeAvanzar, setPuedeAvanzar] = useState(false)
 
@@ -43,15 +39,12 @@ export default function ResolucionFundada() {
         }
     }
 
-    // Obtener usuario logueado
-    const getUsuarioLogueado = () => {
-        return localStorage.getItem('usuario_nombre') || 
-               localStorage.getItem('email') || 
-               localStorage.getItem('usuario') || 
-               'sistema'
-    }
+    const getUsuarioLogueado = () =>
+        localStorage.getItem('usuario_nombre') ||
+        localStorage.getItem('email') ||
+        localStorage.getItem('usuario') ||
+        'sistema'
 
-    // Función para obtener URL del PDF
     const getPdfUrl = (ruta) => {
         if (!ruta) return '#'
         if (ruta.startsWith('http')) return ruta
@@ -59,27 +52,23 @@ export default function ResolucionFundada() {
         return `http://localhost:3000/uploads/${ruta}`
     }
 
-    // Cargar datos
+    const formatFecha = (fechaStr) => {
+        if (!fechaStr) return '—'
+        return fechaStr.split('T')[0].split('-').reverse().join('/')
+    }
+
     useEffect(() => {
         const cargar = async () => {
             if (!id) return
             setCargando(true)
-            
             try {
-                // 1. Cargar expediente
                 const resExp = await getExpedienteById(id)
                 const data = resExp?.data || resExp
                 const expedienteData = data?.expediente || data
                 setExpediente(expedienteData)
 
-                // 2. Cargar plazos
-                const resPlazos = await getPlazos(id)
-                const plazosData = resPlazos?.data || resPlazos
-                setPlazos(plazosData)
-
-                // Calcular días restantes para disolución
-                if (plazosData?.fecha_fin_espera) {
-                    const fechaFin = new Date(plazosData.fecha_fin_espera)
+                if (expedienteData?.fecha_fin_espera) {
+                    const fechaFin = new Date(expedienteData.fecha_fin_espera)
                     const hoy = new Date()
                     hoy.setHours(0, 0, 0, 0)
                     const diffDays = Math.ceil((fechaFin - hoy) / (1000 * 60 * 60 * 24))
@@ -87,24 +76,20 @@ export default function ResolucionFundada() {
                     setPuedeAvanzar(diffDays <= 0)
                 }
 
-                // 3. Cargar documentos internos
                 const resDocs = await getDocumentosInternos(id)
                 const docsData = resDocs?.data || resDocs || []
-
-                // Buscar resolución fundada (última versión)
                 const resoluciones = docsData
                     .filter(d => d.tipo_documento === 'RESOLUCION_FUNDADA')
                     .sort((a, b) => new Date(b.subido_en) - new Date(a.subido_en))
-                
+
                 setResolucionFundada(resoluciones[0] || null)
-                
                 if (resoluciones[0]) {
                     setNumeroDocumento(resoluciones[0].numero_documento || '')
-                    setFechaElaboracion(resoluciones[0].fecha_elaboracion?.split('T')[0] || new Date().toISOString().split('T')[0])
+                    if (resoluciones[0].fecha_elaboracion) {
+                        setFechaElaboracion(resoluciones[0].fecha_elaboracion.split('T')[0])
+                    }
                 }
-
             } catch (err) {
-                console.error('Error:', err)
                 setError(err.message)
             } finally {
                 setCargando(false)
@@ -127,35 +112,20 @@ export default function ResolucionFundada() {
             setMensaje({ tipo: 'error', texto: 'Debe seleccionar un archivo PDF' })
             return
         }
-
         if (!numeroDocumento) {
             setMensaje({ tipo: 'error', texto: 'Debe ingresar el número de resolución' })
             return
         }
-
+        if (!archivo) {
+            setMensaje({ tipo: 'info', texto: 'No hay cambios para guardar' })
+            return
+        }
         setEnviando(true)
         setMensaje(null)
-
         try {
-            const usuario = getUsuarioLogueado()
-
-            // Si hay archivo nuevo, subirlo
-            if (archivo) {
-                await subirDocumentoInterno(
-                    id, 
-                    'RESOLUCION_FUNDADA', 
-                    numeroDocumento, 
-                    fechaElaboracion, 
-                    archivo, 
-                    usuario
-                )
-                setMensaje({ tipo: 'success', texto: '✅ Resolución Fundada subida correctamente' })
-                
-                // Recargar para mostrar el nuevo documento
-                setTimeout(() => window.location.reload(), 1500)
-            } else {
-                setMensaje({ tipo: 'info', texto: 'No hay cambios para guardar' })
-            }
+            await subirDocumentoInterno(id, 'RESOLUCION_FUNDADA', numeroDocumento, fechaElaboracion, archivo, getUsuarioLogueado())
+            setMensaje({ tipo: 'success', texto: 'Resolución Fundada subida correctamente' })
+            setTimeout(() => window.location.reload(), 1500)
         } catch (err) {
             setMensaje({ tipo: 'error', texto: err.message || 'Error al subir la resolución' })
         } finally {
@@ -168,40 +138,33 @@ export default function ResolucionFundada() {
             setMensaje({ tipo: 'error', texto: `Debe esperar ${diasRestantes} días para avanzar a disolución` })
             return
         }
-
         if (!resolucionFundada && !archivo) {
             setMensaje({ tipo: 'error', texto: 'Debe subir la Resolución Fundada antes de avanzar' })
             return
         }
-
         const confirmar = window.confirm(
-            '✅ CONFIRMAR AVANCE A DISOLUCIÓN\n\n' +
-            'Esta acción:\n' +
+            'CONFIRMAR AVANCE A DISOLUCIÓN\n\n' +
             '• Cambiará el expediente a etapa DISOLUCION\n' +
-            '• El proceso estará completado\n' +
-            '• El ciudadano podrá ver el resultado\n\n' +
+            '• El proceso estará completado\n\n' +
             '¿Está seguro?'
         )
-
         if (!confirmar) return
-
         setEnviando(true)
         setMensaje(null)
-
         try {
-            const usuario = getUsuarioLogueado()
-            
-            await cambiarEstadoExpediente(
-                id,
-                null,  // no cambiar estado
-                'DISOLUCION',  // cambiar etapa
-                'Resolución Fundada emitida - Expediente completado',
-                usuario
-            )
-
-            setMensaje({ tipo: 'success', texto: '✅ Expediente avanzado a DISOLUCION' })
-            
-            setTimeout(() => navigate(`/modulo3/detalle/${id}`), 2000)
+            const response = await fetch(`http://localhost:3000/api/procedimiento/expedientes/${id}/estado`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ nueva_etapa: 'DISOLUCION', motivo: 'Resolución Fundada emitida - Expediente completado' })
+            })
+            const data = await response.json()
+            if (data.ok) {
+                setMensaje({ tipo: 'success', texto: 'Expediente avanzado a DISOLUCION' })
+                setTimeout(() => navigate(`/modulo3/detalle/${id}`), 2000)
+            } else {
+                setMensaje({ tipo: 'error', texto: data.mensaje || 'Error al avanzar' })
+            }
         } catch (err) {
             setMensaje({ tipo: 'error', texto: err.message || 'Error al avanzar' })
         } finally {
@@ -209,198 +172,309 @@ export default function ResolucionFundada() {
         }
     }
 
-    if (cargando) {
+    // ── Estados de carga / error / cancelado ──────────────────────────────
+    if (expediente?.estado === 'CANCELADO' || expediente?.estado === 'ARCHIVADO') {
         return (
             <>
                 <Sidebar />
                 <main className="contenido-modulo3">
-                    <div className="pagina-header">
+                    <div className="rf-header">
                         <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                         <h1>Resolución Fundada</h1>
                     </div>
-                    <p>Cargando...</p>
+                    <div className="seccion estado-container">
+                        <div className="estado-icono">{expediente?.estado === 'CANCELADO' ? '❌' : '✅'}</div>
+                        <h2>{expediente?.estado === 'CANCELADO' ? 'Expediente Cancelado' : 'Expediente Archivado'}</h2>
+                        <p>{expediente?.estado === 'CANCELADO' ? 'Este expediente ha sido cancelado.' : 'Este expediente ha sido completado y archivado.'}</p>
+                        <p>No es posible emitir resolución fundada.</p>
+                        <button className="btn-continuar" style={{ marginTop: 20, width: 'auto', padding: '10px 28px' }} onClick={() => navigate(`/modulo3/detalle/${id}`)}>
+                            Volver al detalle
+                        </button>
+                    </div>
                 </main>
             </>
         )
     }
 
-    const yaTieneResolucion = resolucionFundada !== null
-    const etapaCorrecta = etapaActual === 'ESPERA_LEGAL' || etapaActual === 'DISOLUCION'
+    if (cargando) return (
+        <>
+            <Sidebar />
+            <main className="contenido-modulo3">
+                <div className="rf-header">
+                    <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
+                    <h1>Resolución Fundada</h1>
+                </div>
+                <p style={{ color: '#64748b', padding: '40px 0', textAlign: 'center' }}>Cargando...</p>
+            </main>
+        </>
+    )
 
-    const numeroMesaPartes = expediente?.numero_mesa_partes
+    if (error) return (
+        <>
+            <Sidebar />
+            <main className="contenido-modulo3">
+                <div className="rf-header">
+                    <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
+                    <h1>Resolución Fundada</h1>
+                </div>
+                <p style={{ color: '#dc2626' }}>Error: {error}</p>
+            </main>
+        </>
+    )
+
+    const yaTieneResolucion = resolucionFundada !== null
+    const bloqueado = etapaActual === 'DISOLUCION'
 
     return (
         <>
             <Sidebar />
             <main className="contenido-modulo3">
-                <div className="detalle-header">
+
+                {/* Header */}
+                <div className="rf-header">
                     <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                     <h1>Resolución Fundada</h1>
-                    <span className="estado-badge">Expediente {numeroMesaPartes || '—'}</span>
+                    <span className="estado-badge-rf">{expediente?.numero_mesa_partes || '—'}</span>
                 </div>
 
-                {etapaActual === 'DISOLUCION' && (
-                    <div className="alerta-exito" style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
+                <PlazoAlerta expediente={expediente} audienciaActual={null} />
+
+                {bloqueado && (
+                    <div className="mensaje success" style={{ textAlign: 'center', marginBottom: 24 }}>
                         ✅ Este expediente ya está en DISOLUCIÓN. El proceso ha sido completado.
                     </div>
                 )}
 
-                {!etapaCorrecta && (
-                    <div className="alerta-error" style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
-                        ⚠️ El expediente debe estar en etapa ESPERA_LEGAL para emitir la Resolución Fundada.
-                        <br />Etapa actual: <strong>{etapaActual || '—'}</strong>
-                    </div>
-                )}
+                <div className="rf-layout">
+                    {/* ── COLUMNA IZQUIERDA ── */}
+                    <div className="rf-main">
 
-                <div style={{ display: 'flex', gap: '30px' }}>
-                    {/* COLUMNA IZQUIERDA */}
-                    <div style={{ flex: 2 }}>
-                        {/* Información de plazos */}
+                        {/* Plazo Legal */}
                         <div className="seccion">
-                            <h2>⏰ PLAZO LEGAL</h2>
-                            <div className="plazos-info">
-                                <div className="plazo-card">
-                                    <label>Fecha de inicio de espera</label>
-                                    <span>{plazos?.fecha_inicio_espera ? new Date(plazos.fecha_inicio_espera).toLocaleDateString('es-PE') : '—'}</span>
+                            <h2>Plazo legal</h2>
+                            <div className="datos-grid">
+                                <div>
+                                    <label>Inicio de espera</label>
+                                    <p>{formatFecha(expediente?.fecha_inicio_espera)}</p>
                                 </div>
-                                <div className="plazo-card">
-                                    <label>Fecha de fin de espera</label>
-                                    <span>{plazos?.fecha_fin_espera ? new Date(plazos.fecha_fin_espera).toLocaleDateString('es-PE') : '—'}</span>
+                                <div>
+                                    <label>Fin de espera</label>
+                                    <p>{formatFecha(expediente?.fecha_fin_espera)}</p>
                                 </div>
-                                <div className="plazo-card">
+                                <div>
                                     <label>Días restantes</label>
-                                    <span style={{ color: diasRestantes > 0 ? '#eab308' : '#22c55e', fontWeight: 'bold' }}>
-                                        {diasRestantes !== null ? (diasRestantes > 0 ? `${diasRestantes} días` : 'Plazo cumplido') : '—'}
-                                    </span>
+                                    <p className={diasRestantes > 0 ? 'dias-pendiente' : 'dias-cumplido'}>
+                                        {diasRestantes !== null
+                                            ? (diasRestantes > 0 ? `${diasRestantes} días` : '✓ Cumplido')
+                                            : '—'}
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Datos del expediente */}
                         <div className="seccion">
-                            <h2> DATOS DEL EXPEDIENTE</h2>
-                            <div className="expediente-grid">
-                                <div><label>N° Expediente:</label><span>{expediente?.numero_expediente || '—'}</span></div>
-                                <div><label>N° Mesa de Partes:</label><span>{expediente?.numero_mesa_partes || '—'}</span></div>
-                                <div><label>Solicitante:</label><span>{expediente?.Solicitante_Nombres || '—'} {expediente?.Solicitante_Apellidos || ''}</span></div>
-                                <div><label>Demandado:</label><span>{expediente?.Demandado_Nombres || '—'} {expediente?.Demandado_Apellidos || ''}</span></div>
-                                <div><label>Etapa actual:</label><span className="etapa-badge">{expediente?.etapa || '—'}</span></div>
+                            <h2>Datos del expediente</h2>
+                            <div className="datos-grid">
+                                <div>
+                                    <label>N° Expediente</label>
+                                    <p>{expediente?.numero_expediente || '—'}</p>
+                                </div>
+                                <div>
+                                    <label>N° Mesa de Partes</label>
+                                    <p>{expediente?.numero_mesa_partes || '—'}</p>
+                                </div>
+                                <div>
+                                    <label>Etapa actual</label>
+                                    <p>{expediente?.etapa || '—'}</p>
+                                </div>
+                                <div>
+                                    <label>Fecha de pago</label>
+                                    <p>{formatFecha(expediente?.fecha_pago)}</p>
+                                </div>
+                                <div>
+                                    <label>Fecha de recepción</label>
+                                    <p>{formatFecha(expediente?.fecha_recepcion)}</p>
+                                </div>
+                                <div>
+                                    <label>Registrado por</label>
+                                    <p>{expediente?.registrado_por || '—'}</p>
+                                </div>
+                            </div>
+
+                            {/* Cónyuges */}
+                            <div className="conyuges-rf">
+                                <div className="conyuge-rf">
+                                    <div className="conyuge-rf-titulo">Solicitante</div>
+                                    <div className="datos-grid" style={{ marginTop: 12 }}>
+                                        <div>
+                                            <label>Nombre completo</label>
+                                            <p>{expediente?.Solicitante_Nombres || '—'} {expediente?.Solicitante_Apellidos || ''}</p>
+                                        </div>
+                                        <div>
+                                            <label>DNI</label>
+                                            <p>{expediente?.Solicitante_Dni || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <label>Teléfono</label>
+                                            <p>{expediente?.Solicitante_Telefono || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <label>Correo electrónico</label>
+                                            <p>{expediente?.Solicitante_Correo || '—'}</p>
+                                        </div>
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                            <label>Dirección</label>
+                                            <p>{expediente?.Solicitante_Direccion || '—'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="conyuge-rf">
+                                    <div className="conyuge-rf-titulo">Demandado</div>
+                                    <div className="datos-grid" style={{ marginTop: 12 }}>
+                                        <div>
+                                            <label>Nombre completo</label>
+                                            <p>{expediente?.Demandado_Nombres || '—'} {expediente?.Demandado_Apellidos || ''}</p>
+                                        </div>
+                                        <div>
+                                            <label>DNI</label>
+                                            <p>{expediente?.Demandado_Dni || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <label>Teléfono</label>
+                                            <p>{expediente?.Demandado_Telefono || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <label>Correo electrónico</label>
+                                            <p>{expediente?.Demandado_Correo || '—'}</p>
+                                        </div>
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                            <label>Dirección</label>
+                                            <p>{expediente?.Demandado_Direccion || '—'}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* Resolución Fundada */}
                         <div className="seccion">
-                            <h2> RESOLUCIÓN FUNDADA</h2>
-                            
+                            <h2>Resolución Fundada</h2>
+
+                            {/* Documento actual si existe */}
                             {yaTieneResolucion && (
-                                <div className="resolucion-existente" style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#e0f2fe', borderRadius: '8px' }}>
-                                    <div className="archivo-info">
-                                        <span> Documento actual: <strong>{resolucionFundada.nombre_archivo}</strong></span>
-                                        <button 
-                                            className="btn-ver-pdf"
-                                            onClick={() => window.open(getPdfUrl(resolucionFundada.ruta_archivo), '_blank')}
-                                        >
-                                             Ver PDF
+                                <div className="documento-item" style={{ marginBottom: 20 }}>
+                                    <div className="documento-info">
+                                        <div className="documento-icono"></div>
+                                        <div>
+                                            <div className="documento-nombre">
+                                                {resolucionFundada.numero_documento
+                                                    ? `Res. ${resolucionFundada.numero_documento}`
+                                                    : resolucionFundada.nombre_archivo}
+                                            </div>
+                                            <div className="documento-descripcion">
+                                                Fecha de elaboración: {formatFecha(resolucionFundada.fecha_elaboracion)}
+                                            </div>
+                                            <div className="documento-descripcion">
+                                                Subido: {formatFecha(resolucionFundada.subido_en)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="documento-acciones">
+                                        <span className="estado-subido">Subido</span>
+                                        <button className="btn-ver" onClick={() => window.open(getPdfUrl(resolucionFundada.ruta_archivo), '_blank')}>
+                                            Ver PDF
                                         </button>
                                     </div>
-                                    {resolucionFundada.numero_documento && (
-                                        <div>N° Resolución: <strong>{resolucionFundada.numero_documento}</strong></div>
-                                    )}
-                                    <div>Fecha de elaboración: <strong>{new Date(resolucionFundada.fecha_elaboracion).toLocaleDateString('es-PE')}</strong></div>
                                 </div>
                             )}
 
-                            <div className="formulario-resolucion">
-                                <div className="campo">
-                                    <label>N° de Resolución *</label>
-                                    <input
-                                        type="text"
-                                        value={numeroDocumento}
-                                        onChange={(e) => setNumeroDocumento(e.target.value)}
-                                        placeholder="Ej: RES-2026-001"
-                                        disabled={etapaActual === 'DISOLUCION'}
-                                    />
-                                </div>
-
-                                <div className="campo">
-                                    <label>Fecha de elaboración *</label>
-                                    <input
-                                        type="date"
-                                        value={fechaElaboracion}
-                                        onChange={(e) => setFechaElaboracion(e.target.value)}
-                                        disabled={etapaActual === 'DISOLUCION'}
-                                    />
-                                </div>
-
-                                <div className="campo">
-                                    <label>Archivo PDF {!yaTieneResolucion && '*'}</label>
-                                    {yaTieneResolucion ? (
-                                        <div className="reemplazar-archivo">
-                                            <input 
-                                                type="file" 
-                                                accept=".pdf" 
-                                                onChange={(e) => handleArchivoChange(e.target.files[0])}
-                                                disabled={etapaActual === 'DISOLUCION'}
+                            {/* Formulario subida */}
+                            {!bloqueado && (
+                                <div className="rf-form">
+                                    <div className="rf-campos-fila">
+                                        <div className="rf-campo">
+                                            <label>N° de Resolución <span className="required">*</span></label>
+                                            <input
+                                                type="text"
+                                                value={numeroDocumento}
+                                                onChange={(e) => setNumeroDocumento(e.target.value)}
+                                                placeholder="Ej: RES-2026-001"
                                             />
-                                            {archivo && <span className="archivo-nuevo"> Nuevo archivo: {archivo.name}</span>}
                                         </div>
-                                    ) : (
-                                        <input 
-                                            type="file" 
-                                            accept=".pdf" 
-                                            onChange={(e) => handleArchivoChange(e.target.files[0])}
-                                            disabled={etapaActual === 'DISOLUCION'}
-                                        />
-                                    )}
-                                </div>
+                                        <div className="rf-campo">
+                                            <label>Fecha de elaboración <span className="required">*</span></label>
+                                            <input
+                                                type="date"
+                                                value={fechaElaboracion}
+                                                onChange={(e) => setFechaElaboracion(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
 
-                                {etapaActual !== 'DISOLUCION' && (
-                                    <button
-                                        className="btn-subir"
-                                        onClick={handleSubirResolucion}
-                                        disabled={enviando}
-                                    >
-                                        {enviando ? 'Subiendo...' : (yaTieneResolucion ? ' Reemplazar Resolución' : ' Subir Resolución Fundada')}
+                                    <div className="rf-campo">
+                                        <label>Archivo PDF {!yaTieneResolucion && <span className="required">*</span>}</label>
+                                        <div className="rf-archivo">
+                                            <input
+                                                type="file"
+                                                accept=".pdf"
+                                                id="rf-file-input"
+                                                onChange={(e) => handleArchivoChange(e.target.files[0])}
+                                                style={{ display: 'none' }}
+                                            />
+                                            <label htmlFor="rf-file-input" className="btn-ver" style={{ cursor: 'pointer' }}>
+                                                Seleccionar archivo
+                                            </label>
+                                            {archivo
+                                                ? <span className="archivo-ok"> {archivo.name}</span>
+                                                : yaTieneResolucion
+                                                    ? <span className="archivo-actual"> {resolucionFundada.nombre_archivo} (actual)</span>
+                                                    : <span className="archivo-pendiente">Ningún archivo seleccionado</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    {mensaje && (
+                                        <div className={`mensaje ${mensaje.tipo}`}>{mensaje.texto}</div>
+                                    )}
+
+                                    <button className="btn-subir" onClick={handleSubirResolucion} disabled={enviando}>
+                                        {enviando ? 'Subiendo...' : (yaTieneResolucion ? 'Reemplazar Resolución' : 'Subir Resolución Fundada')}
                                     </button>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Botón para avanzar a DISOLUCION */}
+                        {/* Botón avanzar */}
                         {etapaActual === 'ESPERA_LEGAL' && (
-                            <div className="seccion">
-                                {mensaje && (
-                                    <div className={`mensaje ${mensaje.tipo}`} style={{ marginBottom: '16px', padding: '12px', borderRadius: '8px' }}>
-                                        {mensaje.texto}
-                                    </div>
+                            <div className="seccion acciones">
+                                {mensaje && !bloqueado && (
+                                    <div className={`mensaje ${mensaje.tipo}`} style={{ marginBottom: 16 }}>{mensaje.texto}</div>
                                 )}
-                                
                                 <button
-                                    className="btn-avanzar"
+                                    className="btn-continuar"
                                     onClick={handleAvanzarADisolucion}
                                     disabled={enviando || !puedeAvanzar}
-                                    style={{
-                                        backgroundColor: puedeAvanzar ? '#22c55e' : '#94a3b8',
-                                        width: '100%',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        border: 'none',
-                                        color: 'white',
-                                        cursor: puedeAvanzar ? 'pointer' : 'not-allowed'
-                                    }}
                                 >
-                                    {puedeAvanzar ? ' Avanzar a DISOLUCIÓN' : ` Esperar ${diasRestantes} días para avanzar`}
+                                    {puedeAvanzar
+                                        ? 'Avanzar a DISOLUCIÓN'
+                                        : `Esperar ${diasRestantes} días para avanzar`}
                                 </button>
+                                {!puedeAvanzar && (
+                                    <p className="texto-ayuda">El plazo de espera legal es de 2 meses desde la ratificación.</p>
+                                )}
                             </div>
                         )}
                     </div>
 
-                    {/* COLUMNA DERECHA */}
-                    <div style={{ flex: 1 }}>
+                    {/* ── COLUMNA DERECHA ── */}
+                    <div className="rf-sidebar">
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
                         <PipelineVisual etapaActual={getPipelineEtapa()} />
                     </div>
                 </div>
+
             </main>
         </>
     )
