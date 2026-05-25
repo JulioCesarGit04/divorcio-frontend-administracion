@@ -23,7 +23,7 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
     if (expediente?.estado === 'CANCELADO') {
         return (
             <div className="plazo-alerta" style={{ borderLeftColor: '#dc2626' }}>
-                <div className="plazo-alerta-icono">❌</div>
+                <div className="plazo-alerta-icono"></div>
                 <div className="plazo-alerta-contenido">
                     <div className="plazo-alerta-titulo">Expediente Cancelado</div>
                     <div className="plazo-alerta-dias" style={{ color: '#dc2626' }}>
@@ -269,9 +269,9 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
         if (info.titulo === 'Audiencia programada') return '';
         if (info.titulo === 'Audiencia realizada') return '';
         if (info.titulo === 'Proceso completado') return '';
-        if (estado === 'vencido') return '⚠️';
-        if (estado === 'urgente') return '🔴';
-        return '⏰';
+        if (estado === 'vencido') return '';
+        if (estado === 'urgente') return '';
+        return '';
     }
 
     if (!info.mostrar) return null;
@@ -288,7 +288,7 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
                     <div className="plazo-alerta-eventos">
                         <div className="evento-info">
                             <span className="evento-fecha"> {formatFecha(info.fechaEvento)}</span>
-                            {info.horaEvento && <span className="evento-hora">⏰ {info.horaEvento}</span>}
+                            {info.horaEvento && <span className="evento-hora"> {info.horaEvento}</span>}
                         </div>
                     </div>
                 )}

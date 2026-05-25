@@ -4,7 +4,8 @@ import Sidebar from '../../components/modulo3/Sidebar'
 import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
-import { getExpedienteById, getAudiencias, registrarResultadoAudiencia, subirDocumentoInterno, getDocumentosInternos } from '../../services/ProcedimientoService'
+import { getExpedienteById, getAudiencias, registrarResultadoAudiencia, subirDocumentoInterno, getDocumentosInternos, getPdfUrl } from '../../services/ProcedimientoService'
+
 import '../../styles/modulo3/registrar-audiencia.css'
 
 export default function RegistrarAudiencia() {
@@ -45,12 +46,6 @@ export default function RegistrarAudiencia() {
         }
     }
 
-    const getPdfUrl = (ruta) => {
-        if (!ruta) return '#'
-        if (ruta.startsWith('http')) return ruta
-        if (ruta.startsWith('/uploads')) return `http://localhost:3000${ruta}`
-        return `http://localhost:3000/uploads/${ruta}`
-    }
 
     const getUsuarioLogueado = () => {
         return localStorage.getItem('usuario_nombre') || 

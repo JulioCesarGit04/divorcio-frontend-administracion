@@ -5,8 +5,8 @@ import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import '../../styles/modulo3/detalle.css'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
-import { getExpedienteById, avanzarAAudiencia, getAudiencias } from '../../services/ProcedimientoService'
 
+import { getExpedienteById, avanzarAAudiencia, getAudiencias, cambiarEstadoExpediente, reemplazarDocumentoCiudadano, getPdfUrl } from '../../services/ProcedimientoService'
 export default function DetalleExpediente() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -17,7 +17,8 @@ export default function DetalleExpediente() {
     const [refresh, setRefresh] = useState(false)
     const [confirmado, setConfirmado] = useState(false)
     const [audienciaVigente, setAudienciaVigente] = useState(null)
-
+    const [mensajeGlobal, setMensajeGlobal] = useState(null)
+    const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false)
 
     const getPipelineEtapa = () => {
         switch(etapaActual) {
@@ -74,53 +75,33 @@ setAudienciaVigente(audienciaVigente)
         navigate('/modulo3/expedientes')
     }
 
-    const handleConfirmarRevision = async () => {
-        const confirmar = window.confirm(
-            'Atencion\n\n' +
-            'Una vez que confirme la revision documentaria:\n\n' +
-            'Los documentos del ciudadano quedaran BLOQUEADOS\n' +
-            'No podra reemplazar ningun documento despues\n\n' +
-            'Esta seguro de que todos los documentos estan correctos?'
+    const handleConfirmarRevision = () => {
+    setMostrarConfirmacion(true)
+}
+
+const handleConfirmarRevisionAceptar = async () => {
+    setMostrarConfirmacion(false)
+    try {
+        const data = await cambiarEstadoExpediente(
+            id,
+            'DOCUMENTOS_INTERNOS',
+            'Revision documentaria confirmada'
         )
-        
-        if (confirmar) {
-            try {
-                const response = await fetch(`http://localhost:3000/api/procedimiento/expedientes/${id}/estado`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ 
-                        nueva_etapa: 'DOCUMENTOS_INTERNOS',
-                        motivo: 'Revision documentaria confirmada'
-                    })
-                })
-
-                const data = await response.json()
-
-                if (data.ok) {
-                    setConfirmado(true)
-                    alert('Revision documentaria confirmada')
-                    window.location.reload()
-                } else {
-                    alert('Error: ' + data.mensaje)
-                }
-            } catch (error) {
-                console.error('Error:', error)
-                alert('Error al confirmar la revision')
-            }
+        if (data.ok) {
+            setConfirmado(true)
+            setMensajeGlobal({ tipo: 'success', texto: 'Revision documentaria confirmada' })
+            setTimeout(() => window.location.reload(), 1500)
+        } else {
+            setMensajeGlobal({ tipo: 'error', texto: data.mensaje || 'Error al confirmar' })
         }
+    } catch (error) {
+        console.error('Error:', error)
+        setMensajeGlobal({ tipo: 'error', texto: 'Error al confirmar la revision' })
     }
+}
 
-    const getPdfUrl = (ruta) => {
-        if (!ruta) return '#';
-        if (ruta.startsWith('http')) return ruta;
-        if (ruta.startsWith('/uploads')) return `http://localhost:3000${ruta}`;
-        if (ruta.includes(':\\') || ruta.includes(':/')) {
-            const fileName = ruta.split(/[\\/]/).pop();
-            return `http://localhost:3000/uploads/${fileName}`;
-        }
-        return `http://localhost:3000/uploads/${ruta}`;
-    };
+
+  
 
     const esDiaHabil = (fecha) => {
         const diaSemana = fecha.getDay();
@@ -144,6 +125,8 @@ setAudienciaVigente(audienciaVigente)
         }
         
         return contador;
+        {console.log('expediente:', expediente)}
+        {console.log('audienciaVigente:', audienciaVigente)}
     };
 
     const calcularDiasRestantes = () => {
@@ -191,17 +174,8 @@ setAudienciaVigente(audienciaVigente)
                 const formData = new FormData()
                 formData.append('documento', archivo)
 
-                const response = await fetch(`http://localhost:3000/api/procedimiento/documentos-ciudadano/${doc.id}/reemplazar`, {
-                    method: 'PUT',
-                    body: formData,
-                    credentials: 'include'
-                })
-                
-                const data = await response.json()
-                
-                if (!response.ok) {
-                    throw new Error(data.mensaje || 'Error al reemplazar')
-                }
+                const data = await reemplazarDocumentoCiudadano(doc.id, archivo)
+
                 
                 setExitoDoc('Documento reemplazado correctamente')
                 setTimeout(() => {
@@ -350,6 +324,11 @@ setAudienciaVigente(audienciaVigente)
             <Sidebar />
             <main className="contenido-modulo3">
                 <div className="detalle-header">
+                    {mensajeGlobal && (
+                        <div className={`mensaje ${mensajeGlobal.tipo}`} style={{ marginBottom: 16 }}>
+                            {mensajeGlobal.texto}
+                        </div>
+                    )}
                     <button className="btn-volver" onClick={handleVolver}>← Volver</button>
                     <h1>Expediente {numeroMesaPartes || '—'}</h1>
                     <span className={`estado-badge estado-${(estadoActual || 'ACTIVO').toLowerCase()}`}>
@@ -500,6 +479,34 @@ setAudienciaVigente(audienciaVigente)
                         <PipelineVisual etapaActual={getPipelineEtapa()} />
                     </div>
                 </div>
+
+
+                {mostrarConfirmacion && (
+                <div className="modal-overlay" onClick={() => setMostrarConfirmacion(false)}>
+                    <div className="modal-contenido" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Confirmar revisión documentaria</h3>
+                            <button className="modal-cerrar" onClick={() => setMostrarConfirmacion(false)}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <p>Una vez que confirme la revisión documentaria:</p>
+                            <ul style={{ margin: '12px 0', paddingLeft: 20 }}>
+                                <li>Los documentos del ciudadano quedarán <strong>BLOQUEADOS</strong></li>
+                                <li>No podrá reemplazar ningún documento después</li>
+                            </ul>
+                            <p>¿Está seguro de que todos los documentos están correctos?</p>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)}>
+                                Cancelar
+                            </button>
+                            <button className="btn-confirmar" onClick={handleConfirmarRevisionAceptar}>
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             </main>
         </>
     )

@@ -62,7 +62,7 @@ export default function PipelineVisual({ etapaActual }) {
             {/* Header con icono */}
             <div className="pipeline-header">
                 <div className="pipeline-header-titulo">
-                    <span className="pipeline-icono-header">📌</span>
+                    <span className="pipeline-icono-header"></span>
                     <h3>Proceso del Expediente</h3>
                 </div>
                 <div className="pipeline-progreso-info">
