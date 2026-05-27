@@ -44,7 +44,7 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
             <div className="modal-desvincular">
                 {/* Header con icono de advertencia */}
                 <div className="modal-header-desvincular">
-                    <div className="header-icono">⚠️</div>
+                    <div className="header-icono"></div>
                     <div className="header-texto">
                         <h2>Desvincular expediente</h2>
                         <p>Esta acción no se puede deshacer</p>
@@ -55,21 +55,21 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
                 <div className="modal-body-desvincular">
                     {/* Alerta de advertencia */}
                     <div className="alerta-desvincular">
-                        <div className="alerta-icono">🔴</div>
+                        <div className="alerta-icono"></div>
                         <div className="alerta-contenido">
                             <div className="alerta-titulo">¡Atención! Esta acción es irreversible</div>
                             <div className="alerta-descripcion">
                                 Se eliminará permanentemente el expediente <strong>{expedienteNro}</strong> y toda su información asociada:
                             </div>
                             <ul className="alerta-lista">
-                                <li>📋 Datos del expediente</li>
-                                <li>📊 Etapas y progreso</li>
-                                <li>📜 Resoluciones generadas</li>
-                                <li>📎 Documentos adjuntos</li>
-                                <li>⏱️ Contadores de plazo</li>
+                                <li> Datos del expediente</li>
+                                <li> Etapas y progreso</li>
+                                <li> Resoluciones generadas</li>
+                                <li> Documentos adjuntos</li>
+                                <li> Contadores de plazo</li>
                             </ul>
                             <div className="alerta-nota">
-                                💡 El pre-expediente volverá a estar disponible para vincular nuevamente con un número correcto.
+                                 El pre-expediente volverá a estar disponible para vincular nuevamente con un número correcto.
                             </div>
                         </div>
                     </div>
@@ -86,13 +86,13 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
                             onChange={e => setMotivo(e.target.value)}
                         />
                         <div className="campo-ayuda">
-                            📝 Este motivo quedará registrado en el historial del sistema para auditoría.
+                             Este motivo quedará registrado en el historial del sistema para auditoría.
                         </div>
                     </div>
 
                     {/* Sugerencias rápidas */}
                     <div className="sugerencias">
-                        <label>⚡ Sugerencias rápidas:</label>
+                        <label> Sugerencias rápidas:</label>
                         <div className="sugerencias-botones">
                             {sugerencias.map((sug, idx) => (
                                 <button
@@ -109,7 +109,7 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
 
                     {error && (
                         <div className="modal-error-desvincular">
-                            <span>❌</span> {error}
+                            <span></span> {error}
                         </div>
                     )}
                 </div>
@@ -125,7 +125,7 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
                             </>
                         ) : (
                             <>
-                                ⚠️ Confirmar desvinculación
+                                 Confirmar desvinculación
                             </>
                         )}
                     </button>

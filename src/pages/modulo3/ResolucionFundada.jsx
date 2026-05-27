@@ -7,7 +7,9 @@ import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { 
     getExpedienteById, 
     getDocumentosInternos, 
-    subirDocumentoInterno
+    subirDocumentoInterno,
+    getPdfUrl,
+    cambiarEstadoExpediente
 } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/resolucion-fundada.css'
 
@@ -44,13 +46,6 @@ export default function ResolucionFundada() {
         localStorage.getItem('email') ||
         localStorage.getItem('usuario') ||
         'sistema'
-
-    const getPdfUrl = (ruta) => {
-        if (!ruta) return '#'
-        if (ruta.startsWith('http')) return ruta
-        if (ruta.startsWith('/uploads')) return `http://localhost:3000${ruta}`
-        return `http://localhost:3000/uploads/${ruta}`
-    }
 
     const formatFecha = (fechaStr) => {
         if (!fechaStr) return '—'
@@ -152,13 +147,7 @@ export default function ResolucionFundada() {
         setEnviando(true)
         setMensaje(null)
         try {
-            const response = await fetch(`http://localhost:3000/api/procedimiento/expedientes/${id}/estado`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ nueva_etapa: 'DISOLUCION', motivo: 'Resolución Fundada emitida - Expediente completado' })
-            })
-            const data = await response.json()
+            const data = await cambiarEstadoExpediente(id, 'DISOLUCION', 'Resolución Fundada emitida - Expediente completado')
             if (data.ok) {
                 setMensaje({ tipo: 'success', texto: 'Expediente avanzado a DISOLUCION' })
                 setTimeout(() => navigate(`/modulo3/detalle/${id}`), 2000)
@@ -241,7 +230,7 @@ export default function ResolucionFundada() {
 
                 {bloqueado && (
                     <div className="mensaje success" style={{ textAlign: 'center', marginBottom: 24 }}>
-                        ✅ Este expediente ya está en DISOLUCIÓN. El proceso ha sido completado.
+                         Este expediente ya está en DISOLUCIÓN. El proceso ha sido completado.
                     </div>
                 )}
 

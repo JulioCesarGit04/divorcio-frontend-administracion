@@ -4,9 +4,7 @@ import Sidebar from '../../components/modulo3/Sidebar'
 import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
-import { getExpedienteById, getDocumentosInternos, subirDocumentoInterno, getAudiencias } from '../../services/ProcedimientoService'
-import '../../styles/modulo3/documentos-internos.css'
-
+import { getExpedienteById, getDocumentosInternos, subirDocumentoInterno, getAudiencias, getPdfUrl, cambiarEstadoExpediente } from '../../services/ProcedimientoService'
 export default function DocumentosInternos() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -17,7 +15,8 @@ export default function DocumentosInternos() {
     const [error, setError] = useState(null)
     const [subiendo, setSubiendo] = useState(false)
     const [mensaje, setMensaje] = useState(null)
-
+    const [mensajeGlobal, setMensajeGlobal] = useState(null)
+    const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false)
     const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
 
     // Estados para los modales de subida
@@ -100,23 +99,7 @@ setAudienciaVigente(audienciaVigente)
         setMensaje(null)
 
         try {
-            const formData = new FormData()
-            formData.append('tipo_documento', tipoDocumento)
-            formData.append('numero_documento', numeroDocumento || '')
-            formData.append('fecha_elaboracion', fechaElaboracion)
-            formData.append('archivo', archivo)
-
-            const response = await fetch(`http://localhost:3000/api/procedimiento/expedientes/${id}/documentos`, {
-                method: 'POST',
-                body: formData,
-                credentials: 'include'
-            })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.mensaje || 'Error al subir documento')
-            }
+            await subirDocumentoInterno(id, tipoDocumento, numeroDocumento || '', fechaElaboracion, archivo)
 
             setMensaje({ tipo: 'success', texto: 'Documento subido correctamente' })
             setTimeout(() => {
@@ -154,55 +137,36 @@ setAudienciaVigente(audienciaVigente)
     }
 
     const verPdf = (ruta) => {
-        let url = ruta
-        if (url.startsWith('/uploads')) {
-            url = `http://localhost:3000${url}`
-        }
-        window.open(url, '_blank')
-    }
+    window.open(getPdfUrl(ruta), '_blank')
+}
 
     const handleVolver = () => {
         navigate(`/modulo3/detalle/${id}`)
     }
 
-    const handleContinuar = async () => {
-        if (informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido') {
-            alert('Debe subir ambos documentos antes de continuar')
-            return
-        }
-
-        const confirmar = window.confirm(
-            'ATENCION\n\n' +
-            'Una vez que confirme, el expediente pasara a la etapa de AUDIENCIA.\n\n' +
-            'Esta seguro de que ambos documentos estan correctamente subidos?'
-        )
-
-        if (!confirmar) return
-
-        try {
-            const response = await fetch(`http://localhost:3000/api/procedimiento/expedientes/${id}/estado`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ 
-                    nueva_etapa: 'AUDIENCIA',
-                    motivo: 'Documentos internos completados'
-                })
-            })
-
-            const data = await response.json()
-
-            if (data.ok) {
-                alert('Etapa cambiada a AUDIENCIA')
-                window.location.reload()
-            } else {
-                alert('Error: ' + data.mensaje)
-            }
-        } catch (error) {
-            console.error('Error:', error)
-            alert('Error al avanzar la etapa')
-        }
+    const handleContinuar = () => {
+    if (informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido') {
+        setMensajeGlobal({ tipo: 'error', texto: 'Debe subir ambos documentos antes de continuar' })
+        return
     }
+    setMostrarConfirmacion(true)
+}
+
+const handleContinuarAceptar = async () => {
+    setMostrarConfirmacion(false)
+    try {
+        const data = await cambiarEstadoExpediente(id, 'AUDIENCIA', 'Documentos internos completados')
+        if (data.ok) {
+            setMensajeGlobal({ tipo: 'success', texto: 'Etapa cambiada a AUDIENCIA' })
+            setTimeout(() => window.location.reload(), 1500)
+        } else {
+            setMensajeGlobal({ tipo: 'error', texto: data.mensaje || 'Error al avanzar' })
+        }
+    } catch (error) {
+        console.error('Error:', error)
+        setMensajeGlobal({ tipo: 'error', texto: 'Error al avanzar la etapa' })
+    }
+}
 
     if (cargando) {
         return (
@@ -249,7 +213,11 @@ setAudienciaVigente(audienciaVigente)
                     <h1>Documentos Internos</h1>
                 </div>
 
-                
+                {mensajeGlobal && (
+                    <div className={`mensaje ${mensajeGlobal.tipo}`} style={{ marginBottom: 16 }}>
+                        {mensajeGlobal.texto}
+                    </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '24px' }}>
                     {/* COLUMNA IZQUIERDA - Contenido principal */}
@@ -302,7 +270,7 @@ setAudienciaVigente(audienciaVigente)
                             <div className="documentos-lista">
                                 <div className="documento-item">
                                     <div className="documento-info">
-                                        <div className="documento-icono">📄</div>
+                                        <div className="documento-icono"></div>
                                         <div>
                                             <div className="documento-nombre">INFORME LEGAL</div>
                                             <div className="documento-descripcion">Documento que sustenta la admision del expediente</div>
@@ -436,6 +404,30 @@ setAudienciaVigente(audienciaVigente)
                         </div>
                     </div>
                 )}
+
+                {mostrarConfirmacion && (
+                    <div className="modal-overlay" onClick={() => setMostrarConfirmacion(false)}>
+                        <div className="modal-contenido" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Confirmar avance a Audiencia</h3>
+                                <button className="modal-cerrar" onClick={() => setMostrarConfirmacion(false)}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <p>Una vez que confirme, el expediente pasará a la etapa de <strong>AUDIENCIA</strong>.</p>
+                                <p style={{ marginTop: 12 }}>¿Está seguro de que ambos documentos están correctamente subidos?</p>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)}>
+                                    Cancelar
+                                </button>
+                                <button className="btn-confirmar" onClick={handleContinuarAceptar}>
+                                    Confirmar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </main>
         </>
     )

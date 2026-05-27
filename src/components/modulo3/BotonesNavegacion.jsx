@@ -14,25 +14,25 @@ export default function BotonesNavegacion({ expedienteId, etapaActual, documento
     const botones = [
         { 
             id: 'revision', 
-            label: 'Revisión Documentaria',  // Eliminado el emoji 📋
+            label: 'Revisión Documentaria',
             ruta: `/modulo3/detalle/${expedienteId}`,
             etapaMinimaIndex: 0  // EVALUACION
         },
         { 
             id: 'documentos', 
-            label: 'Documentos Internos',  // Eliminado el emoji 📄
+            label: 'Documentos Internos',
             ruta: `/modulo3/expediente/${expedienteId}/documentos-internos`,
             etapaMinimaIndex: 1  // DOCUMENTOS_INTERNOS
         },
         { 
             id: 'audiencia', 
-            label: 'Programar Audiencia',  // Eliminado el emoji 🗓️
+            label: 'Programar Audiencia', 
             ruta: `/modulo3/expediente/${expedienteId}/programar-audiencia`,
             etapaMinimaIndex: 2  // AUDIENCIA
         },
         { 
             id: 'resolucion', 
-            label: 'Resolución Fundada',  // Eliminado el emoji 📑
+            label: 'Resolución Fundada',
             ruta: `/modulo3/expediente/${expedienteId}/resolucion-fundada`,
             etapaMinimaIndex: 3  // ESPERA_LEGAL
         }
@@ -51,7 +51,7 @@ export default function BotonesNavegacion({ expedienteId, etapaActual, documento
         return etapaActualIndex >= btn.etapaMinimaIndex
     }
 
-    // Tooltips para botones deshabilitados (sin emojis)
+    // Tooltips para botones deshabilitados
     const getButtonTooltip = (btn) => {
         if (isButtonEnabled(btn)) return ''
         
@@ -72,7 +72,7 @@ export default function BotonesNavegacion({ expedienteId, etapaActual, documento
 
     return (
         <div className="seccion acciones-seccion">
-            <h2>Acciones</h2>  {/* Eliminado el emoji ⚡ */}
+            <h2>Acciones</h2>
             <div className="botones-acciones">
                 {botones.map((btn) => {
                     const enabled = isButtonEnabled(btn)

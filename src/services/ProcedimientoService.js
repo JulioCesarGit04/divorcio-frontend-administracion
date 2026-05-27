@@ -1,5 +1,6 @@
 const API_URL = 'http://localhost:3000/api/procedimiento';
 const AUTH_URL = 'http://localhost:3000/api/auth';
+const UPLOADS_URL = 'http://localhost:3000';
 
 // ====================================================================
 // TIMEOUTS por tipo de operación
@@ -132,6 +133,52 @@ export const logout = async () => {
     }
 };
 
+
+
+export const getPdfUrl = (ruta) => {
+    if (!ruta) return '#'
+    if (ruta.startsWith('http')) return ruta
+    if (ruta.startsWith('/uploads')) return `${UPLOADS_URL}${ruta}`
+    if (ruta.includes(':\\') || ruta.includes(':/')) {
+        const fileName = ruta.split(/[\\/]/).pop()
+        return `${UPLOADS_URL}/uploads/${fileName}`
+    }
+    return `${UPLOADS_URL}/uploads/${ruta}`
+}
+
+
+export const cambiarEstadoExpediente = async (id, nueva_etapa, motivo = '') => {
+    const response = await fetchWithRetry(
+        `${API_URL}/expedientes/${id}/estado`,
+        {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nueva_etapa, motivo })
+        },
+        3,
+        TIMEOUTS.MUTATION
+    );
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data.mensaje || 'Error al cambiar estado del expediente');
+    return data;
+};
+
+export const reemplazarDocumentoCiudadano = async (doc_id, archivo) => {
+    const formData = new FormData()
+    formData.append('documento', archivo)
+    const response = await fetchWithRetry(
+        `${API_URL}/documentos-ciudadano/${doc_id}/reemplazar`,
+        {
+            method: 'PUT',
+            body: formData
+        },
+        3,
+        TIMEOUTS.UPLOAD
+    )
+    const data = await safeJson(response)
+    if (!response.ok) throw new Error(data.mensaje || 'Error al reemplazar documento')
+    return data
+}
 export const getSesion = async () => {
     try {
         const response = await fetchWithRetry(
