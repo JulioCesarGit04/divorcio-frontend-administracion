@@ -103,16 +103,12 @@ export default function ResolucionFundada() {
     }
 
     const handleSubirResolucion = async () => {
-        if (!archivo && !resolucionFundada) {
+        if (!archivo) {
             setMensaje({ tipo: 'error', texto: 'Debe seleccionar un archivo PDF' })
             return
         }
         if (!numeroDocumento) {
             setMensaje({ tipo: 'error', texto: 'Debe ingresar el número de resolución' })
-            return
-        }
-        if (!archivo) {
-            setMensaje({ tipo: 'info', texto: 'No hay cambios para guardar' })
             return
         }
         setEnviando(true)
@@ -133,7 +129,7 @@ export default function ResolucionFundada() {
             setMensaje({ tipo: 'error', texto: `Debe esperar ${diasRestantes} días para avanzar a disolución` })
             return
         }
-        if (!resolucionFundada && !archivo) {
+        if (!resolucionFundada) {
             setMensaje({ tipo: 'error', texto: 'Debe subir la Resolución Fundada antes de avanzar' })
             return
         }
@@ -167,7 +163,7 @@ export default function ResolucionFundada() {
             <>
                 <Sidebar />
                 <main className="contenido-modulo3">
-                    <div className="rf-header">
+                    <div className="detalle-header">
                         <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                         <h1>Resolución Fundada</h1>
                     </div>
@@ -189,7 +185,7 @@ export default function ResolucionFundada() {
         <>
             <Sidebar />
             <main className="contenido-modulo3">
-                <div className="rf-header">
+                <div className="detalle-header">
                     <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                     <h1>Resolución Fundada</h1>
                 </div>
@@ -202,7 +198,7 @@ export default function ResolucionFundada() {
         <>
             <Sidebar />
             <main className="contenido-modulo3">
-                <div className="rf-header">
+                <div className="detalle-header">
                     <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                     <h1>Resolución Fundada</h1>
                 </div>
@@ -220,23 +216,23 @@ export default function ResolucionFundada() {
             <main className="contenido-modulo3">
 
                 {/* Header */}
-                <div className="rf-header">
+                <div className="detalle-header">
                     <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                     <h1>Resolución Fundada</h1>
-                    <span className="estado-badge-rf">{expediente?.numero_mesa_partes || '—'}</span>
+                    <span className="estado-badge">{expediente?.numero_mesa_partes || '—'}</span>
                 </div>
 
                 <PlazoAlerta expediente={expediente} audienciaActual={null} />
 
                 {bloqueado && (
                     <div className="mensaje success" style={{ textAlign: 'center', marginBottom: 24 }}>
-                         Este expediente ya está en DISOLUCIÓN. El proceso ha sido completado.
+                        ✅ Este expediente ya está en DISOLUCIÓN. El proceso ha sido completado.
                     </div>
                 )}
 
-                <div className="rf-layout">
+                <div className="detalle-grid">
                     {/* ── COLUMNA IZQUIERDA ── */}
-                    <div className="rf-main">
+                    <div className="detalle-izquierda">
 
                         {/* Plazo Legal */}
                         <div className="seccion">
@@ -292,55 +288,62 @@ export default function ResolucionFundada() {
                             </div>
 
                             {/* Cónyuges */}
-                            <div className="conyuges-rf">
-                                <div className="conyuge-rf">
-                                    <div className="conyuge-rf-titulo">Solicitante</div>
-                                    <div className="datos-grid" style={{ marginTop: 12 }}>
+                            <div className="conyuges-grid-moderno" style={{ marginTop: 24 }}>
+                                <div className="conyuge-card-moderno">
+                                    <div className="conyuge-header-moderno">
                                         <div>
-                                            <label>Nombre completo</label>
-                                            <p>{expediente?.Solicitante_Nombres || '—'} {expediente?.Solicitante_Apellidos || ''}</p>
+                                            <h3>Solicitante</h3>
+                                            <span className="conyuge-rol">Inicia el trámite</span>
                                         </div>
-                                        <div>
-                                            <label>DNI</label>
-                                            <p>{expediente?.Solicitante_Dni || '—'}</p>
+                                    </div>
+                                    <div className="conyuge-body">
+                                        <div className="conyuge-nombre">
+                                            {expediente?.Solicitante_Nombres || '—'} {expediente?.Solicitante_Apellidos || ''}
                                         </div>
-                                        <div>
-                                            <label>Teléfono</label>
-                                            <p>{expediente?.Solicitante_Telefono || '—'}</p>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">DNI:</span>
+                                            <span>{expediente?.Solicitante_Dni || '—'}</span>
                                         </div>
-                                        <div>
-                                            <label>Correo electrónico</label>
-                                            <p>{expediente?.Solicitante_Correo || '—'}</p>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Tel:</span>
+                                            <span>{expediente?.Solicitante_Telefono || '—'}</span>
                                         </div>
-                                        <div style={{ gridColumn: 'span 2' }}>
-                                            <label>Dirección</label>
-                                            <p>{expediente?.Solicitante_Direccion || '—'}</p>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Email:</span>
+                                            <span>{expediente?.Solicitante_Correo || '—'}</span>
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Dir:</span>
+                                            <span>{expediente?.Solicitante_Direccion || '—'}</span>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="conyuge-rf">
-                                    <div className="conyuge-rf-titulo">Demandado</div>
-                                    <div className="datos-grid" style={{ marginTop: 12 }}>
+                                <div className="conyuge-card-moderno">
+                                    <div className="conyuge-header-moderno">
                                         <div>
-                                            <label>Nombre completo</label>
-                                            <p>{expediente?.Demandado_Nombres || '—'} {expediente?.Demandado_Apellidos || ''}</p>
+                                            <h3>Demandado</h3>
+                                            <span className="conyuge-rol">Parte demandada</span>
                                         </div>
-                                        <div>
-                                            <label>DNI</label>
-                                            <p>{expediente?.Demandado_Dni || '—'}</p>
+                                    </div>
+                                    <div className="conyuge-body">
+                                        <div className="conyuge-nombre">
+                                            {expediente?.Demandado_Nombres || '—'} {expediente?.Demandado_Apellidos || ''}
                                         </div>
-                                        <div>
-                                            <label>Teléfono</label>
-                                            <p>{expediente?.Demandado_Telefono || '—'}</p>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">DNI:</span>
+                                            <span>{expediente?.Demandado_Dni || '—'}</span>
                                         </div>
-                                        <div>
-                                            <label>Correo electrónico</label>
-                                            <p>{expediente?.Demandado_Correo || '—'}</p>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Tel:</span>
+                                            <span>{expediente?.Demandado_Telefono || '—'}</span>
                                         </div>
-                                        <div style={{ gridColumn: 'span 2' }}>
-                                            <label>Dirección</label>
-                                            <p>{expediente?.Demandado_Direccion || '—'}</p>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Email:</span>
+                                            <span>{expediente?.Demandado_Correo || '—'}</span>
+                                        </div>
+                                        <div className="conyuge-detalle">
+                                            <span className="detalle-icono">Dir:</span>
+                                            <span>{expediente?.Demandado_Direccion || '—'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -355,7 +358,12 @@ export default function ResolucionFundada() {
                             {yaTieneResolucion && (
                                 <div className="documento-item" style={{ marginBottom: 20 }}>
                                     <div className="documento-info">
-                                        <div className="documento-icono"></div>
+                                        <div className="documento-icono">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                <polyline points="14 2 14 8 20 8"/>
+                                            </svg>
+                                        </div>
                                         <div>
                                             <div className="documento-nombre">
                                                 {resolucionFundada.numero_documento
@@ -379,31 +387,30 @@ export default function ResolucionFundada() {
                                 </div>
                             )}
 
-                            {/* Formulario subida */}
-                            {!bloqueado && (
+                            {/* Formulario subida - SOLO si NO tiene resolución */}
+                            {!yaTieneResolucion && !bloqueado && (
                                 <div className="rf-form">
-                                    <div className="rf-campos-fila">
-                                        <div className="rf-campo">
-                                            <label>N° de Resolución <span className="required">*</span></label>
-                                            <input
-                                                type="text"
-                                                value={numeroDocumento}
-                                                onChange={(e) => setNumeroDocumento(e.target.value)}
-                                                placeholder="Ej: RES-2026-001"
-                                            />
-                                        </div>
-                                        <div className="rf-campo">
-                                            <label>Fecha de elaboración <span className="required">*</span></label>
-                                            <input
-                                                type="date"
-                                                value={fechaElaboracion}
-                                                onChange={(e) => setFechaElaboracion(e.target.value)}
-                                            />
-                                        </div>
+                                    <div className="campo">
+                                        <label>N° de Resolución <span className="required">*</span></label>
+                                        <input
+                                            type="text"
+                                            value={numeroDocumento}
+                                            onChange={(e) => setNumeroDocumento(e.target.value)}
+                                            placeholder="Ej: RES-2026-001"
+                                        />
                                     </div>
 
-                                    <div className="rf-campo">
-                                        <label>Archivo PDF {!yaTieneResolucion && <span className="required">*</span>}</label>
+                                    <div className="campo">
+                                        <label>Fecha de elaboración <span className="required">*</span></label>
+                                        <input
+                                            type="date"
+                                            value={fechaElaboracion}
+                                            onChange={(e) => setFechaElaboracion(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div className="campo">
+                                        <label>Archivo PDF <span className="required">*</span></label>
                                         <div className="rf-archivo">
                                             <input
                                                 type="file"
@@ -416,10 +423,8 @@ export default function ResolucionFundada() {
                                                 Seleccionar archivo
                                             </label>
                                             {archivo
-                                                ? <span className="archivo-ok"> {archivo.name}</span>
-                                                : yaTieneResolucion
-                                                    ? <span className="archivo-actual"> {resolucionFundada.nombre_archivo} (actual)</span>
-                                                    : <span className="archivo-pendiente">Ningún archivo seleccionado</span>
+                                                ? <span className="archivo-ok">✅ {archivo.name}</span>
+                                                : <span className="archivo-pendiente">Ningún archivo seleccionado</span>
                                             }
                                         </div>
                                     </div>
@@ -429,8 +434,15 @@ export default function ResolucionFundada() {
                                     )}
 
                                     <button className="btn-subir" onClick={handleSubirResolucion} disabled={enviando}>
-                                        {enviando ? 'Subiendo...' : (yaTieneResolucion ? 'Reemplazar Resolución' : 'Subir Resolución Fundada')}
+                                        {enviando ? 'Subiendo...' : 'Subir Resolución Fundada'}
                                     </button>
+                                </div>
+                            )}
+
+                            {/* Mensaje si ya tiene resolución y está en ESPERA_LEGAL */}
+                            {yaTieneResolucion && etapaActual === 'ESPERA_LEGAL' && (
+                                <div className="alerta-info" style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '12px', borderRadius: '8px', marginTop: 16 }}>
+                                    ✅ La Resolución Fundada ya ha sido subida. Puedes avanzar a DISOLUCIÓN cuando se cumpla el plazo.
                                 </div>
                             )}
                         </div>
@@ -438,19 +450,18 @@ export default function ResolucionFundada() {
                         {/* Botón avanzar */}
                         {etapaActual === 'ESPERA_LEGAL' && (
                             <div className="seccion acciones">
-                                {mensaje && !bloqueado && (
-                                    <div className={`mensaje ${mensaje.tipo}`} style={{ marginBottom: 16 }}>{mensaje.texto}</div>
-                                )}
                                 <button
                                     className="btn-continuar"
                                     onClick={handleAvanzarADisolucion}
-                                    disabled={enviando || !puedeAvanzar}
+                                    disabled={enviando || !puedeAvanzar || !yaTieneResolucion}
                                 >
-                                    {puedeAvanzar
+                                    {puedeAvanzar && yaTieneResolucion
                                         ? 'Avanzar a DISOLUCIÓN'
-                                        : `Esperar ${diasRestantes} días para avanzar`}
+                                        : !yaTieneResolucion
+                                            ? 'Primero suba la Resolución Fundada'
+                                            : `Esperar ${diasRestantes} días para avanzar`}
                                 </button>
-                                {!puedeAvanzar && (
+                                {!puedeAvanzar && yaTieneResolucion && (
                                     <p className="texto-ayuda">El plazo de espera legal es de 2 meses desde la ratificación.</p>
                                 )}
                             </div>
@@ -458,7 +469,7 @@ export default function ResolucionFundada() {
                     </div>
 
                     {/* ── COLUMNA DERECHA ── */}
-                    <div className="rf-sidebar">
+                    <div className="detalle-derecha">
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
                         <PipelineVisual etapaActual={getPipelineEtapa()} />
                     </div>

@@ -5,7 +5,6 @@ import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getExpedienteById, getAudiencias, registrarResultadoAudiencia, subirDocumentoInterno, getDocumentosInternos, getPdfUrl } from '../../services/ProcedimientoService'
-
 import '../../styles/modulo3/registrar-audiencia.css'
 
 export default function RegistrarAudiencia() {
@@ -19,6 +18,15 @@ export default function RegistrarAudiencia() {
     const [enviando, setEnviando] = useState(false)
     const [mensaje, setMensaje] = useState(null)
     
+    // Estado para el modal de confirmación
+    const [modalConfirmacion, setModalConfirmacion] = useState({
+        abierto: false,
+        titulo: '',
+        mensaje: '',
+        onConfirm: null,
+        tipo: 'warning'
+    })
+
     const [asistioSolicitante, setAsistioSolicitante] = useState(false)
     const [asistioDemandado, setAsistioDemandado] = useState(false)
     const [resultado, setResultado] = useState('')
@@ -45,7 +53,6 @@ export default function RegistrarAudiencia() {
             default: return 'revision'
         }
     }
-
 
     const getUsuarioLogueado = () => {
         return localStorage.getItem('usuario_nombre') || 
@@ -85,12 +92,6 @@ export default function RegistrarAudiencia() {
         if (!audiencia) return true
         const intentoActual = audiencia.numero_intento || 1
         return intentoActual === 1
-    }
-
-    const intentosRestantes = () => {
-        if (!audiencia) return 1
-        const intentoActual = audiencia.numero_intento || 1
-        return 2 - intentoActual
     }
 
     const ambosAsistieron = () => {
@@ -133,7 +134,6 @@ export default function RegistrarAudiencia() {
                     }
                 }
 
-                // FIX: Cargar asistencia y resultado si la audiencia ya fue registrada
                 if (audienciaEncontrada?.estado === 'REALIZADA') {
                     setAsistioSolicitante(!!audienciaEncontrada.asistio_solicitante)
                     setAsistioDemandado(!!audienciaEncontrada.asistio_demandado)
@@ -175,60 +175,7 @@ export default function RegistrarAudiencia() {
         setMensaje(null)
     }
 
-    const handleSubmit = async () => {
-        if (!resultado) {
-            setMensaje({ tipo: 'error', texto: 'Debe seleccionar el resultado de la audiencia' })
-            return
-        }
-
-        if (!expediente?.Solicitante_Id || !expediente?.Demandado_Id) {
-            setMensaje({ tipo: 'error', texto: 'Error: No se encontraron los IDs de los conyuges' })
-            return
-        }
-
-        if (resultado === 'RATIFICACION' && !ambosAsistieron()) {
-            setMensaje({ tipo: 'error', texto: 'Para ratificar, ambos conyuges deben asistir a la audiencia' })
-            return
-        }
-
-        if (resultado === 'RATIFICACION') {
-            const acta1Subida = actasSubidas.acta1 || archivos.acta1
-            const acta2Subida = actasSubidas.acta2 || archivos.acta2
-            const acta3Subida = actasSubidas.acta3 || archivos.acta3
-            
-            if (!acta1Subida || !acta2Subida || !acta3Subida) {
-                setMensaje({ tipo: 'error', texto: 'Debe subir las 3 actas de audiencia (PDF)' })
-                return
-            }
-        }
-
-        if (resultado === 'DESISTIMIENTO') {
-            const confirmar = window.confirm('ATENCION\n\nEl desistimiento cancelara TODO el proceso.\n\nEsta seguro de que desea cancelar el expediente?')
-            if (!confirmar) return
-        }
-
-        if (resultado === 'INASISTENCIA') {
-            const intentoActual = audiencia?.numero_intento || 1
-            
-            if (intentoActual >= 2) {
-                const confirmar = window.confirm(
-                    `ATENCION\n\n` +
-                    `Esta es la SEGUNDA inasistencia.\n\n` +
-                    `El proceso se CANCELARA definitivamente.\n\n` +
-                    `Desea continuar?`
-                )
-                if (!confirmar) return
-            } else {
-                const confirmar = window.confirm(
-                    `ATENCION\n\n` +
-                    `La inasistencia permitira reprogramar la audiencia UNA sola vez mas.\n\n` +
-                    `Si vuelven a faltar en la proxima audiencia, el proceso se CANCELARA.\n\n` +
-                    `Desea continuar?`
-                )
-                if (!confirmar) return
-            }
-        }
-
+    const ejecutarRegistro = async () => {
         setEnviando(true)
         setMensaje(null)
 
@@ -281,6 +228,85 @@ export default function RegistrarAudiencia() {
             setMensaje({ tipo: 'error', texto: err.message || 'Error al registrar audiencia' })
         } finally {
             setEnviando(false)
+        }
+    }
+
+    const handleSubmit = async () => {
+        if (!resultado) {
+            setMensaje({ tipo: 'error', texto: 'Debe seleccionar el resultado de la audiencia' })
+            return
+        }
+
+        if (!expediente?.Solicitante_Id || !expediente?.Demandado_Id) {
+            setMensaje({ tipo: 'error', texto: 'Error: No se encontraron los IDs de los conyuges' })
+            return
+        }
+
+        if (resultado === 'RATIFICACION' && !ambosAsistieron()) {
+            setMensaje({ tipo: 'error', texto: 'Para ratificar, ambos conyuges deben asistir a la audiencia' })
+            return
+        }
+
+        if (resultado === 'RATIFICACION') {
+            const acta1Subida = actasSubidas.acta1 || archivos.acta1
+            const acta2Subida = actasSubidas.acta2 || archivos.acta2
+            const acta3Subida = actasSubidas.acta3 || archivos.acta3
+            
+            if (!acta1Subida || !acta2Subida || !acta3Subida) {
+                setMensaje({ tipo: 'error', texto: 'Debe subir las 3 actas de audiencia (PDF)' })
+                return
+            }
+        }
+
+        // Ratificación: ejecutar directamente
+        if (resultado === 'RATIFICACION') {
+            await ejecutarRegistro()
+            return
+        }
+
+        // Desistimiento: mostrar modal
+        if (resultado === 'DESISTIMIENTO') {
+            setModalConfirmacion({
+                abierto: true,
+                titulo: 'Confirmar Desistimiento',
+                mensaje: 'El desistimiento cancelará TODO el proceso.\n\n¿Está seguro de que desea cancelar el expediente?',
+                onConfirm: async () => {
+                    setModalConfirmacion({ ...modalConfirmacion, abierto: false })
+                    await ejecutarRegistro()
+                },
+                tipo: 'danger'
+            })
+            return
+        }
+
+        // Inasistencia: mostrar modal según el intento
+        if (resultado === 'INASISTENCIA') {
+            const intentoActual = audiencia?.numero_intento || 1
+            
+            if (intentoActual >= 2) {
+                setModalConfirmacion({
+                    abierto: true,
+                    titulo: 'Segunda Inasistencia',
+                    mensaje: 'Esta es la SEGUNDA inasistencia.\n\nEl proceso se CANCELARÁ definitivamente.\n\n¿Desea continuar?',
+                    onConfirm: async () => {
+                        setModalConfirmacion({ ...modalConfirmacion, abierto: false })
+                        await ejecutarRegistro()
+                    },
+                    tipo: 'danger'
+                })
+            } else {
+                setModalConfirmacion({
+                    abierto: true,
+                    titulo: 'Reprogramación de Audiencia',
+                    mensaje: 'La inasistencia permitirá reprogramar la audiencia UNA sola vez más.\n\nSi vuelven a faltar en la próxima audiencia, el proceso se CANCELARÁ.\n\n¿Desea continuar?',
+                    onConfirm: async () => {
+                        setModalConfirmacion({ ...modalConfirmacion, abierto: false })
+                        await ejecutarRegistro()
+                    },
+                    tipo: 'warning'
+                })
+            }
+            return
         }
     }
 
@@ -358,21 +384,19 @@ export default function RegistrarAudiencia() {
                     <span className="estado-badge">Expediente {numeroMesaPartes || '—'}</span>
                 </div>
 
-                
-
-                
-
                 <div style={{ display: 'flex', gap: '30px' }}>
                     <div style={{ flex: 2 }}>
                         {yaFueRegistrada && (
-                    <div className="alerta-info" style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
-                        Esta audiencia ya fue registrada. Los datos son solo de consulta.
-                    </div>
-                )}
+                            <div className="alerta-info" style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
+                                Esta audiencia ya fue registrada. Los datos son solo de consulta.
+                            </div>
+                        )}
+                        
                         <PlazoAlerta 
-                    expediente={expediente}
-                    audienciaActual={audiencia}
-                />
+                            expediente={expediente}
+                            audienciaActual={audiencia}
+                        />
+                        
                         <div className="seccion">
                             <h2>DATOS DEL EXPEDIENTE</h2>
                             <div className="expediente-grid">
@@ -472,7 +496,6 @@ export default function RegistrarAudiencia() {
                             </div>
                         )}
 
-            
                         <div className="seccion">
                             <h2>RESULTADO DE LA AUDIENCIA</h2>
                             <div className="resultado-opciones">
@@ -498,7 +521,6 @@ export default function RegistrarAudiencia() {
                             </div>
                         </div>
 
-                        {/* Mostrar actas siempre que haya ratificacion */}
                         {esRatificacion && (
                             <div className="seccion">
                                 <h2>ACTAS DE AUDIENCIA</h2>
@@ -590,6 +612,39 @@ export default function RegistrarAudiencia() {
                     </div>
                 </div>
             </main>
+
+            {/* Modal de confirmación personalizado */}
+            {modalConfirmacion.abierto && (
+                <div className="modal-confirmacion-overlay" onClick={() => !enviando && setModalConfirmacion({ ...modalConfirmacion, abierto: false })}>
+                    <div className="modal-confirmacion-contenido" onClick={e => e.stopPropagation()}>
+                        <div className={`modal-confirmacion-header ${modalConfirmacion.tipo}`}>
+                            <div className="modal-confirmacion-icono">
+                                {modalConfirmacion.tipo === 'danger' ? '' : ''}
+                            </div>
+                            <h3>{modalConfirmacion.titulo}</h3>
+                        </div>
+                        <div className="modal-confirmacion-body">
+                            <p>{modalConfirmacion.mensaje}</p>
+                        </div>
+                        <div className="modal-confirmacion-footer">
+                            <button 
+                                className="modal-btn-cancelar" 
+                                onClick={() => setModalConfirmacion({ ...modalConfirmacion, abierto: false })}
+                                disabled={enviando}
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                className={`modal-btn-confirmar ${modalConfirmacion.tipo}`} 
+                                onClick={modalConfirmacion.onConfirm}
+                                disabled={enviando}
+                            >
+                                {enviando ? 'Procesando...' : 'Confirmar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     )
 }

@@ -5,6 +5,7 @@ import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getExpedienteById, getDocumentosInternos, subirDocumentoInterno, getAudiencias, getPdfUrl, cambiarEstadoExpediente } from '../../services/ProcedimientoService'
+
 export default function DocumentosInternos() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -62,8 +63,8 @@ export default function DocumentosInternos() {
             const resAudiencias = await getAudiencias(id)
             const audienciasData = resAudiencias?.data || resAudiencias || []
             // Buscar la audiencia vigente (la que tiene es_actual = true)
-const audienciaVigente = audienciasData.find(a => a.es_actual === true)
-setAudienciaVigente(audienciaVigente)
+            const audienciaVigente = audienciasData.find(a => a.es_actual === true)
+            setAudienciaVigente(audienciaVigente)
 
         } catch (err) {
             console.error('Error:', err)
@@ -137,36 +138,36 @@ setAudienciaVigente(audienciaVigente)
     }
 
     const verPdf = (ruta) => {
-    window.open(getPdfUrl(ruta), '_blank')
-}
+        window.open(getPdfUrl(ruta), '_blank')
+    }
 
     const handleVolver = () => {
         navigate(`/modulo3/detalle/${id}`)
     }
 
     const handleContinuar = () => {
-    if (informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido') {
-        setMensajeGlobal({ tipo: 'error', texto: 'Debe subir ambos documentos antes de continuar' })
-        return
-    }
-    setMostrarConfirmacion(true)
-}
-
-const handleContinuarAceptar = async () => {
-    setMostrarConfirmacion(false)
-    try {
-        const data = await cambiarEstadoExpediente(id, 'AUDIENCIA', 'Documentos internos completados')
-        if (data.ok) {
-            setMensajeGlobal({ tipo: 'success', texto: 'Etapa cambiada a AUDIENCIA' })
-            setTimeout(() => window.location.reload(), 1500)
-        } else {
-            setMensajeGlobal({ tipo: 'error', texto: data.mensaje || 'Error al avanzar' })
+        if (informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido') {
+            setMensajeGlobal({ tipo: 'error', texto: 'Debe subir ambos documentos antes de continuar' })
+            return
         }
-    } catch (error) {
-        console.error('Error:', error)
-        setMensajeGlobal({ tipo: 'error', texto: 'Error al avanzar la etapa' })
+        setMostrarConfirmacion(true)
     }
-}
+
+    const handleContinuarAceptar = async () => {
+        setMostrarConfirmacion(false)
+        try {
+            const data = await cambiarEstadoExpediente(id, 'AUDIENCIA', 'Documentos internos completados')
+            if (data.ok) {
+                setMensajeGlobal({ tipo: 'success', texto: 'Etapa cambiada a AUDIENCIA' })
+                setTimeout(() => window.location.reload(), 1500)
+            } else {
+                setMensajeGlobal({ tipo: 'error', texto: data.mensaje || 'Error al avanzar' })
+            }
+        } catch (error) {
+            console.error('Error:', error)
+            setMensajeGlobal({ tipo: 'error', texto: 'Error al avanzar la etapa' })
+        }
+    }
 
     if (cargando) {
         return (
@@ -223,10 +224,10 @@ const handleContinuarAceptar = async () => {
                     {/* COLUMNA IZQUIERDA - Contenido principal */}
                     <div style={{ flex: 2 }}>
                         {/* Plazo Alerta */}
-                <PlazoAlerta 
-                    expediente={expediente}
-                    audienciaActual={audienciaVigente}
-                />
+                        <PlazoAlerta 
+                            expediente={expediente}
+                            audienciaActual={audienciaVigente}
+                        />
                         {/* Datos del expediente */}
                         <div className="seccion datos-expediente">
                             <h2>Datos del expediente</h2>
@@ -284,15 +285,16 @@ const handleContinuarAceptar = async () => {
                                         )}
                                     </div>
                                     <div className="documento-acciones">
-                                        {informeLegal.estado === 'subido' && (
+                                        {informeLegal.estado === 'subido' ? (
                                             <button className="btn-ver" onClick={() => verPdf(informeLegal.archivo)}>Ver PDF</button>
+                                        ) : (
+                                            <button 
+                                                className="btn-subir" 
+                                                onClick={() => abrirModal('INFORME_LEGAL')}
+                                            >
+                                                Subir
+                                            </button>
                                         )}
-                                        <button 
-                                            className="btn-subir" 
-                                            onClick={() => abrirModal('INFORME_LEGAL')}
-                                        >
-                                            {informeLegal.estado === 'subido' ? 'Reemplazar' : 'Subir'}
-                                        </button>
                                     </div>
                                 </div>
 
@@ -312,15 +314,16 @@ const handleContinuarAceptar = async () => {
                                         )}
                                     </div>
                                     <div className="documento-acciones">
-                                        {resolucionAdmision.estado === 'subido' && (
+                                        {resolucionAdmision.estado === 'subido' ? (
                                             <button className="btn-ver" onClick={() => verPdf(resolucionAdmision.archivo)}>Ver PDF</button>
+                                        ) : (
+                                            <button 
+                                                className="btn-subir" 
+                                                onClick={() => abrirModal('RESOLUCION_ADMISIBLE')}
+                                            >
+                                                Subir
+                                            </button>
                                         )}
-                                        <button 
-                                            className="btn-subir" 
-                                            onClick={() => abrirModal('RESOLUCION_ADMISIBLE')}
-                                        >
-                                            {resolucionAdmision.estado === 'subido' ? 'Reemplazar' : 'Subir'}
-                                        </button>
                                     </div>
                                 </div>
                             </div>
