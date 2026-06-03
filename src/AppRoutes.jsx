@@ -10,6 +10,8 @@ import Login from './pages/modulo3/Login'
 import DocumentosInternos from './pages/modulo3/DocumentosInternos'
 import ProgramarAudiencia from './pages/modulo3/ProgramarAudiencia'
 import ResolucionFundada from './pages/modulo3/ResolucionFundada'
+import ResolucionDisolucion from './pages/modulo4/ResolucionDisolucion'
+import ArchivamientoExpediente from './pages/modulo4/ArchivamientoExpediente'
 
 export default function AppRoutes() {
     const { paginaActual, expedienteId, cambiarPagina, verDetalle } = useNavigation()    
@@ -50,6 +52,10 @@ export default function AppRoutes() {
             return <ProgramarAudiencia {...propsConId} />
         case 'resolucionFundada':
             return <ResolucionFundada {...propsConId} />
+        case 'resolucionDisolucion':
+            return <ResolucionDisolucion {...propsConId} />
+        case 'archivamiento':
+            return <ArchivamientoExpediente {...propsConId} />
         default:
             return <Login cambiarPagina={cambiarPagina} />
     }

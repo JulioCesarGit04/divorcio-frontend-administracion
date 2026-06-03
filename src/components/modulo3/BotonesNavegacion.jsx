@@ -35,6 +35,19 @@ export default function BotonesNavegacion({ expedienteId, etapaActual, documento
             label: 'Resolución Fundada',
             ruta: `/modulo3/expediente/${expedienteId}/resolucion-fundada`,
             etapaMinimaIndex: 3  // ESPERA_LEGAL
+        },
+                // --- BOTONES DEL MÓDULO 4 ---
+        {
+            id: 'disolucion',
+            label: 'Resolución de Disolución',
+            ruta: `/modulo4/resolucion-disolucion/${expedienteId}`,
+            etapaMinimaIndex: 3  // Habilitado cuando llega a ESPERA_LEGAL
+        },
+        {
+            id: 'archivar',
+            label: 'Archivamiento del Expediente',
+            ruta: `/modulo4/archivamiento/${expedienteId}`,
+            etapaMinimaIndex: 4  // Habilitado cuando ya pasó a DISOLUCION
         }
     ]
 
@@ -58,6 +71,8 @@ export default function BotonesNavegacion({ expedienteId, etapaActual, documento
         if (btn.id === 'documentos') return 'Debe confirmar la Revisión Documentaria primero'
         if (btn.id === 'audiencia') return 'Debe completar los Documentos Internos primero'
         if (btn.id === 'resolucion') return 'Debe completar la Audiencia primero'
+        if (btn.id === 'disolucion') return 'Debe culminar la Espera Legal primero'
+        if (btn.id === 'archivar') return 'Debe emitir la Resolución de Disolución primero'
         return 'Etapa no disponible'
     }
 
@@ -67,6 +82,8 @@ export default function BotonesNavegacion({ expedienteId, etapaActual, documento
         if (id === 'documentos' && etapaActual === 'DOCUMENTOS_INTERNOS') return true
         if (id === 'audiencia' && etapaActual === 'AUDIENCIA') return true
         if (id === 'resolucion' && etapaActual === 'ESPERA_LEGAL') return true
+        if (id === 'disolucion' && etapaActual === 'DISOLUCION') return true
+        if (id === 'archivar' && etapaActual === 'ARCHIVAMIENTO') return true
         return false
     }
 
