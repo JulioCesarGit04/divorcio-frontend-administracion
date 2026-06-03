@@ -62,7 +62,6 @@ export default function ListadoPage() {
         </p>
       </div>
 
-      {/* Buscador */}
       <div style={{ marginBottom: '20px' }}>
         <input
           value={busqueda}
