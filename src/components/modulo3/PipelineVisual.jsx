@@ -30,6 +30,22 @@ export default function PipelineVisual({ etapaActual }) {
             descripcion: 'Resolución y espera de 2 meses',
             icono: '📑',
             numero: 4
+        },
+        
+        // MÓDULO 4 - DISOLUCIÓN Y ARCHIVAMIENTO
+        { 
+            id: 'disolucion', 
+            label: 'Resolución de Disolución', 
+            descripcion: 'Plazo de 15 días hábiles y emisión',
+            icono: '📜',
+            numero: 5
+        },
+        { 
+            id: 'archivar', 
+            label: 'Archivamiento', 
+            descripcion: 'Cargos SUNARP/RENIEC y cierre',
+            icono: '🗄️',
+            numero: 6
         }
     ]
 

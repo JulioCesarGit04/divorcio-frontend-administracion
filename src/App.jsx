@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import ListadoPage from './pages/ListadoPage';
 import DetallePage from './pages/DetallePage';
 import Modulo3Router from './pages/modulo3/Modulo3Router';
+import Modulo4Router from './pages/modulo4/Modulo4Router';
 
 import './App.css';
 
@@ -33,6 +34,13 @@ function App() {
           <Route path="/modulo3/*" element={
             <RutaProtegida>
               <Modulo3Router />
+            </RutaProtegida>
+          } />
+
+          {/* Módulo 4 */}
+          <Route path="/modulo4/*" element={
+            <RutaProtegida>
+              <Modulo4Router />
             </RutaProtegida>
           } />
           
