@@ -217,14 +217,7 @@ const handleConfirmarRevisionAceptar = async () => {
                         }}>
                             Ver PDF
                         </button>
-                        <button 
-                            className="btn-reemplazar" 
-                            onClick={() => setMostrarModal(true)}
-                            disabled={bloqueado}
-                            style={{ opacity: bloqueado ? 0.5 : 1, cursor: bloqueado ? 'not-allowed' : 'pointer' }}
-                        >
-                            Reemplazar
-                        </button>
+                        
                     </div>
                 </div>
 
