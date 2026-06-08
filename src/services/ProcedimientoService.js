@@ -113,13 +113,17 @@ export const getPdfUrl = (ruta) => {
     return `${UPLOADS_URL}/uploads/${ruta}`;
 };
 
-export const cambiarEstadoExpediente = async (id, nueva_etapa, motivo = '') => {
+export const cambiarEstadoExpediente = async (id, nueva_etapa, motivo = '', nuevo_estado = null) => {
+    const body = { motivo };
+    if (nueva_etapa !== undefined && nueva_etapa !== null) body.nueva_etapa = nueva_etapa;
+    if (nuevo_estado) body.nuevo_estado = nuevo_estado;
+
     const response = await fetchWithRetry(
         `${API_URL}/expedientes/${id}/estado`,
         {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nueva_etapa, motivo })
+            body: JSON.stringify(body)
         },
         3,
         TIMEOUTS.MUTATION
@@ -250,13 +254,24 @@ export const getDocumentosInternos = async (expediente_id) => {
     return documentos;
 };
 
-export const subirDocumentoInterno = async (expediente_id, tipo_documento, numero_documento, fecha_elaboracion, archivo) => {
+export const subirDocumentoInterno = async (expediente_id, tipo_documento, numero_documento, fecha_elaboracion, archivo, motivo_reemplazo = null) => {
     const formData = new FormData();
     formData.append('tipo_documento', tipo_documento);
-    formData.append('numero_documento', numero_documento);
+    formData.append('numero_documento', numero_documento || '');
     formData.append('fecha_elaboracion', fecha_elaboracion);
     formData.append('archivo', archivo);
-    const response = await fetchWithRetry(`${API_URL}/expedientes/${expediente_id}/documentos`, { method: 'POST', body: formData }, 3, TIMEOUTS.UPLOAD);
+    
+    // ✅ Enviar el motivo si existe
+    if (motivo_reemplazo) {
+        formData.append('motivo_reemplazo', motivo_reemplazo);
+    }
+
+    const response = await fetchWithRetry(
+        `${API_URL}/expedientes/${expediente_id}/documentos`,
+        { method: 'POST', body: formData },
+        3,
+        TIMEOUTS.UPLOAD
+    );
     const data = await safeJson(response);
     if (!response.ok) throw new Error(data.mensaje || 'Error al subir documento');
     return data;

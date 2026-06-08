@@ -60,7 +60,6 @@
 }
 
 .pagina-header h1 {
-    font-family: var(--font-ui);
     font-size: 1.6rem;
     font-weight: 700;
     color: var(--gray-900);
@@ -92,21 +91,78 @@
     box-shadow: var(--shadow-md);
 }
 
+/* ====================================================================
+   GRID BASE — VincularExpedientes (3 inputs + 2 fechas + botones)
+   ==================================================================== */
 .filtros-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 14px 18px;
-    align-items: flex-end;
 }
 
+.filtros-grid .filtro-grupo:nth-child(4),
+.filtros-grid .filtro-grupo:nth-child(5) {
+    grid-column: span 1;
+}
+
+.filtros-grid .acciones-filtros {
+    grid-column: span 1;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+/* ====================================================================
+   GRID EXPEDIENTES — 4 inputs + 2 fechas + botones
+   ==================================================================== */
+.filtros-grid--expedientes {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px 18px;
+}
+
+.filtros-grid--expedientes .filtro-grupo:nth-child(5),
+.filtros-grid--expedientes .filtro-grupo:nth-child(6) {
+    grid-column: span 1;
+}
+
+.filtros-grid--expedientes .acciones-filtros {
+    grid-column: 3 / 5;      /* columnas 3 y 4 de la fila 2 */
+    grid-row: 2;             /* fuerza que esté en la fila 2 */
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.filtros-grid--expedientes .filtro-grupo:nth-child(5) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.filtros-grid--expedientes .filtro-grupo:nth-child(6) {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.filtros-grid--expedientes .acciones-filtros .btn-buscar,
+.filtros-grid--expedientes .acciones-filtros .btn-limpiar {
+    flex: 0 0 auto;
+    width: 130px;
+}
+
+/* ====================================================================
+   GRUPO DE FILTRO
+   ==================================================================== */
 .filtro-grupo {
     display: flex;
     flex-direction: column;
     gap: 7px;
+    min-width: 0;
 }
 
 .filtro-grupo label {
-    font-family: var(--font-ui);
     font-size: 0.68rem;
     font-weight: 700;
     color: var(--gray-400);
@@ -114,8 +170,7 @@
     letter-spacing: 0.7px;
 }
 
-.filtro-grupo input,
-.filtro-grupo select {
+.filtro-grupo input {
     width: 100%;
     padding: 10px 13px;
     border: 1.5px solid var(--gray-200);
@@ -130,31 +185,74 @@
     appearance: none;
 }
 
-.filtro-grupo select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 34px;
-}
-
 .filtro-grupo input::placeholder {
     color: var(--gray-300);
 }
 
-.filtro-grupo input:hover,
-.filtro-grupo select:hover {
+.filtro-grupo input:hover {
     border-color: var(--gray-300);
     background: var(--white);
 }
 
-.filtro-grupo input:focus,
-.filtro-grupo select:focus {
+.filtro-grupo input:focus {
     outline: none;
     border-color: var(--primary);
     background: var(--white);
     box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.09);
 }
 
+/* ====================================================================
+   SELECT WRAPPER — flecha CSS pura, sin URLs externas
+   ==================================================================== */
+.select-wrapper {
+    position: relative;
+}
+
+.select-wrapper select {
+    width: 100%;
+    padding: 10px 34px 10px 13px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    color: var(--gray-800);
+    background: var(--gray-50);
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.select-wrapper::after {
+    content: '';
+    position: absolute;
+    right: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--gray-400);
+    pointer-events: none;
+}
+
+.select-wrapper select:hover {
+    border-color: var(--gray-300);
+    background: var(--white);
+}
+
+.select-wrapper select:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--white);
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.09);
+}
+
+/* ====================================================================
+   BOTONES DE FILTRO
+   ==================================================================== */
 .acciones-filtros {
     display: flex;
     gap: 8px;
@@ -173,9 +271,11 @@
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 7px;
     white-space: nowrap;
     letter-spacing: 0.1px;
+    box-sizing: border-box;
 }
 
 .btn-buscar {
@@ -203,6 +303,12 @@
     transform: translateY(-1px);
 }
 
+.btn-buscar:active,
+.btn-limpiar:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
 /* ====================================================================
    BARRA DE RESULTADOS
    ==================================================================== */
@@ -212,7 +318,6 @@
     align-items: center;
     margin-bottom: 12px;
     padding: 0 2px;
-    font-family: var(--font-ui);
     font-size: 0.78rem;
     color: var(--gray-400);
     font-weight: 500;
@@ -225,21 +330,69 @@
     background: var(--white);
     border-radius: var(--radius-xl);
     border: 1px solid var(--gray-200);
-    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     box-shadow: var(--shadow-sm);
 }
 
 /* ====================================================================
-   TABLAS
+   TABLA VINCULAR — 11 columnas
    ==================================================================== */
-.tabla-vincular,
-.tabla {
+.tabla-vincular {
     width: 100%;
+    min-width: 980px;
     border-collapse: collapse;
-    font-family: var(--font-ui);
     font-size: 0.84rem;
+    table-layout: fixed;
 }
 
+.tabla-vincular th:nth-child(1)  { width: 42px;  }
+.tabla-vincular th:nth-child(2)  { width: 120px; }
+.tabla-vincular th:nth-child(3)  { width: 140px; }
+.tabla-vincular th:nth-child(4)  { width: 90px;  }
+.tabla-vincular th:nth-child(5)  { width: 100px; }
+.tabla-vincular th:nth-child(6)  { width: 140px; }
+.tabla-vincular th:nth-child(7)  { width: 90px;  }
+.tabla-vincular th:nth-child(8)  { width: 100px; }
+.tabla-vincular th:nth-child(9)  { width: 85px;  }
+.tabla-vincular th:nth-child(10) { width: 90px;  }
+.tabla-vincular th:nth-child(11) { width: 80px;  }
+
+.tabla-vincular td:nth-child(1),
+.tabla-vincular td:nth-child(9),
+.tabla-vincular td:nth-child(10),
+.tabla-vincular td:nth-child(11) {
+    overflow: visible;
+    text-overflow: unset;
+    white-space: nowrap;
+}
+
+/* ====================================================================
+   TABLA EXPEDIENTES — 11 columnas
+   ==================================================================== */
+.tabla {
+    width: 100%;
+    min-width: 1050px;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    table-layout: fixed;
+}
+
+.tabla th:nth-child(1)  { width: 110px; }
+.tabla th:nth-child(2)  { width: 110px; }
+.tabla th:nth-child(3)  { width: 130px; }
+.tabla th:nth-child(4)  { width: 85px;  }
+.tabla th:nth-child(5)  { width: 130px; }
+.tabla th:nth-child(6)  { width: 85px;  }
+.tabla th:nth-child(7)  { width: 80px;  }
+.tabla th:nth-child(8)  { width: 90px;  }
+.tabla th:nth-child(9)  { width: 85px;  }
+.tabla th:nth-child(10) { width: 90px;  }
+.tabla th:nth-child(11) { width: 65px;  }
+
+/* ====================================================================
+   ESTILOS COMUNES DE TABLA
+   ==================================================================== */
 .tabla-vincular thead,
 .tabla thead {
     background: var(--gray-50);
@@ -248,7 +401,7 @@
 
 .tabla-vincular th,
 .tabla th {
-    padding: 13px 18px;
+    padding: 13px 12px;
     text-align: left;
     font-weight: 700;
     color: var(--gray-400);
@@ -256,15 +409,20 @@
     text-transform: uppercase;
     letter-spacing: 0.7px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .tabla-vincular td,
 .tabla td {
-    padding: 15px 18px;
+    padding: 15px 12px;
     border-bottom: 1px solid var(--gray-100);
     color: var(--gray-700);
     vertical-align: middle;
     line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tabla-vincular tbody tr,
@@ -317,7 +475,7 @@
 }
 
 /* ====================================================================
-   BADGES DE ESTADO
+   BADGES
    ==================================================================== */
 .badge {
     display: inline-flex;
@@ -325,7 +483,6 @@
     gap: 5px;
     padding: 4px 11px;
     border-radius: 20px;
-    font-family: var(--font-ui);
     font-size: 0.69rem;
     font-weight: 700;
     letter-spacing: 0.3px;
@@ -343,30 +500,22 @@
 }
 
 .badge-recibido       { background: #dbeafe; color: #1d4ed8; }
-.badge-evaluacion     { background: var(--warning-bg); color: var(--warning); }
+.badge-evaluacion     { background: var(--warning-bg);  color: var(--warning); }
 .badge-res_separacion { background: #ecfdf5; color: #065f46; }
 .badge-res_disolucion { background: #ede9fe; color: #5b21b6; }
-.badge-archivo        { background: var(--gray-100); color: var(--gray-500); }
+.badge-archivo        { background: var(--gray-100);    color: var(--gray-500); }
+.badge-activo         { background: var(--success-bg);  color: var(--success); }
+.badge-cancelado      { background: var(--danger-bg);   color: var(--danger); }
+.badge-archivado      { background: var(--gray-100);    color: var(--gray-500); }
 
 /* ====================================================================
    BLOQUEADO
    ==================================================================== */
-.bloqueado-si,
-.bloqueado-no {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 11px;
-    border-radius: 20px;
-    font-family: var(--font-ui);
-    font-size: 0.69rem;
-    font-weight: 700;
-}
-
-.bloqueado-si { background: var(--danger-bg);  color: var(--danger); }
-.bloqueado-no { background: var(--success-bg); color: var(--success); }
+.bloqueado-si { background: var(--danger-bg);  color: var(--danger);  padding: 4px 11px; border-radius: 20px; font-size: 0.69rem; font-weight: 700; display: inline-flex; align-items: center; }
+.bloqueado-no { background: var(--success-bg); color: var(--success); padding: 4px 11px; border-radius: 20px; font-size: 0.69rem; font-weight: 700; display: inline-flex; align-items: center; }
 
 /* ====================================================================
-   BOTONES DE ACCIÓN EN TABLA
+   BOTONES DE TABLA
    ==================================================================== */
 .btn-vincular-tabla,
 .btn-ver {
@@ -381,6 +530,7 @@
     cursor: pointer;
     transition: all 0.18s ease;
     white-space: nowrap;
+    border: none;
 }
 
 .btn-vincular-tabla {
@@ -400,7 +550,6 @@
 .btn-ver {
     background: var(--primary);
     color: var(--white);
-    border: none;
     box-shadow: 0 2px 5px rgba(26, 86, 219, .2);
 }
 
@@ -417,7 +566,7 @@
 }
 
 /* ====================================================================
-   ESTADOS VACÍO Y CARGANDO
+   VACÍO Y CARGANDO
    ==================================================================== */
 .vacio {
     display: flex;
@@ -434,7 +583,6 @@
 }
 
 .vacio p {
-    font-family: var(--font-ui);
     font-size: 0.88rem;
     margin: 0;
     font-weight: 500;
@@ -444,36 +592,141 @@
     text-align: center;
     padding: 64px 20px;
     color: var(--gray-400);
-    font-family: var(--font-ui);
     font-size: 0.88rem;
     font-weight: 500;
 }
 
 /* ====================================================================
-   RESPONSIVE
+   RESPONSIVE GENERAL
    ==================================================================== */
 @media (max-width: 1100px) {
     .contenido-modulo3 { padding: 24px; }
 }
 
-@media (max-width: 900px) {
-    .filtros-grid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 768px) {
+    .contenido-modulo3  { padding: 20px 16px; }
+    .resultados-info    { justify-content: flex-start; }
+    .pagina-header h1   { font-size: 1.3rem; }
+    .tabla-container    { border-radius: var(--radius-md); }
+}
+
+@media (max-width: 480px) {
+    .contenido-modulo3  { padding: 16px 12px; }
+    .filtros-panel      { padding: 16px; border-radius: var(--radius-lg); }
+    .pagina-header      { margin-bottom: 20px; }
+    .pagina-header h1   { font-size: 1.1rem; }
+}
+
+/* ====================================================================
+   RESPONSIVE — filtros-grid base (VincularExpedientes)
+   ==================================================================== */
+@media (max-width: 1024px) {
+    .filtros-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .filtros-grid .filtro-grupo:nth-child(3) {
+        grid-column: span 2;
+    }
+    .filtros-grid .acciones-filtros {
+        grid-column: span 2;
+        justify-content: flex-end;
+    }
+    .filtros-grid .acciones-filtros .btn-buscar,
+    .filtros-grid .acciones-filtros .btn-limpiar {
+        width: 130px;
+    }
 }
 
 @media (max-width: 768px) {
-    .contenido-modulo3 { padding: 20px 16px; }
-    .tabla-container { overflow-x: auto; }
-    .tabla-vincular,
-    .tabla { min-width: 680px; }
-    .btn-vincular-tabla,
-    .btn-ver { padding: 6px 12px; font-size: 0.72rem; }
+    .filtros-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    .filtros-grid .filtro-grupo:nth-child(1),
+    .filtros-grid .filtro-grupo:nth-child(3) {
+        grid-column: span 2;
+    }
+    .filtros-grid .acciones-filtros {
+        grid-column: span 2;
+        justify-content: stretch;
+    }
+    .filtros-grid .acciones-filtros .btn-buscar,
+    .filtros-grid .acciones-filtros .btn-limpiar {
+        flex: 1;
+        width: auto;
+    }
 }
 
-@media (max-width: 600px) {
-    .filtros-grid { grid-template-columns: 1fr; }
-    .acciones-filtros { flex-direction: column; gap: 8px; }
-    .btn-buscar,
-    .btn-limpiar { width: 100%; justify-content: center; }
-    .resultados-info { justify-content: flex-start; }
-    .pagina-header h1 { font-size: 1.3rem; }
+@media (max-width: 480px) {
+    .filtros-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .filtros-grid .filtro-grupo:nth-child(1),
+    .filtros-grid .filtro-grupo:nth-child(3) {
+        grid-column: span 1;
+    }
+    .filtros-grid .acciones-filtros {
+        grid-column: span 1;
+        flex-direction: column;
+    }
+    .filtros-grid .acciones-filtros .btn-buscar,
+    .filtros-grid .acciones-filtros .btn-limpiar {
+        width: 100%;
+        height: 44px;
+        flex: unset;
+    }
+}
+
+/* ====================================================================
+   RESPONSIVE — filtros-grid--expedientes
+   ==================================================================== */
+@media (max-width: 1100px) {
+    .filtros-grid--expedientes {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .filtros-grid--expedientes .acciones-filtros {
+        grid-column: span 2;
+        justify-content: flex-end;
+    }
+    .filtros-grid--expedientes .acciones-filtros .btn-buscar,
+    .filtros-grid--expedientes .acciones-filtros .btn-limpiar {
+        width: 130px;
+        flex: unset;
+    }
+}
+
+@media (max-width: 768px) {
+    .filtros-grid--expedientes {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    .filtros-grid--expedientes .acciones-filtros {
+        grid-column: span 2;
+        justify-content: stretch;
+        gap: 8px;
+    }
+    .filtros-grid--expedientes .acciones-filtros .btn-buscar,
+    .filtros-grid--expedientes .acciones-filtros .btn-limpiar {
+        flex: 1;
+        width: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .filtros-grid--expedientes {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .filtros-grid--expedientes .acciones-filtros {
+        grid-column: span 1;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .filtros-grid--expedientes .acciones-filtros .btn-buscar,
+    .filtros-grid--expedientes .acciones-filtros .btn-limpiar {
+        width: 100%;
+        height: 44px;
+        flex: unset;
+    }
 }

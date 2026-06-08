@@ -36,6 +36,7 @@ export default function ProgramarAudiencia() {
             case 'DOCUMENTOS_INTERNOS': return 'documentos'
             case 'AUDIENCIA': return 'audiencia'
             case 'ESPERA_LEGAL': return 'resolucion'
+            case 'DISOLUCION': return 'disolucion'
             default: return 'revision'
         }
     }
@@ -88,51 +89,27 @@ export default function ProgramarAudiencia() {
             if (!id) return
             setCargando(true)
             try {
-                console.log('========== INICIO CARGA ==========')
-                console.log('Expediente ID:', id)
-                
                 const resExp = await getExpedienteById(id)
                 const data = resExp?.data || resExp
                 const expedienteData = data?.expediente || data
                 setExpediente(expedienteData)
-                console.log('Expediente cargado:', expedienteData?.numero_expediente, 'etapa:', expedienteData?.etapa)
 
                 if (expedienteData?.fecha_limite_audiencia) {
                     setFechaLimite(expedienteData.fecha_limite_audiencia)
-                    console.log('Fecha límite:', expedienteData.fecha_limite_audiencia)
                 }
 
-                console.log('Cargando cronograma...')
                 const resCrono = await getCronograma()
                 const slots = resCrono?.data || resCrono || []
                 setSlotsOcupados(slots)
-                console.log('Slots ocupados:', slots.length)
 
                 const resAudiencias = await getAudiencias(id)
                 const audienciasData = resAudiencias?.data || resAudiencias || []
-                console.log('========== AUDIENCIAS CARGADAS ==========')
-                console.log('Total audiencias:', audienciasData.length)
-                console.log('Detalle:', JSON.stringify(audienciasData, null, 2))
                 
-                // Buscar la audiencia con es_actual = 1 (la vigente)
                 const vigente = audienciasData.find(a => a.es_actual === true || a.es_actual === 1)
-                console.log('========== AUDIENCIA VIGENTE ==========')
-                console.log('es_actual=1:', vigente)
                 
-                if (!vigente) {
-                    console.log('⚠️ No se encontró audiencia con es_actual=1')
-                }
-                
-                // Clasificar por tipo
                 const realizada = vigente && vigente.estado === 'REALIZADA' ? vigente : null
                 const programada = vigente && vigente.estado === 'PROGRAMADA' ? vigente : null
                 const reprogramada = vigente && vigente.estado === 'REPROGRAMADA' ? vigente : null
-                
-                console.log('========== CLASIFICACIÓN ==========')
-                console.log('realizada:', realizada)
-                console.log('programada:', programada)
-                console.log('reprogramada:', reprogramada)
-                console.log('======================================')
                 
                 setAudienciaVigente(vigente)
                 setAudienciaRealizada(realizada)
@@ -264,12 +241,6 @@ export default function ProgramarAudiencia() {
     const numeroMesaPartes = expediente?.numero_mesa_partes || expediente?.expedientes_nro_mesa_partes
     const estaCancelado = expediente?.estado === 'CANCELADO'
 
-    console.log('========== RENDER FINAL ==========')
-    console.log('audienciaVigente:', audienciaVigente)
-    console.log('audienciaProgramada:', audienciaProgramada)
-    console.log('audienciaRealizada:', audienciaRealizada)
-    console.log('==================================')
-
     return (
         <>
             <Sidebar />
@@ -326,22 +297,8 @@ export default function ProgramarAudiencia() {
                         </div>
 
                         <div className="seccion">
-                            {estaCancelado ? (
-                                <>
-                                    <div className="cancelado-mensaje">
-                                        <div className="cancelado-icono">❌</div>
-                                        <h3>Expediente Cancelado</h3>
-                                        <p>Este expediente ha sido cancelado.</p>
-                                        <p>No es posible programar o reprogramar una audiencia.</p>
-                                        <button 
-                                            className="btn-volver-detalle"
-                                            onClick={() => navigate(`/modulo3/detalle/${id}`)}
-                                        >
-                                            Volver al detalle del expediente
-                                        </button>
-                                    </div>
-                                </>
-                            ) : audienciaRealizada ? (
+                            {/* 1. Audiencia realizada (incluso si cancelado) */}
+                            {audienciaRealizada && (
                                 <>
                                     <h2>Audiencia ya realizada</h2>
                                     <div className="audiencia-resumen">
@@ -366,7 +323,7 @@ export default function ProgramarAudiencia() {
                                         <div className="resumen-card">
                                             <div className="resumen-info">
                                                 <label>Resultado</label>
-                                                <span>{audienciaRealizada.resultado === 'RATIFICACION' ? 'Ratificacion' : 'Desistimiento'}</span>
+                                                <span>{audienciaRealizada.resultado === 'RATIFICACION' ? 'Ratificación' : 'Desistimiento'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -377,8 +334,16 @@ export default function ProgramarAudiencia() {
                                     >
                                         Ver Registro de Audiencia
                                     </button>
+                                    {estaCancelado && (
+                                        <div className="aviso-cancelado" style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#991b1b' }}>
+                                             Expediente cancelado. No se pueden modificar los datos de la audiencia.
+                                        </div>
+                                    )}
                                 </>
-                            ) : audienciaProgramada && !modoReprogramacion ? (
+                            )}
+
+                            {/* 2. Audiencia programada (no realizada) */}
+                            {!audienciaRealizada && audienciaProgramada && !modoReprogramacion && (
                                 <>
                                     <h2>Audiencia programada</h2>
                                     <div className="audiencia-resumen">
@@ -411,10 +376,11 @@ export default function ProgramarAudiencia() {
                                         <button 
                                             className="btn-registrar-audiencia"
                                             onClick={() => navigate(`/modulo3/expediente/${id}/registrar-audiencia`)}
+                                            disabled={estaCancelado}
                                         >
                                             Registrar Audiencia
                                         </button>
-                                        {audienciaReprogramada && puedeReprogramar(
+                                        {!estaCancelado && audienciaReprogramada && puedeReprogramar() && (
                                             <button 
                                                 className="btn-reprogramar"
                                                 onClick={() => {
@@ -429,95 +395,120 @@ export default function ProgramarAudiencia() {
                                         )}
                                         {!puedeReprogramar() && (
                                             <div className="aviso-max-intentos">
-                                                Maximo de reprogramaciones alcanzado (2/2)
+                                                Máximo de reprogramaciones alcanzado (2/2)
                                             </div>
                                         )}
                                     </div>
+                                    {estaCancelado && (
+                                        <div className="aviso-cancelado" style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#991b1b' }}>
+                                            ⚠️ Expediente cancelado. No se pueden modificar los datos de la audiencia.
+                                        </div>
+                                    )}
                                 </>
-                            ) : (
+                            )}
+
+                            {/* 3. No hay audiencia (ni realizada ni programada) */}
+                            {!audienciaRealizada && !audienciaProgramada && (
                                 <>
-                                    <h2>{modoReprogramacion ? 'Reprogramar audiencia' : 'Seleccione fecha y hora'}</h2>
-                                    
-                                    {modoReprogramacion && (
-                                        <div className="aviso-reprogramacion">
-                                            Esta reprogramando la audiencia. La fecha anterior sera liberada.
-                                            {audienciaProgramada && (
-                                                <div className="intento-info">
-                                                    Intento actual: {audienciaProgramada?.numero_intento || 1}/2
-                                                    {audienciaProgramada?.numero_intento >= 2 && (
-                                                        <span className="aviso-max"> (No se puede reprogramar mas)</span>
+                                    {estaCancelado ? (
+                                        <div className="cancelado-mensaje">
+                                            <div className="cancelado-icono">❌</div>
+                                            <h3>Expediente Cancelado</h3>
+                                            <p>Este expediente ha sido cancelado.</p>
+                                            <p>No es posible programar una audiencia.</p>
+                                            <button 
+                                                className="btn-volver-detalle"
+                                                onClick={() => navigate(`/modulo3/detalle/${id}`)}
+                                            >
+                                                Volver al detalle del expediente
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h2>{modoReprogramacion ? 'Reprogramar audiencia' : 'Seleccione fecha y hora'}</h2>
+                                            
+                                            {modoReprogramacion && (
+                                                <div className="aviso-reprogramacion">
+                                                    Está reprogramando la audiencia. La fecha anterior será liberada.
+                                                    {audienciaProgramada && (
+                                                        <div className="intento-info">
+                                                            Intento actual: {audienciaProgramada?.numero_intento || 1}/2
+                                                            {audienciaProgramada?.numero_intento >= 2 && (
+                                                                <span className="aviso-max"> (No se puede reprogramar más)</span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
-                                        </div>
-                                    )}
-                                    
-                                    <div className="programacion-form">
-                                        <div className="campo">
-                                            <label>Fecha *</label>
-                                            <input
-                                                type="date"
-                                                value={fechaSeleccionada}
-                                                onChange={(e) => {
-                                                    setFechaSeleccionada(e.target.value)
-                                                    setHoraSeleccionada('')
-                                                    setMensaje(null)
-                                                }}
-                                                min={new Date().toISOString().split('T')[0]}
-                                            />
-                                        </div>
-                                        <div className="campo">
-                                            <label>Hora *</label>
-                                            <select
-                                                value={horaSeleccionada}
-                                                onChange={(e) => {
-                                                    setHoraSeleccionada(e.target.value)
-                                                    setMensaje(null)
-                                                }}
-                                                disabled={!fechaSeleccionada}
-                                            >
-                                                <option value="">Seleccione una hora</option>
-                                                {horasDisponibles.map(hora => (
-                                                    <option key={hora} value={hora}>{hora}</option>
-                                                ))}
-                                            </select>
-                                            {fechaSeleccionada && horasDisponibles.length === 0 && (
-                                                <div className="aviso-horas-ocupadas">
-                                                    No hay horas disponibles para esta fecha. Seleccione otra fecha.
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {mensaje && (
-                                            <div className={`mensaje ${mensaje.tipo}`}>
-                                                {mensaje.texto}
-                                            </div>
-                                        )}
-
-                                        <div className="botones-formulario">
-                                            <button
-                                                className="btn-programar"
-                                                onClick={handleProgramar}
-                                                disabled={enviando || !fechaSeleccionada || !horaSeleccionada || horasDisponibles.length === 0}
-                                            >
-                                                {enviando ? 'Programando...' : modoReprogramacion ? 'Confirmar Reprogramacion' : 'Programar Audiencia'}
-                                            </button>
                                             
-                                            {modoReprogramacion && (
-                                                <button
-                                                    className="btn-cancelar-reprogramacion"
-                                                    onClick={() => {
-                                                        setModoReprogramacion(false)
-                                                        setFechaSeleccionada('')
-                                                        setHoraSeleccionada('')
-                                                        setMensaje(null)
-                                                    }}
-                                                >
-                                                    Cancelar
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
+                                            <div className="programacion-form">
+                                                <div className="campo">
+                                                    <label>Fecha *</label>
+                                                    <input
+                                                        type="date"
+                                                        value={fechaSeleccionada}
+                                                        onChange={(e) => {
+                                                            setFechaSeleccionada(e.target.value)
+                                                            setHoraSeleccionada('')
+                                                            setMensaje(null)
+                                                        }}
+                                                        min={new Date().toISOString().split('T')[0]}
+                                                    />
+                                                </div>
+                                                <div className="campo">
+                                                    <label>Hora *</label>
+                                                    <select
+                                                        value={horaSeleccionada}
+                                                        onChange={(e) => {
+                                                            setHoraSeleccionada(e.target.value)
+                                                            setMensaje(null)
+                                                        }}
+                                                        disabled={!fechaSeleccionada}
+                                                    >
+                                                        <option value="">Seleccione una hora</option>
+                                                        {horasDisponibles.map(hora => (
+                                                            <option key={hora} value={hora}>{hora}</option>
+                                                        ))}
+                                                    </select>
+                                                    {fechaSeleccionada && horasDisponibles.length === 0 && (
+                                                        <div className="aviso-horas-ocupadas">
+                                                            No hay horas disponibles para esta fecha. Seleccione otra fecha.
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {mensaje && (
+                                                    <div className={`mensaje ${mensaje.tipo}`}>
+                                                        {mensaje.texto}
+                                                    </div>
+                                                )}
+
+                                                <div className="botones-formulario">
+                                                    <button
+                                                        className="btn-programar"
+                                                        onClick={handleProgramar}
+                                                        disabled={enviando || !fechaSeleccionada || !horaSeleccionada || horasDisponibles.length === 0}
+                                                    >
+                                                        {enviando ? 'Programando...' : modoReprogramacion ? 'Confirmar Reprogramación' : 'Programar Audiencia'}
+                                                    </button>
+                                                    
+                                                    {modoReprogramacion && (
+                                                        <button
+                                                            className="btn-cancelar-reprogramacion"
+                                                            onClick={() => {
+                                                                setModoReprogramacion(false)
+                                                                setFechaSeleccionada('')
+                                                                setHoraSeleccionada('')
+                                                                setMensaje(null)
+                                                            }}
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </>
                             )}
                         </div>
