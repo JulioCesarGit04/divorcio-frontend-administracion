@@ -1,0 +1,25 @@
+/* src/styles/modulo3/audiencias.css */
+.estado-audiencia {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.estado-audiencia.programada {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+.estado-audiencia.realizada {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.estado-audiencia.reprogramada {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.btn-registrar {
+    background-color: #3b82f6;
+    color: white;
+}

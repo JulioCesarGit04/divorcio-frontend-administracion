@@ -459,3 +459,53 @@
         align-items: flex-start;
     }
 }
+/* Botones de búsqueda y limpieza */
+.btn-buscar, .btn-limpiar {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.btn-buscar {
+    background-color: #3b82f6;
+    color: white;
+}
+.btn-buscar:hover {
+    background-color: #2563eb;
+}
+.btn-limpiar {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+.btn-limpiar:hover {
+    background-color: #e5e7eb;
+}
+
+/* Badges de estado en el timeline */
+.estado-activo {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.estado-cancelado {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+.estado-archivado {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+
+/* Línea de etapa */
+.timeline-etapa {
+    font-size: 13px;
+    color: #4b5563;
+    margin-top: 6px;
+    margin-bottom: 8px;
+}
+/* Select wrapper para que el combobox tenga el mismo estilo */
+.select-wrapper {
+    position: relative;
+    width: 100%;
+}

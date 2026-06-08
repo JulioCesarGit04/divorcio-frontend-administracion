@@ -33,18 +33,19 @@ export default function Sidebar() {
                     <button onClick={() => navigate('/modulo3/expedientes')} className={esActivo('/expedientes')}>
                         Expedientes activos
                     </button>
+                    <button onClick={() => navigate('/modulo3/audiencias')} className={esActivo('/audiencias')}>
+                        Audiencias
+                    </button>
                     <button onClick={() => navigate('/modulo3/historial')} className={esActivo('/historial')}>
                         Historial global
                     </button>
                     <button onClick={() => navigate('/modulo3/alertas')} className={esActivo('/alertas')}>
                         Alertas de plazo
                     </button>
-                    <button onClick={() => navigate('/modulo3/reportes')} className={esActivo('/reportes')}>
-                        Reportes
-                    </button>
+                    
                 </div>
 
-                
+                 
             </div>
         </nav>
     )

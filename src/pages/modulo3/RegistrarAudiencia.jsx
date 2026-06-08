@@ -42,6 +42,10 @@ export default function RegistrarAudiencia() {
         acta3: null
     })
 
+    // Estados para el visor de PDF
+    const [visorAbierto, setVisorAbierto] = useState(false)
+    const [pdfUrl, setPdfUrl] = useState('')
+
     const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
 
     const getPipelineEtapa = () => {
@@ -50,6 +54,7 @@ export default function RegistrarAudiencia() {
             case 'DOCUMENTOS_INTERNOS': return 'documentos'
             case 'AUDIENCIA': return 'audiencia'
             case 'ESPERA_LEGAL': return 'resolucion'
+            case 'DISOLUCION': return 'disolucion'
             default: return 'revision'
         }
     }
@@ -173,6 +178,17 @@ export default function RegistrarAudiencia() {
         }
         setArchivos(prev => ({ ...prev, [tipo]: file }))
         setMensaje(null)
+    }
+
+    // Función para ver PDF en modal
+    const verPdfEnModal = (ruta) => {
+        const url = getPdfUrl(ruta)
+        if (url !== '#') {
+            setPdfUrl(url)
+            setVisorAbierto(true)
+        } else {
+            alert('No se puede abrir el PDF')
+        }
     }
 
     const ejecutarRegistro = async () => {
@@ -310,8 +326,13 @@ export default function RegistrarAudiencia() {
         }
     }
 
-    // Verificar si el expediente está cancelado o archivado
-    if (expediente?.estado === 'CANCELADO' || expediente?.estado === 'ARCHIVADO') {
+    // ========== LÓGICA PARA EXPEDIENTE CANCELADO PERO CON AUDIENCIA REALIZADA ==========
+    const estaCancelado = expediente?.estado === 'CANCELADO'
+    const estaArchivado = expediente?.estado === 'ARCHIVADO'
+    const yaFueRegistrada = audiencia?.estado === 'REALIZADA'
+
+    // Si está cancelado o archivado y NO hay una audiencia realizada → mostrar mensaje de cancelado (sin datos)
+    if ((estaCancelado || estaArchivado) && !yaFueRegistrada) {
         return (
             <>
                 <Sidebar />
@@ -321,13 +342,13 @@ export default function RegistrarAudiencia() {
                         <h1>Registrar Audiencia</h1>
                     </div>
                     <div className="estado-container">
-                        <div className="estado-icono">{expediente?.estado === 'CANCELADO' ? '❌' : '✅'}</div>
-                        <h2>{expediente?.estado === 'CANCELADO' ? 'Expediente Cancelado' : 'Expediente Archivado'}</h2>
-                        <p>{expediente?.estado === 'CANCELADO' 
+                        <div className="estado-icono">{estaCancelado ? '❌' : '✅'}</div>
+                        <h2>{estaCancelado ? 'Expediente Cancelado' : 'Expediente Archivado'}</h2>
+                        <p>{estaCancelado 
                             ? 'Este expediente ha sido cancelado.' 
                             : 'Este expediente ha sido completado y archivado.'}
                         </p>
-                        <p>No es posible registrar una audiencia.</p>
+                        <p>No hay una audiencia registrada para mostrar.</p>
                         <button className="btn-volver-detalle" onClick={() => navigate(`/modulo3/detalle/${id}`)}>
                             Volver al detalle del expediente
                         </button>
@@ -337,6 +358,7 @@ export default function RegistrarAudiencia() {
         )
     }
 
+    // Resto de la lógica (carga, errores, etc.) igual
     if (cargando) {
         return (
             <>
@@ -371,8 +393,6 @@ export default function RegistrarAudiencia() {
     }
 
     const numeroMesaPartes = expediente?.numero_mesa_partes || expediente?.expedientes_nro_mesa_partes
-    const yaFueRegistrada = audiencia?.estado === 'REALIZADA'
-    const esRatificacion = resultado === 'RATIFICACION' || (yaFueRegistrada && audiencia?.resultado === 'RATIFICACION')
 
     return (
         <>
@@ -386,7 +406,10 @@ export default function RegistrarAudiencia() {
 
                 <div style={{ display: 'flex', gap: '30px' }}>
                     <div style={{ flex: 2 }}>
-                        {yaFueRegistrada && (
+                        {/* Aviso si el expediente está cancelado pero tiene audiencia realizada */}
+                        
+
+                        {yaFueRegistrada && !estaCancelado && (
                             <div className="alerta-info" style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
                                 Esta audiencia ya fue registrada. Los datos son solo de consulta.
                             </div>
@@ -414,15 +437,15 @@ export default function RegistrarAudiencia() {
                                     <div className="conyuge-titulo">Solicitante</div>
                                     <div><strong>{expediente?.Solicitante_Nombres || '—'} {expediente?.Solicitante_Apellidos || ''}</strong></div>
                                     <div>DNI: {expediente?.Solicitante_Dni || '—'}</div>
-                                    <div>Telefono: {expediente?.Solicitante_Telefono || '—'}</div>
-                                    <div>Direccion: {expediente?.Solicitante_Direccion || '—'}</div>
+                                    <div>Teléfono: {expediente?.Solicitante_Telefono || '—'}</div>
+                                    <div>Dirección: {expediente?.Solicitante_Direccion || '—'}</div>
                                 </div>
                                 <div className="conyuge-card">
                                     <div className="conyuge-titulo">Demandado</div>
                                     <div><strong>{expediente?.Demandado_Nombres || '—'} {expediente?.Demandado_Apellidos || ''}</strong></div>
                                     <div>DNI: {expediente?.Demandado_Dni || '—'}</div>
-                                    <div>Telefono: {expediente?.Demandado_Telefono || '—'}</div>
-                                    <div>Direccion: {expediente?.Demandado_Direccion || '—'}</div>
+                                    <div>Teléfono: {expediente?.Demandado_Telefono || '—'}</div>
+                                    <div>Dirección: {expediente?.Demandado_Direccion || '—'}</div>
                                 </div>
                             </div>
                         </div>
@@ -501,27 +524,27 @@ export default function RegistrarAudiencia() {
                             <div className="resultado-opciones">
                                 <label className={`opcion-resultado ${resultado === 'RATIFICACION' ? 'seleccionado' : ''}`}>
                                     <input type="radio" name="resultado" value="RATIFICACION" checked={resultado === 'RATIFICACION'} onChange={(e) => setResultado(e.target.value)} disabled={yaFueRegistrada || !ambosAsistieron()} />
-                                    <span>Ratificacion</span>
-                                    <small>Ambos conyuges confirman su voluntad de divorciarse</small>
+                                    <span>Ratificación</span>
+                                    <small>Ambos cónyuges confirman su voluntad de divorciarse</small>
                                     {!ambosAsistieron() && <small className="aviso-requisito"> (Requiere que ambos asistan)</small>}
                                 </label>
                                 <label className={`opcion-resultado ${resultado === 'DESISTIMIENTO' ? 'seleccionado' : ''}`}>
                                     <input type="radio" name="resultado" value="DESISTIMIENTO" checked={resultado === 'DESISTIMIENTO'} onChange={(e) => setResultado(e.target.value)} disabled={yaFueRegistrada} />
                                     <span>Desistimiento</span>
-                                    <small>Uno o ambos conyuges ya no desean divorciarse</small>
+                                    <small>Uno o ambos cónyuges ya no desean divorciarse</small>
                                 </label>
                                 <label className={`opcion-resultado ${resultado === 'INASISTENCIA' ? 'seleccionado' : ''}`}>
                                     <input type="radio" name="resultado" value="INASISTENCIA" checked={resultado === 'INASISTENCIA'} onChange={(e) => setResultado(e.target.value)} disabled={yaFueRegistrada} />
                                     <span>Inasistencia</span>
-                                    <small>Uno o ambos conyuges no asistieron a la audiencia</small>
+                                    <small>Uno o ambos cónyuges no asistieron a la audiencia</small>
                                     {audiencia?.numero_intento >= 2 && (
-                                        <small className="aviso-max"> (Segunda inasistencia cancelara el proceso)</small>
+                                        <small className="aviso-max"> (Segunda inasistencia cancelará el proceso)</small>
                                     )}
                                 </label>
                             </div>
                         </div>
 
-                        {esRatificacion && (
+                        {resultado === 'RATIFICACION' && (
                             <div className="seccion">
                                 <h2>ACTAS DE AUDIENCIA</h2>
                                 <div className="actas-upload">
@@ -534,7 +557,7 @@ export default function RegistrarAudiencia() {
                                                 {actaData ? (
                                                     <div className="acta-existente">
                                                         <span className="archivo-ok"> {actaData.nombre_archivo || `Acta ${num}`}</span>
-                                                        <button className="btn-ver-acta" onClick={() => window.open(getPdfUrl(actaData.ruta_archivo), '_blank')}>Ver PDF</button>
+                                                        <button className="btn-ver-acta" onClick={() => verPdfEnModal(actaData.ruta_archivo)}>Ver PDF</button>
                                                     </div>
                                                 ) : (
                                                     <div className="acta-upload">
@@ -562,10 +585,11 @@ export default function RegistrarAudiencia() {
                             </div>
                         )}
 
-                        {resultado === 'DESISTIMIENTO' && !yaFueRegistrada && (
+                        {/* Botones de acción (solo si la audiencia NO está ya registrada y el expediente no está cancelado) */}
+                        {!yaFueRegistrada && !estaCancelado && resultado === 'DESISTIMIENTO' && (
                             <div className="seccion">
                                 <div className="aviso-desistimiento" style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-                                    Al confirmar el desistimiento, el expediente sera CANCELADO y el proceso finalizara.
+                                    Al confirmar el desistimiento, el expediente será CANCELADO y el proceso finalizará.
                                 </div>
                                 <button className="btn-cancelar-proceso" onClick={handleSubmit} disabled={enviando} style={{ backgroundColor: '#dc2626', color: 'white', width: '100%', padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
                                     {enviando ? 'Procesando...' : 'Cancelar Expediente'}
@@ -573,12 +597,12 @@ export default function RegistrarAudiencia() {
                             </div>
                         )}
 
-                        {resultado === 'INASISTENCIA' && !yaFueRegistrada && (
+                        {!yaFueRegistrada && !estaCancelado && resultado === 'INASISTENCIA' && (
                             <div className="seccion">
                                 {audiencia?.numero_intento >= 2 ? (
                                     <>
                                         <div className="aviso-inasistencia" style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-                                            ⚠️ Esta es la SEGUNDA inasistencia. El proceso se CANCELARA definitivamente.
+                                             Esta es la SEGUNDA inasistencia. El proceso se CANCELARÁ definitivamente.
                                         </div>
                                         <button className="btn-cancelar-proceso" onClick={handleSubmit} disabled={enviando} style={{ backgroundColor: '#dc2626', color: 'white', width: '100%', padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
                                             {enviando ? 'Procesando...' : 'Cancelar Expediente'}
@@ -587,7 +611,7 @@ export default function RegistrarAudiencia() {
                                 ) : (
                                     <>
                                         <div className="aviso-inasistencia" style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-                                            Al confirmar la inasistencia, podra reprogramar la audiencia.
+                                            Al confirmar la inasistencia, podrá reprogramar la audiencia.
                                         </div>
                                         <button className="btn-reprogramar" onClick={handleSubmit} disabled={enviando} style={{ backgroundColor: '#f59e0b', color: 'white', width: '100%', padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
                                             {enviando ? 'Procesando...' : 'Reprogramar Audiencia'}
@@ -597,10 +621,10 @@ export default function RegistrarAudiencia() {
                             </div>
                         )}
 
-                        {resultado === 'RATIFICACION' && !yaFueRegistrada && (
+                        {!yaFueRegistrada && !estaCancelado && resultado === 'RATIFICACION' && (
                             <div className="seccion">
                                 <button className="btn-registrar" onClick={handleSubmit} disabled={enviando} style={{ backgroundColor: '#22c55e', color: 'white', width: '100%', padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
-                                    {enviando ? 'Registrando...' : 'Registrar Ratificacion'}
+                                    {enviando ? 'Registrando...' : 'Registrar Ratificación'}
                                 </button>
                             </div>
                         )}
@@ -611,40 +635,62 @@ export default function RegistrarAudiencia() {
                         <PipelineVisual etapaActual={getPipelineEtapa()} />
                     </div>
                 </div>
-            </main>
 
-            {/* Modal de confirmación personalizado */}
-            {modalConfirmacion.abierto && (
-                <div className="modal-confirmacion-overlay" onClick={() => !enviando && setModalConfirmacion({ ...modalConfirmacion, abierto: false })}>
-                    <div className="modal-confirmacion-contenido" onClick={e => e.stopPropagation()}>
-                        <div className={`modal-confirmacion-header ${modalConfirmacion.tipo}`}>
-                            <div className="modal-confirmacion-icono">
-                                {modalConfirmacion.tipo === 'danger' ? '' : ''}
+                {/* Modal de confirmación personalizado */}
+                {modalConfirmacion.abierto && (
+                    <div className="modal-confirmacion-overlay" onClick={() => !enviando && setModalConfirmacion({ ...modalConfirmacion, abierto: false })}>
+                        <div className="modal-confirmacion-contenido" onClick={e => e.stopPropagation()}>
+                            <div className={`modal-confirmacion-header ${modalConfirmacion.tipo}`}>
+                                <div className="modal-confirmacion-icono">
+                                    {modalConfirmacion.tipo === 'danger' ? '' : ' '}
+                                </div>
+                                <h3>{modalConfirmacion.titulo}</h3>
                             </div>
-                            <h3>{modalConfirmacion.titulo}</h3>
-                        </div>
-                        <div className="modal-confirmacion-body">
-                            <p>{modalConfirmacion.mensaje}</p>
-                        </div>
-                        <div className="modal-confirmacion-footer">
-                            <button 
-                                className="modal-btn-cancelar" 
-                                onClick={() => setModalConfirmacion({ ...modalConfirmacion, abierto: false })}
-                                disabled={enviando}
-                            >
-                                Cancelar
-                            </button>
-                            <button 
-                                className={`modal-btn-confirmar ${modalConfirmacion.tipo}`} 
-                                onClick={modalConfirmacion.onConfirm}
-                                disabled={enviando}
-                            >
-                                {enviando ? 'Procesando...' : 'Confirmar'}
-                            </button>
+                            <div className="modal-confirmacion-body">
+                                <p>{modalConfirmacion.mensaje}</p>
+                            </div>
+                            <div className="modal-confirmacion-footer">
+                                <button 
+                                    className="modal-btn-cancelar" 
+                                    onClick={() => setModalConfirmacion({ ...modalConfirmacion, abierto: false })}
+                                    disabled={enviando}
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    className={`modal-btn-confirmar ${modalConfirmacion.tipo}`} 
+                                    onClick={modalConfirmacion.onConfirm}
+                                    disabled={enviando}
+                                >
+                                    {enviando ? 'Procesando...' : 'Confirmar'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {/* Modal visor de PDF */}
+                {visorAbierto && (
+                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
+                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Visualizador de PDF</h3>
+                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
+                            </div>
+                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
+                                <iframe
+                                    src={pdfUrl}
+                                    title="Visor PDF"
+                                    style={{ width: '100%', height: '100%', border: 'none' }}
+                                />
+                            </div>
+                            <div className="modal-footer">
+                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
         </>
     )
 }

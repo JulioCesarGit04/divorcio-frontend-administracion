@@ -27,6 +27,21 @@ export default function DocumentosInternos() {
     const [fechaElaboracion, setFechaElaboracion] = useState('')
     const [archivo, setArchivo] = useState(null)
 
+    // Estados para el modal de reemplazo
+    const [modalReemplazoAbierto, setModalReemplazoAbierto] = useState(false)
+    const [tipoDocumentoReemplazo, setTipoDocumentoReemplazo] = useState('')
+    const [motivoReemplazo, setMotivoReemplazo] = useState('')
+    const [archivoReemplazo, setArchivoReemplazo] = useState(null)
+    const [enviandoReemplazo, setEnviandoReemplazo] = useState(false)
+    const [mensajeReemplazo, setMensajeReemplazo] = useState(null)
+
+    // Estados para el visor de PDF
+    const [visorAbierto, setVisorAbierto] = useState(false)
+    const [pdfUrl, setPdfUrl] = useState('')
+
+    // Determinar si el expediente está cancelado o archivado (solo lectura)
+    const esSoloLectura = expediente?.estado === 'CANCELADO' || expediente?.estado === 'ARCHIVADO'
+
     // Mapear etapa de la BD a la vista del pipeline
     const getPipelineEtapa = () => {
         switch(etapaActual) {
@@ -48,21 +63,17 @@ export default function DocumentosInternos() {
         if (!id) return
         setCargando(true)
         try {
-            // Cargar expediente
             const resExp = await getExpedienteById(id)
             const data = resExp?.data || resExp
             const expedienteData = data?.expediente || data
             setExpediente(expedienteData)
 
-            // Cargar documentos internos
             const resDocs = await getDocumentosInternos(id)
             const docsData = resDocs?.data || resDocs || []
             setDocumentosInternos(docsData)
 
-            // Cargar audiencias para el PlazoAlerta
             const resAudiencias = await getAudiencias(id)
             const audienciasData = resAudiencias?.data || resAudiencias || []
-            // Buscar la audiencia vigente (la que tiene es_actual = true)
             const audienciaVigente = audienciasData.find(a => a.es_actual === true)
             setAudienciaVigente(audienciaVigente)
 
@@ -101,7 +112,6 @@ export default function DocumentosInternos() {
 
         try {
             await subirDocumentoInterno(id, tipoDocumento, numeroDocumento || '', fechaElaboracion, archivo)
-
             setMensaje({ tipo: 'success', texto: 'Documento subido correctamente' })
             setTimeout(() => {
                 setModalAbierto(false)
@@ -119,9 +129,50 @@ export default function DocumentosInternos() {
         }
     }
 
+    const handleReemplazarDocumento = async () => {
+        if (!archivoReemplazo) {
+            setMensajeReemplazo({ tipo: 'error', texto: 'Debe seleccionar un archivo PDF' })
+            return
+        }
+        if (!motivoReemplazo.trim()) {
+            setMensajeReemplazo({ tipo: 'error', texto: 'Debe ingresar el motivo del reemplazo' })
+            return
+        }
+
+        setEnviandoReemplazo(true)
+        setMensajeReemplazo(null)
+
+        try {
+            await subirDocumentoInterno(id, tipoDocumentoReemplazo, null, new Date().toISOString().split('T')[0], archivoReemplazo, motivoReemplazo)
+            setMensajeReemplazo({ tipo: 'success', texto: 'Documento reemplazado correctamente' })
+            setTimeout(() => {
+                setModalReemplazoAbierto(false)
+                setArchivoReemplazo(null)
+                setMotivoReemplazo('')
+                setMensajeReemplazo(null)
+                cargar()
+            }, 1500)
+        } catch (err) {
+            console.error('Error:', err)
+            setMensajeReemplazo({ tipo: 'error', texto: err.message })
+        } finally {
+            setEnviandoReemplazo(false)
+        }
+    }
+
     const abrirModal = (tipo) => {
+        if (esSoloLectura) return
         setTipoDocumento(tipo)
         setModalAbierto(true)
+    }
+
+    const abrirModalReemplazo = (tipo) => {
+        if (esSoloLectura) return
+        setTipoDocumentoReemplazo(tipo)
+        setMotivoReemplazo('')
+        setArchivoReemplazo(null)
+        setMensajeReemplazo(null)
+        setModalReemplazoAbierto(true)
     }
 
     const getDocumentoEstado = (tipo) => {
@@ -137,8 +188,15 @@ export default function DocumentosInternos() {
         return { estado: 'pendiente', fecha: null, nombre: null, archivo: null }
     }
 
+    // Función modificada: abre el modal en lugar de window.open
     const verPdf = (ruta) => {
-        window.open(getPdfUrl(ruta), '_blank')
+        const url = getPdfUrl(ruta)
+        if (url !== '#') {
+            setPdfUrl(url)
+            setVisorAbierto(true)
+        } else {
+            alert('No se puede abrir el PDF')
+        }
     }
 
     const handleVolver = () => {
@@ -146,6 +204,7 @@ export default function DocumentosInternos() {
     }
 
     const handleContinuar = () => {
+        if (esSoloLectura) return
         if (informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido') {
             setMensajeGlobal({ tipo: 'error', texto: 'Debe subir ambos documentos antes de continuar' })
             return
@@ -202,15 +261,19 @@ export default function DocumentosInternos() {
     const informeLegal = getDocumentoEstado('INFORME_LEGAL')
     const resolucionAdmision = getDocumentoEstado('RESOLUCION_ADMISIBLE')
 
+    const disabledButtonStyle = {
+        cursor: 'not-allowed',
+        opacity: 0.6,
+        pointerEvents: 'auto'
+    }
+
     return (
         <>
             <Sidebar />
             <main className="contenido-modulo3">
                 
                 <div className="detalle-header">
-                    
                     <button className="btn-volver" onClick={handleVolver}>← Volver</button>
-                    
                     <h1>Documentos Internos</h1>
                 </div>
 
@@ -221,14 +284,12 @@ export default function DocumentosInternos() {
                 )}
 
                 <div style={{ display: 'flex', gap: '24px' }}>
-                    {/* COLUMNA IZQUIERDA - Contenido principal */}
+                    {/* COLUMNA IZQUIERDA */}
                     <div style={{ flex: 2 }}>
-                        {/* Plazo Alerta */}
                         <PlazoAlerta 
                             expediente={expediente}
                             audienciaActual={audienciaVigente}
                         />
-                        {/* Datos del expediente */}
                         <div className="seccion datos-expediente">
                             <h2>Datos del expediente</h2>
                             
@@ -265,10 +326,11 @@ export default function DocumentosInternos() {
                             </div>
                         </div>
 
-                        {/* Documentos a subir */}
+                        {/* Documentos requeridos */}
                         <div className="seccion documentos-subida">
                             <h2>Documentos requeridos</h2>
                             <div className="documentos-lista">
+                                {/* INFORME LEGAL */}
                                 <div className="documento-item">
                                     <div className="documento-info">
                                         <div className="documento-icono"></div>
@@ -286,11 +348,23 @@ export default function DocumentosInternos() {
                                     </div>
                                     <div className="documento-acciones">
                                         {informeLegal.estado === 'subido' ? (
-                                            <button className="btn-ver" onClick={() => verPdf(informeLegal.archivo)}>Ver PDF</button>
+                                            <>
+                                                <button className="btn-ver" onClick={() => verPdf(informeLegal.archivo)}>Ver PDF</button>
+                                                <button 
+                                                    className="btn-reemplazar" 
+                                                    onClick={() => abrirModalReemplazo('INFORME_LEGAL')}
+                                                    disabled={esSoloLectura}
+                                                    style={esSoloLectura ? disabledButtonStyle : {}}
+                                                >
+                                                    Reemplazar
+                                                </button>
+                                            </>
                                         ) : (
                                             <button 
                                                 className="btn-subir" 
                                                 onClick={() => abrirModal('INFORME_LEGAL')}
+                                                disabled={esSoloLectura}
+                                                style={esSoloLectura ? disabledButtonStyle : {}}
                                             >
                                                 Subir
                                             </button>
@@ -298,6 +372,7 @@ export default function DocumentosInternos() {
                                     </div>
                                 </div>
 
+                                {/* RESOLUCION DE ADMISION */}
                                 <div className="documento-item">
                                     <div className="documento-info">
                                         <div className="documento-icono"></div>
@@ -315,11 +390,23 @@ export default function DocumentosInternos() {
                                     </div>
                                     <div className="documento-acciones">
                                         {resolucionAdmision.estado === 'subido' ? (
-                                            <button className="btn-ver" onClick={() => verPdf(resolucionAdmision.archivo)}>Ver PDF</button>
+                                            <>
+                                                <button className="btn-ver" onClick={() => verPdf(resolucionAdmision.archivo)}>Ver PDF</button>
+                                                <button 
+                                                    className="btn-reemplazar" 
+                                                    onClick={() => abrirModalReemplazo('RESOLUCION_ADMISIBLE')}
+                                                    disabled={esSoloLectura}
+                                                    style={esSoloLectura ? disabledButtonStyle : {}}
+                                                >
+                                                    Reemplazar
+                                                </button>
+                                            </>
                                         ) : (
                                             <button 
                                                 className="btn-subir" 
                                                 onClick={() => abrirModal('RESOLUCION_ADMISIBLE')}
+                                                disabled={esSoloLectura}
+                                                style={esSoloLectura ? disabledButtonStyle : {}}
                                             >
                                                 Subir
                                             </button>
@@ -329,13 +416,14 @@ export default function DocumentosInternos() {
                             </div>
                         </div>
 
-                        {/* Boton Continuar - Solo se muestra en etapa DOCUMENTOS_INTERNOS */}
+                        {/* Boton Continuar */}
                         {(etapaActual === 'DOCUMENTOS_INTERNOS' || etapaActual === 'EVALUACION') && (
                             <div className="seccion acciones">
                                 <button 
                                     className="btn-continuar"
                                     onClick={handleContinuar}
-                                    disabled={informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido'}
+                                    disabled={esSoloLectura || informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido'}
+                                    style={esSoloLectura ? disabledButtonStyle : {}}
                                 >
                                     Continuar a Programar Audiencia
                                 </button>
@@ -343,7 +431,7 @@ export default function DocumentosInternos() {
                         )}
                     </div>
 
-                    {/* COLUMNA DERECHA - Botones y Pipeline */}
+                    {/* COLUMNA DERECHA */}
                     <div style={{ flex: 1 }}>
                         <BotonesNavegacion 
                             expedienteId={id} 
@@ -354,7 +442,7 @@ export default function DocumentosInternos() {
                     </div>
                 </div>
 
-                {/* Modal para subir documento */}
+                {/* Modales existentes (subida, reemplazo, confirmación) */}
                 {modalAbierto && (
                     <div className="modal-overlay" onClick={() => !subiendo && setModalAbierto(false)}>
                         <div className="modal-contenido" onClick={e => e.stopPropagation()}>
@@ -365,43 +453,51 @@ export default function DocumentosInternos() {
                             <div className="modal-body">
                                 <div className="campo">
                                     <label>N° de documento (opcional)</label>
-                                    <input
-                                        type="text"
-                                        value={numeroDocumento}
-                                        onChange={(e) => setNumeroDocumento(e.target.value)}
-                                        placeholder="Ej: INF-001-2026"
-                                        disabled={subiendo}
-                                    />
+                                    <input type="text" value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.target.value)} placeholder="Ej: INF-001-2026" disabled={subiendo} />
                                 </div>
                                 <div className="campo">
                                     <label>Fecha de elaboracion *</label>
-                                    <input
-                                        type="date"
-                                        value={fechaElaboracion}
-                                        onChange={(e) => setFechaElaboracion(e.target.value)}
-                                        disabled={subiendo}
-                                        required
-                                    />
+                                    <input type="date" value={fechaElaboracion} onChange={(e) => setFechaElaboracion(e.target.value)} disabled={subiendo} required />
                                 </div>
                                 <div className="campo">
                                     <label>Archivo PDF *</label>
-                                    <input
-                                        type="file"
-                                        accept=".pdf"
-                                        onChange={(e) => setArchivo(e.target.files[0])}
-                                        disabled={subiendo}
-                                    />
+                                    <input type="file" accept=".pdf" onChange={(e) => setArchivo(e.target.files[0])} disabled={subiendo} />
                                 </div>
-                                {mensaje && (
-                                    <div className={`mensaje ${mensaje.tipo}`}>
-                                        {mensaje.texto}
-                                    </div>
-                                )}
+                                {mensaje && <div className={`mensaje ${mensaje.tipo}`}>{mensaje.texto}</div>}
                             </div>
                             <div className="modal-footer">
                                 <button className="btn-cancelar" onClick={() => setModalAbierto(false)} disabled={subiendo}>Cancelar</button>
                                 <button className="btn-confirmar" onClick={handleSubirDocumento} disabled={subiendo || !archivo || !fechaElaboracion}>
                                     {subiendo ? 'Subiendo...' : 'Subir documento'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {modalReemplazoAbierto && (
+                    <div className="modal-overlay" onClick={() => !enviandoReemplazo && setModalReemplazoAbierto(false)}>
+                        <div className="modal-contenido" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Reemplazar {tipoDocumentoReemplazo === 'INFORME_LEGAL' ? 'Informe Legal' : 'Resolucion de Admision'}</h3>
+                                <button className="modal-cerrar" onClick={() => !enviandoReemplazo && setModalReemplazoAbierto(false)} disabled={enviandoReemplazo}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="campo">
+                                    <label>Motivo del reemplazo <span className="required">*</span></label>
+                                    <textarea value={motivoReemplazo} onChange={(e) => setMotivoReemplazo(e.target.value)} rows="3" disabled={enviandoReemplazo} />
+                                </div>
+                                <div className="campo">
+                                    <label>Nuevo archivo PDF <span className="required">*</span></label>
+                                    <input type="file" accept=".pdf" onChange={(e) => setArchivoReemplazo(e.target.files[0])} disabled={enviandoReemplazo} />
+                                    {archivoReemplazo && <span className="archivo-ok">✅ {archivoReemplazo.name}</span>}
+                                </div>
+                                {mensajeReemplazo && <div className={`mensaje ${mensajeReemplazo.tipo}`}>{mensajeReemplazo.texto}</div>}
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn-cancelar" onClick={() => setModalReemplazoAbierto(false)} disabled={enviandoReemplazo}>Cancelar</button>
+                                <button className="btn-confirmar" onClick={handleReemplazarDocumento} disabled={enviandoReemplazo || !archivoReemplazo || !motivoReemplazo.trim()}>
+                                    {enviandoReemplazo ? 'Reemplazando...' : 'Reemplazar'}
                                 </button>
                             </div>
                         </div>
@@ -417,15 +513,33 @@ export default function DocumentosInternos() {
                             </div>
                             <div className="modal-body">
                                 <p>Una vez que confirme, el expediente pasará a la etapa de <strong>AUDIENCIA</strong>.</p>
-                                <p style={{ marginTop: 12 }}>¿Está seguro de que ambos documentos están correctamente subidos?</p>
+                                <p>¿Está seguro de que ambos documentos están correctamente subidos?</p>
                             </div>
                             <div className="modal-footer">
-                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)}>
-                                    Cancelar
-                                </button>
-                                <button className="btn-confirmar" onClick={handleContinuarAceptar}>
-                                    Confirmar
-                                </button>
+                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)}>Cancelar</button>
+                                <button className="btn-confirmar" onClick={handleContinuarAceptar}>Confirmar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* NUEVO MODAL VISOR DE PDF */}
+                {visorAbierto && (
+                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
+                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Visualizador de PDF</h3>
+                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
+                            </div>
+                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
+                                <iframe
+                                    src={pdfUrl}
+                                    title="Visor PDF"
+                                    style={{ width: '100%', height: '100%', border: 'none' }}
+                                />
+                            </div>
+                            <div className="modal-footer">
+                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
                             </div>
                         </div>
                     </div>

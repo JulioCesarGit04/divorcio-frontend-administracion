@@ -225,10 +225,17 @@
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .modal-contenido {
@@ -239,6 +246,18 @@
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .modal-header {
@@ -263,6 +282,18 @@
     cursor: pointer;
     color: #94a3b8;
     line-height: 1;
+    transition: color 0.2s;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.modal-cerrar:hover {
+    color: #dc2626;
+    background: #fee2e2;
 }
 
 .modal-body {
@@ -313,6 +344,11 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-cancelar:hover {
+    background-color: #e2e8f0;
 }
 
 .btn-confirmar {
@@ -324,10 +360,12 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: 500;
+    transition: all 0.2s;
 }
 
 .btn-confirmar:hover:not(:disabled) {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
 }
 
 .btn-confirmar:disabled {
@@ -350,26 +388,6 @@
 .mensaje.error {
     background-color: #fee2e2;
     color: #dc2626;
-}
-
-@media (max-width: 768px) {
-    .datos-expediente .datos-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .documento-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .documento-info {
-        width: 100%;
-    }
-    
-    .documento-acciones {
-        width: 100%;
-        justify-content: flex-end;
-    }
 }
 
 .subseccion {
@@ -455,8 +473,283 @@
     color: #0f172a;
 }
 
-@media (min-width: 768px) {
-    .datos-grid {
+/* ========== MEDIA QUERIES RESPONSIVE ========== */
+
+/* Tablets (768px - 1024px) */
+@media (max-width: 1024px) {
+    .seccion {
+        padding: 20px;
+    }
+    
+    .datos-expediente .datos-grid {
         grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+}
+
+/* Móviles (menos de 768px) */
+@media (max-width: 768px) {
+    /* Layout principal - cambiar a columna */
+    .contenido-modulo3 > div[style*="display: flex"] {
+        flex-direction: column !important;
+    }
+    
+    /* Columnas */
+    .contenido-modulo3 > div[style*="display: flex"] > div {
+        width: 100% !important;
+    }
+    
+    /* Header */
+    .detalle-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .detalle-header h1 {
+        font-size: 20px;
+        text-align: center;
+    }
+    
+    .btn-volver {
+        width: 100%;
+    }
+    
+    /* Grids de datos */
+    .datos-expediente .datos-grid,
+    .datos-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    /* Secciones */
+    .seccion {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+    
+    .seccion h2 {
+        font-size: 16px;
+        margin-bottom: 16px;
+    }
+    
+    /* Documentos */
+    .documento-item {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 16px;
+    }
+    
+    .documento-info {
+        width: 100%;
+        min-width: unset;
+    }
+    
+    .documento-icono {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+    
+    .documento-nombre {
+        font-size: 14px;
+    }
+    
+    .documento-estado {
+        width: 100%;
+    }
+    
+    .documento-acciones {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    /* Botones */
+    .btn-ver, .btn-subir {
+        padding: 6px 14px;
+        font-size: 11px;
+    }
+    
+    .btn-continuar {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+    
+    /* Modal */
+    .modal-contenido {
+        width: 95%;
+        margin: 10px;
+        border-radius: 20px;
+    }
+    
+    .modal-header {
+        padding: 16px;
+    }
+    
+    .modal-header h3 {
+        font-size: 16px;
+    }
+    
+    .modal-body {
+        padding: 16px;
+    }
+    
+    .modal-footer {
+        padding: 16px;
+        flex-direction: column;
+    }
+    
+    .modal-footer button {
+        width: 100%;
+    }
+    
+    /* Subsecciones */
+    .subseccion {
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+    }
+    
+    .subseccion h3 {
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
+    
+    /* Mensajes */
+    .mensaje {
+        font-size: 12px;
+        padding: 10px;
+    }
+}
+
+/* Móviles pequeños (menos de 480px) */
+@media (max-width: 480px) {
+    .detalle-header h1 {
+        font-size: 18px;
+    }
+    
+    .seccion {
+        padding: 12px;
+        border-radius: 16px;
+    }
+    
+    .seccion h2 {
+        font-size: 15px;
+    }
+    
+    .datos-expediente .datos-grid div,
+    .datos-grid div {
+        padding: 8px 12px;
+    }
+    
+    .datos-expediente .datos-grid p,
+    .datos-grid p {
+        font-size: 13px;
+    }
+    
+    .documento-item {
+        padding: 12px;
+    }
+    
+    .documento-icono {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+    }
+    
+    .documento-nombre {
+        font-size: 13px;
+    }
+    
+    .documento-descripcion {
+        font-size: 11px;
+    }
+    
+    .estado-subido, .estado-pendiente {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+    
+    .btn-ver, .btn-subir {
+        padding: 5px 12px;
+        font-size: 10px;
+    }
+    
+    .btn-continuar {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+    
+    .modal-body .campo input {
+        padding: 10px;
+        font-size: 16px;
+    }
+    
+    .subseccion h3 {
+        font-size: 12px;
+    }
+}
+
+/* Móviles en landscape */
+@media (max-width: 768px) and (orientation: landscape) {
+    .contenido-modulo3 > div[style*="display: flex"] {
+        flex-direction: row !important;
+    }
+    
+    .datos-expediente .datos-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .documento-item {
+        flex-direction: row;
+        align-items: center;
+    }
+    
+    .documento-info {
+        width: auto;
+        flex: 2;
+    }
+    
+    .documento-estado {
+        width: auto;
+    }
+    
+    .documento-acciones {
+        width: auto;
+    }
+}
+
+/* Mejoras táctiles para móviles */
+@media (hover: none) and (pointer: coarse) {
+    .btn-volver,
+    .btn-ver,
+    .btn-subir,
+    .btn-continuar,
+    .btn-cancelar,
+    .btn-confirmar,
+    .modal-cerrar {
+        min-height: 44px;
+    }
+    
+    .documento-item {
+        cursor: pointer;
+    }
+    
+    .modal-body .campo input {
+        font-size: 16px;
+    }
+}
+
+/* Desktop (min-width: 769px) - mantener layout de dos columnas */
+@media (min-width: 769px) {
+    .contenido-modulo3 > div[style*="display: flex"] {
+        flex-direction: row !important;
+    }
+    
+    .contenido-modulo3 > div[style*="display: flex"] > div:first-child {
+        flex: 2 !important;
+    }
+    
+    .contenido-modulo3 > div[style*="display: flex"] > div:last-child {
+        flex: 1 !important;
     }
 }

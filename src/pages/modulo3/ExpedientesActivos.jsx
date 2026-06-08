@@ -3,9 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/modulo3/Sidebar'
 import { getExpedientes } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/expedientes.css'
-import PipelineVisual from '../../components/modulo3/PipelineVisual'
-
-const ESTADOS = ['', 'ACTIVO', 'CANCELADO', 'ARCHIVADO']
 
 const etiquetaEstado = {
     ACTIVO: 'Activo',
@@ -20,153 +17,177 @@ const etiquetaEtapa = {
     DISOLUCION: 'Disolución'
 }
 
-
 export default function ExpedientesActivos() {
     const navigate = useNavigate()
     const [expedientes, setExpedientes] = useState([])
     const [expedientesFiltrados, setExpedientesFiltrados] = useState([])
     const [cargando, setCargando] = useState(true)
-    
-    const [filtros, setFiltros] = useState({ 
-        estado: '', 
+
+    const [filtros, setFiltros] = useState({
+        estado: '',
         etapa: '',
-        numero_mesa_partes: '', 
+        numero_mesa_partes: '',
         dni: '',
         fechaDesde: '',
         fechaHasta: ''
     })
 
-    const cargar = async () => {
-        setCargando(true)
-        try {
-            const filtrosLimpios = {}
-            if (filtros.estado) filtrosLimpios.estado = filtros.estado
-            if (filtros.etapa) filtrosLimpios.etapa = filtros.etapa
-            if (filtros.numero_mesa_partes) filtrosLimpios.numero_mesa_partes = filtros.numero_mesa_partes
-            if (filtros.dni) filtrosLimpios.dni = filtros.dni
-            
-            const response = await getExpedientes(filtrosLimpios)
-            console.log(' Respuesta expedientes:', response)
-            console.log(' Respuesta expedientes:', JSON.stringify(response.data, null, 2))
+    const cargar = async (filtrosActuales) => {
+    setCargando(true)
+    try {
+        const f = filtrosActuales || filtros
+        const filtrosLimpios = {}
+        if (f.estado)             filtrosLimpios.estado = f.estado
+        if (f.etapa)              filtrosLimpios.etapa = f.etapa
+        if (f.numero_mesa_partes) filtrosLimpios.numero_mesa_partes = f.numero_mesa_partes
+        if (f.dni)                filtrosLimpios.dni = f.dni
 
-            
-            // CORRECCIÓN: Extraer el array de datos
-            const data = response.data || []
-            setExpedientes(data)
-            setExpedientesFiltrados(data)
-        } catch (error) {
-            console.error('Error cargando expedientes:', error)
-        } finally {
-            setCargando(false)
-        }
+        const response = await getExpedientes(filtrosLimpios)
+        const data = response.data || []
+
+        const ordenados = [...data].sort((a, b) =>
+            new Date(a.fecha_recepcion) - new Date(b.fecha_recepcion)
+        )
+
+        setExpedientes(ordenados)
+        setExpedientesFiltrados(ordenados)
+    } catch (error) {
+        console.error('Error cargando expedientes:', error)
+    } finally {
+        setCargando(false)
     }
+}
 
-    useEffect(() => { 
-        cargar() 
-    }, [])
+    useEffect(() => { cargar() }, [])
 
-    // Filtrar por fechas localmente
     useEffect(() => {
         let filtrados = [...expedientes]
-        
+
         if (filtros.fechaDesde) {
             const fechaDesde = new Date(filtros.fechaDesde)
             fechaDesde.setHours(0, 0, 0, 0)
             filtrados = filtrados.filter(e => new Date(e.fecha_recepcion) >= fechaDesde)
         }
-        
+
         if (filtros.fechaHasta) {
             const fechaHasta = new Date(filtros.fechaHasta)
             fechaHasta.setHours(23, 59, 59)
             filtrados = filtrados.filter(e => new Date(e.fecha_recepcion) <= fechaHasta)
         }
-        
+
         setExpedientesFiltrados(filtrados)
     }, [filtros.fechaDesde, filtros.fechaHasta, expedientes])
 
     const handleFiltroChange = (campo, valor) => {
-        setFiltros({ ...filtros, [campo]: valor })
+        setFiltros(prev => ({ ...prev, [campo]: valor }))
     }
 
-    const aplicarFiltros = () => {
-        cargar()
-    }
+    const aplicarFiltros = () => cargar()
 
     const limpiarFiltros = () => {
-        setFiltros({ 
-            estado: '', 
+        const vacios = {
+            estado: '',
             etapa: '',
-            numero_mesa_partes: '', 
+            numero_mesa_partes: '',
             dni: '',
             fechaDesde: '',
             fechaHasta: ''
-        })
-        setTimeout(() => cargar(), 100)
+        }
+        setFiltros(vacios)
+        cargar(vacios)
     }
 
-    const handleVerExpediente = (id) => {
-        console.log('🔵 Navegando a detalle con id:', id)
-        navigate(`/modulo3/detalle/${id}`)
-    }
+    const handleVerExpediente = (id) => navigate(`/modulo3/detalle/${id}`)
 
     return (
         <>
             <Sidebar />
             <main className="contenido-modulo3">
+
                 <div className="pagina-header">
                     <h1>Expedientes</h1>
-                    <p>Todos los expedientes del Módulo 3</p>
+                    <p>Todos los expedientes</p>
                 </div>
 
                 <div className="filtros-panel">
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
+                    <div className="filtros-grid filtros-grid--expedientes">
+
                         <div className="filtro-grupo">
                             <label>Estado</label>
-                            <select value={filtros.estado} onChange={e => handleFiltroChange('estado', e.target.value)}>
-                                <option value="">Todos</option>
-                                <option value="ACTIVO">Activo</option>
-                                <option value="CANCELADO">Cancelado</option>
-                                <option value="ARCHIVADO">Archivado</option>
-                            </select>
+                            <div className="select-wrapper">
+                                <select
+                                    value={filtros.estado}
+                                    onChange={e => handleFiltroChange('estado', e.target.value)}
+                                >
+                                    <option value="">Todos</option>
+                                    <option value="ACTIVO">Activo</option>
+                                    <option value="CANCELADO">Cancelado</option>
+                                    <option value="ARCHIVADO">Archivado</option>
+                                </select>
+                            </div>
                         </div>
-                        
+
                         <div className="filtro-grupo">
                             <label>Etapa</label>
-                            <select value={filtros.etapa} onChange={e => handleFiltroChange('etapa', e.target.value)}>
-                                <option value="">Todas</option>
-                                <option value="ADMISION">Admisión</option>
-                                <option value="AUDIENCIA">Audiencia</option>
-                                <option value="ESPERA_LEGAL">Espera Legal</option>
-                                <option value="DISOLUCION">Disolución</option>
-                            </select>
+                            <div className="select-wrapper">
+                                <select
+                                    value={filtros.etapa}
+                                    onChange={e => handleFiltroChange('etapa', e.target.value)}
+                                >
+                                    <option value="">Todas</option>
+                                    <option value="ADMISION">Admisión</option>
+                                    <option value="AUDIENCIA">Audiencia</option>
+                                    <option value="ESPERA_LEGAL">Espera Legal</option>
+                                    <option value="DISOLUCION">Disolución</option>
+                                </select>
+                            </div>
                         </div>
-                        
+
                         <div className="filtro-grupo">
                             <label>N° Mesa de Partes</label>
-                            <input type="text" placeholder="Ej: MESA-001" value={filtros.numero_mesa_partes} onChange={e => handleFiltroChange('numero_mesa_partes', e.target.value)} />
+                            <input
+                                type="text"
+                                placeholder="Ej: MESA-001"
+                                value={filtros.numero_mesa_partes}
+                                onChange={e => handleFiltroChange('numero_mesa_partes', e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && aplicarFiltros()}
+                            />
                         </div>
-                        
+
                         <div className="filtro-grupo">
                             <label>DNI</label>
-                            <input type="text" placeholder="DNI del cónyuge" value={filtros.dni} onChange={e => handleFiltroChange('dni', e.target.value)} />
+                            <input
+                                type="text"
+                                placeholder="DNI del cónyuge"
+                                value={filtros.dni}
+                                onChange={e => handleFiltroChange('dni', e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && aplicarFiltros()}
+                            />
                         </div>
-                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr) auto', gap: '16px', alignItems: 'flex-end' }}>
                         <div className="filtro-grupo">
                             <label>Fecha desde</label>
-                            <input type="date" value={filtros.fechaDesde} onChange={e => handleFiltroChange('fechaDesde', e.target.value)} />
+                            <input
+                                type="date"
+                                value={filtros.fechaDesde}
+                                onChange={e => handleFiltroChange('fechaDesde', e.target.value)}
+                            />
                         </div>
-                        
+
                         <div className="filtro-grupo">
                             <label>Fecha hasta</label>
-                            <input type="date" value={filtros.fechaHasta} onChange={e => handleFiltroChange('fechaHasta', e.target.value)} />
+                            <input
+                                type="date"
+                                value={filtros.fechaHasta}
+                                onChange={e => handleFiltroChange('fechaHasta', e.target.value)}
+                            />
                         </div>
-                        
+
                         <div className="acciones-filtros">
                             <button onClick={aplicarFiltros} className="btn-buscar">🔍 Buscar</button>
                             <button onClick={limpiarFiltros} className="btn-limpiar">🗑️ Limpiar</button>
                         </div>
+
                     </div>
                 </div>
 
@@ -183,7 +204,7 @@ export default function ExpedientesActivos() {
                 ) : (
                     <div className="tabla-container">
                         <table className="tabla">
-                           <thead>
+                            <thead>
                                 <tr>
                                     <th>N° Expediente</th>
                                     <th>N° Mesa Partes</th>
@@ -203,29 +224,38 @@ export default function ExpedientesActivos() {
                                     <tr key={e.id}>
                                         <td>{e.numero_expediente || '—'}</td>
                                         <td>{e.numero_mesa_partes || '—'}</td>
-                                        <td>{e.Solicitante_Nombres || ''} {e.Solicitante_Apellidos || ''}</td>
-                                        <td>{e.Solicitante_Dni || '—'}</td>
-                                        <td>{e.Demandado_Nombres || ''} {e.Demandado_Apellidos || ''}</td>
-                                        <td>{e.Demandado_Dni || '—'}</td>
-                                        <td><span className="badge">{etiquetaEstado[e.estado] || e.estado}</span></td>
+                                        <td className="nombre-solicitante">{e.Solicitante_Nombres || ''} {e.Solicitante_Apellidos || ''}</td>
+                                        <td className="dni-cell">{e.Solicitante_Dni || '—'}</td>
+                                        <td className="nombre-demandado">{e.Demandado_Nombres || ''} {e.Demandado_Apellidos || ''}</td>
+                                        <td className="dni-cell">{e.Demandado_Dni || '—'}</td>
+                                        <td>
+                                            <span className={`badge badge-${e.estado?.toLowerCase()}`}>
+                                                {etiquetaEstado[e.estado] || e.estado}
+                                            </span>
+                                        </td>
                                         <td>{etiquetaEtapa[e.etapa] || e.etapa}</td>
-                                        <td>
-                                            {e.fecha_pago 
-                                                ? e.fecha_pago.split('T')[0].split('-').reverse().join('/') 
+                                        <td className="fecha-cell">
+                                            {e.fecha_pago
+                                                ? e.fecha_pago.split('T')[0].split('-').reverse().join('/')
+                                                : '—'}
+                                        </td>
+                                        <td className="fecha-cell">
+                                            {e.fecha_recepcion
+                                                ? e.fecha_recepcion.split('T')[0].split('-').reverse().join('/')
                                                 : '—'}
                                         </td>
                                         <td>
-                                            {e.fecha_recepcion 
-                                                ? e.fecha_recepcion.split('T')[0].split('-').reverse().join('/') 
-                                                : '—'}
+                                            <button className="btn-ver" onClick={() => handleVerExpediente(e.id)}>
+                                                Ver
+                                            </button>
                                         </td>
-                                        <td><button className="btn-ver" onClick={() => handleVerExpediente(e.id)}>Ver</button></td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 )}
+
             </main>
         </>
     )

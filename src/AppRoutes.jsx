@@ -12,6 +12,7 @@ import ProgramarAudiencia from './pages/modulo3/ProgramarAudiencia'
 import ResolucionFundada from './pages/modulo3/ResolucionFundada'
 import ResolucionDisolucion from './pages/modulo4/ResolucionDisolucion'
 import ArchivamientoExpediente from './pages/modulo4/ArchivamientoExpediente'
+import Audiencias from './pages/modulo3/Audiencias'
 
 export default function AppRoutes() {
     const { paginaActual, expedienteId, cambiarPagina, verDetalle } = useNavigation()    
@@ -44,8 +45,6 @@ export default function AppRoutes() {
             return <Historial {...propsComunes} />
         case 'alertas':
             return <Alertas {...propsComunes} />
-        case 'reportes':
-            return <Reportes {...propsComunes} />
         case 'documentosInternos':
             return <DocumentosInternos {...propsConId} />
         case 'programarAudiencia':
@@ -56,6 +55,8 @@ export default function AppRoutes() {
             return <ResolucionDisolucion {...propsConId} />
         case 'archivamiento':
             return <ArchivamientoExpediente {...propsConId} />
+        case 'audiencias':
+            return <Audiencias {...propsComunes} />
         default:
             return <Login cambiarPagina={cambiarPagina} />
     }

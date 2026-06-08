@@ -5,8 +5,8 @@ import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import '../../styles/modulo3/detalle.css'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
+import { getExpedienteById, getAudiencias, cambiarEstadoExpediente, reemplazarDocumentoCiudadano, getPdfUrl } from '../../services/ProcedimientoService'
 
-import { getExpedienteById, avanzarAAudiencia, getAudiencias, cambiarEstadoExpediente, reemplazarDocumentoCiudadano, getPdfUrl } from '../../services/ProcedimientoService'
 export default function DetalleExpediente() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -20,7 +20,12 @@ export default function DetalleExpediente() {
     const [mensajeGlobal, setMensajeGlobal] = useState(null)
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false)
 
+    // Estados para el visor de PDF
+    const [visorAbierto, setVisorAbierto] = useState(false)
+    const [pdfUrl, setPdfUrl] = useState('')
+
     const getPipelineEtapa = () => {
+        const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
         switch(etapaActual) {
             case 'EVALUACION': return 'revision'
             case 'DOCUMENTOS_INTERNOS': return 'documentos'
@@ -32,40 +37,35 @@ export default function DetalleExpediente() {
     }
 
     const cargar = async () => {
-    if (!id) {
-        setError('No hay ID')
-        setCargando(false)
-        return
+        if (!id) {
+            setError('No hay ID')
+            setCargando(false)
+            return
+        }
+        
+        setCargando(true)
+        setError(null)
+        
+        try {
+            const res = await getExpedienteById(id)
+            const data = res?.data || res
+            const expedienteData = data?.expediente || data
+            const documentosData = data?.documentos_ciudadano || data?.documentos || []
+            
+            setExpediente(expedienteData)
+            setDocumentos(documentosData)
+            
+            const resAudiencias = await getAudiencias(id)
+            const audienciasData = resAudiencias?.data || resAudiencias || []
+            const audienciaVigente = audienciasData.find(a => a.es_actual === true)
+            setAudienciaVigente(audienciaVigente)
+            
+        } catch (error) {
+            setError(error.message)
+        } finally {
+            setCargando(false)
+        }
     }
-    
-    setCargando(true)
-    setError(null)
-    
-    try {
-        // Cargar expediente
-        const res = await getExpedienteById(id)
-        const data = res?.data || res
-        const expedienteData = data?.expediente || data
-        const documentosData = data?.documentos_ciudadano || data?.documentos || []
-        
-        setExpediente(expedienteData)
-        setDocumentos(documentosData)
-        
-        // Cargar audiencias
-        const resAudiencias = await getAudiencias(id)
-        const audienciasData = resAudiencias?.data || resAudiencias || []
-        
-        // Buscar audiencia vigente (PROGRAMADA o REPROGRAMADA)
-        // Buscar la audiencia vigente (la que tiene es_actual = true)
-const audienciaVigente = audienciasData.find(a => a.es_actual === true)
-setAudienciaVigente(audienciaVigente)
-        
-    } catch (error) {
-        setError(error.message)
-    } finally {
-        setCargando(false)
-    }
-}
 
     useEffect(() => { 
         if (id) cargar() 
@@ -76,57 +76,33 @@ setAudienciaVigente(audienciaVigente)
     }
 
     const handleConfirmarRevision = () => {
-    setMostrarConfirmacion(true)
-}
-
-const handleConfirmarRevisionAceptar = async () => {
-    setMostrarConfirmacion(false)
-    try {
-        const data = await cambiarEstadoExpediente(
-            id,
-            'DOCUMENTOS_INTERNOS',
-            'Revision documentaria confirmada'
-        )
-        if (data.ok) {
-            setConfirmado(true)
-            setMensajeGlobal({ tipo: 'success', texto: 'Revision documentaria confirmada' })
-            setTimeout(() => window.location.reload(), 1500)
-        } else {
-            setMensajeGlobal({ tipo: 'error', texto: data.mensaje || 'Error al confirmar' })
-        }
-    } catch (error) {
-        console.error('Error:', error)
-        setMensajeGlobal({ tipo: 'error', texto: 'Error al confirmar la revision' })
+        setMostrarConfirmacion(true)
     }
-}
 
-
-  
+    const handleConfirmarRevisionAceptar = async () => {
+        setMostrarConfirmacion(false)
+        try {
+            const data = await cambiarEstadoExpediente(
+                id,
+                'DOCUMENTOS_INTERNOS',
+                'Revision documentaria confirmada'
+            )
+            if (data.ok) {
+                setConfirmado(true)
+                setMensajeGlobal({ tipo: 'success', texto: 'Revision documentaria confirmada' })
+                setTimeout(() => window.location.reload(), 1500)
+            } else {
+                setMensajeGlobal({ tipo: 'error', texto: data.mensaje || 'Error al confirmar' })
+            }
+        } catch (error) {
+            console.error('Error:', error)
+            setMensajeGlobal({ tipo: 'error', texto: 'Error al confirmar la revision' })
+        }
+    }
 
     const esDiaHabil = (fecha) => {
         const diaSemana = fecha.getDay();
         return diaSemana !== 0 && diaSemana !== 6;
-    };
-
-    const calcularTotalDiasHabiles = () => {
-        if (!expediente?.fecha_pago || !expediente?.fecha_limite_audiencia) return null;
-        
-        const fechaPago = new Date(expediente.fecha_pago);
-        const fechaLimite = new Date(expediente.fecha_limite_audiencia);
-        
-        let contador = 0;
-        let fecha = new Date(fechaPago);
-        
-        while (fecha <= fechaLimite) {
-            if (esDiaHabil(fecha)) {
-                contador++;
-            }
-            fecha.setDate(fecha.getDate() + 1);
-        }
-        
-        return contador;
-        {console.log('expediente:', expediente)}
-        {console.log('audienciaVigente:', audienciaVigente)}
     };
 
     const calcularDiasRestantes = () => {
@@ -171,12 +147,7 @@ const handleConfirmarRevisionAceptar = async () => {
             setExitoDoc('')
 
             try {
-                const formData = new FormData()
-                formData.append('documento', archivo)
-
-                const data = await reemplazarDocumentoCiudadano(doc.id, archivo)
-
-                
+                await reemplazarDocumentoCiudadano(doc.id, archivo)
                 setExitoDoc('Documento reemplazado correctamente')
                 setTimeout(() => {
                     setMostrarModal(false)
@@ -188,6 +159,16 @@ const handleConfirmarRevisionAceptar = async () => {
                 setErrorDoc(err.message)
             } finally {
                 setCargandoDoc(false)
+            }
+        }
+
+        const handleVerPdf = () => {
+            const url = getPdfUrl(doc.ruta_archivo)
+            if (url !== '#') {
+                setPdfUrl(url)
+                setVisorAbierto(true)
+            } else {
+                alert('No se puede abrir el PDF')
             }
         }
 
@@ -210,11 +191,7 @@ const handleConfirmarRevisionAceptar = async () => {
                         </div>
                     </div>
                     <div className="documento-acciones">
-                        <button className="btn-ver" onClick={() => {
-                            const url = getPdfUrl(doc.ruta_archivo)
-                            if (url !== '#') window.open(url, '_blank')
-                            else alert('No se puede abrir el PDF')
-                        }}>
+                        <button className="btn-ver" onClick={handleVerPdf}>
                             Ver PDF
                         </button>
                         
@@ -297,15 +274,7 @@ const handleConfirmarRevisionAceptar = async () => {
     const fechaPago = expediente.fecha_pago
     const fechaRecepcion = expediente.fecha_recepcion || expediente.expedientes_creado_en
     const registradoPor = expediente.registrado_por || expediente.Usuario_Vinculo
-    const fechaLimiteAudiencia = expediente.fecha_limite_audiencia
     const diasRestantes = calcularDiasRestantes()
-    
-    const getColorDias = () => {
-        if (diasRestantes === null) return '#64748b'
-        if (diasRestantes < 3) return '#dc2626'
-        if (diasRestantes <= 7) return '#eab308'
-        return '#22c55e'
-    }
 
     const formatFecha = (fecha) => {
         if (!fecha) return '—'
@@ -332,13 +301,10 @@ const handleConfirmarRevisionAceptar = async () => {
                 <div className="detalle-grid">
                     {/* COLUMNA IZQUIERDA */}
                     <div className="detalle-izquierda">
-                        {/* Datos del expediente */}
-                        {console.log('expediente:', expediente)}
-                            {console.log('audienciaVigente:', audienciaVigente)}
-                            <PlazoAlerta 
-                                expediente={expediente}
-                                audienciaActual={audienciaVigente}
-                            />
+                        <PlazoAlerta 
+                            expediente={expediente}
+                            audienciaActual={audienciaVigente}
+                        />
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
                             <div className="datos-grid">
@@ -367,17 +333,12 @@ const handleConfirmarRevisionAceptar = async () => {
                                     <p>{registradoPor || '—'}</p>
                                 </div>
                             </div>
-                           
-                            
-
                         </div>
-                        
 
                         {/* Cónyuges */}
                         <div className="seccion">
                             <h2>Cónyuges</h2>
                             <div className="conyuges-grid-moderno">
-                                {/* Solicitante */}
                                 <div className="conyuge-card-moderno">
                                     <div className="conyuge-header-moderno">
                                         <div>
@@ -408,7 +369,6 @@ const handleConfirmarRevisionAceptar = async () => {
                                     </div>
                                 </div>
 
-                                {/* Demandado */}
                                 <div className="conyuge-card-moderno">
                                     <div className="conyuge-header-moderno">
                                         <div>
@@ -441,7 +401,7 @@ const handleConfirmarRevisionAceptar = async () => {
                             </div>
                         </div>
 
-                        {/* Documentos */}
+                        {/* Documentos del ciudadano */}
                         <div className="seccion">
                             <h2>Documentos del ciudadano</h2>
                             {documentos.length === 0 ? (
@@ -449,7 +409,12 @@ const handleConfirmarRevisionAceptar = async () => {
                             ) : (
                                 <div className="documentos-lista">
                                     {documentos.map((doc, idx) => (
-                                        <DocumentoItem key={doc.id || idx} doc={doc} onReemplazado={() => setRefresh(prev => !prev)} bloqueado={confirmado || etapaActual !== 'EVALUACION'} />
+                                        <DocumentoItem 
+                                            key={doc.id || idx} 
+                                            doc={doc} 
+                                            onReemplazado={() => setRefresh(prev => !prev)} 
+                                            bloqueado={confirmado || etapaActual !== 'EVALUACION'} 
+                                        />
                                     ))}
                                 </div>
                             )}
@@ -459,9 +424,8 @@ const handleConfirmarRevisionAceptar = async () => {
                         {!confirmado && etapaActual === 'EVALUACION' && (
                             <div className="seccion acciones">
                                 <button className="btn-continuar" onClick={handleConfirmarRevision}>
-                                    Continuar revision
+                                    Continuar
                                 </button>
-                                <p className="texto-ayuda">Revise todos los documentos antes de continuar</p>
                             </div>
                         )}
                     </div>
@@ -473,33 +437,47 @@ const handleConfirmarRevisionAceptar = async () => {
                     </div>
                 </div>
 
-
+                {/* Modal de confirmación avanzar */}
                 {mostrarConfirmacion && (
-                <div className="modal-overlay" onClick={() => setMostrarConfirmacion(false)}>
-                    <div className="modal-contenido" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3>Confirmar revisión documentaria</h3>
-                            <button className="modal-cerrar" onClick={() => setMostrarConfirmacion(false)}>×</button>
-                        </div>
-                        <div className="modal-body">
-                            <p>Una vez que confirme la revisión documentaria:</p>
-                            <ul style={{ margin: '12px 0', paddingLeft: 20 }}>
-                                <li>Los documentos del ciudadano quedarán <strong>BLOQUEADOS</strong></li>
-                                <li>No podrá reemplazar ningún documento después</li>
-                            </ul>
-                            <p>¿Está seguro de que todos los documentos están correctos?</p>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)}>
-                                Cancelar
-                            </button>
-                            <button className="btn-confirmar" onClick={handleConfirmarRevisionAceptar}>
-                                Confirmar
-                            </button>
+                    <div className="modal-overlay" onClick={() => setMostrarConfirmacion(false)}>
+                        <div className="modal-contenido" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>ATENCIÓN</h3>
+                                <button className="modal-cerrar" onClick={() => setMostrarConfirmacion(false)}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <p>El expediente avanzará a la siguiente fase</p>
+                                <p>¿Está seguro de que quiere avanzar?</p>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)}>Cancelar</button>
+                                <button className="btn-confirmar" onClick={handleConfirmarRevisionAceptar}>Confirmar</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {/* Modal visor de PDF */}
+                {visorAbierto && (
+                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
+                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Visualizador de PDF</h3>
+                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
+                            </div>
+                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
+                                <iframe
+                                    src={pdfUrl}
+                                    title="Visor PDF"
+                                    style={{ width: '100%', height: '100%', border: 'none' }}
+                                />
+                            </div>
+                            <div className="modal-footer">
+                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </>
     )
