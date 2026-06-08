@@ -16,12 +16,9 @@ import {
     registrarSegundoPago
 } from '../../services/Modulo4Service' 
 
-// ====================================================================
-// FUNCIONES PARA DÍAS HÁBILES (excluye sábados y domingos)
-// ====================================================================
 const esDiaHabil = (fecha) => {
     const dia = fecha.getDay()
-    return dia !== 0 && dia !== 6 // 0 = domingo, 6 = sábado
+    return dia !== 0 && dia !== 6
 }
 
 const sumarDiasHabiles = (fecha, dias) => {
@@ -29,9 +26,7 @@ const sumarDiasHabiles = (fecha, dias) => {
     let agregados = 0
     while (agregados < dias) {
         resultado.setDate(resultado.getDate() + 1)
-        if (esDiaHabil(resultado)) {
-            agregados++
-        }
+        if (esDiaHabil(resultado)) agregados++
     }
     return resultado
 }
@@ -40,9 +35,7 @@ const diasHabilesEntre = (fechaInicio, fechaFin) => {
     let contador = 0
     let fecha = new Date(fechaInicio)
     while (fecha < fechaFin) {
-        if (esDiaHabil(fecha)) {
-            contador++
-        }
+        if (esDiaHabil(fecha)) contador++
         fecha.setDate(fecha.getDate() + 1)
     }
     return contador
@@ -61,16 +54,17 @@ export default function ResolucionDisolucion() {
     const [numeroDocumento, setNumeroDocumento] = useState('')
     const [fechaElaboracion, setFechaElaboracion] = useState(new Date().toISOString().split('T')[0])
     
-    // Estado para pago de copias
     const [fechaPagoCopias, setFechaPagoCopias] = useState('')
     const [mensajeCopias, setMensajeCopias] = useState(null)
     const [pagoCopiasRegistrado, setPagoCopiasRegistrado] = useState(false)
-
-    // Estado para segundo pago
     const [fechaSegundoPago, setFechaSegundoPago] = useState('')
-
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [puedeAvanzar, setPuedeAvanzar] = useState(false)
+
+    // Estados para el visor de PDF
+    const [visorAbierto, setVisorAbierto] = useState(false)
+    const [pdfUrl, setPdfUrl] = useState('')
+    const [tituloPdf, setTituloPdf] = useState('')
 
     const etapaActual = expediente?.etapa
 
@@ -93,23 +87,29 @@ export default function ResolucionDisolucion() {
         return `http://localhost:3000/uploads/${ruta}`
     }
 
+    const verPdfEnModal = (ruta, titulo) => {
+        const url = getPdfUrl(ruta)
+        if (url !== '#') {
+            setPdfUrl(url)
+            setTituloPdf(titulo || 'Visualizador de PDF')
+            setVisorAbierto(true)
+        } else {
+            alert('No se puede abrir el PDF')
+        }
+    }
+
     const formatFecha = (fechaStr) => {
         if (!fechaStr) return '—'
         return fechaStr.split('T')[0].split('-').reverse().join('/')
     }
 
-    // ====================================================================
-    // ACTUALIZAR DIAS RESTANTES (usando días hábiles)
-    // ====================================================================
     const actualizarDiasRestantes = (fechaPago) => {
         if (!fechaPago) return
         const fechaInicio = new Date(fechaPago)
-        const fechaFin = sumarDiasHabiles(fechaInicio, 15) // 15 días hábiles
+        const fechaFin = sumarDiasHabiles(fechaInicio, 15)
         const hoy = new Date()
         hoy.setHours(0, 0, 0, 0)
-        let dias = diasHabilesEntre(hoy, fechaFin)
-        // Si hoy es mayor que fechaFin, días será negativo; lo dejamos así para mostrar vencido
-        setDiasRestantes(dias)
+        setDiasRestantes(diasHabilesEntre(hoy, fechaFin))
     }
 
     useEffect(() => {
@@ -122,7 +122,6 @@ export default function ResolucionDisolucion() {
                 const expedienteData = data?.expediente || data
                 setExpediente(expedienteData)
 
-                // Verificar si ya tiene pago de copias registrado
                 if (expedienteData?.fecha_pago_copias_certificadas) {
                     const fecha = expedienteData.fecha_pago_copias_certificadas.split('T')[0]
                     setFechaPagoCopias(fecha)
@@ -131,7 +130,6 @@ export default function ResolucionDisolucion() {
                     setFechaPagoCopias(new Date().toISOString().split('T')[0])
                 }
 
-                // Calcular SLA solo si existe fecha_pago_disolucion
                 if (expedienteData?.fecha_pago_disolucion) {
                     actualizarDiasRestantes(expedienteData.fecha_pago_disolucion)
                 }
@@ -165,9 +163,6 @@ export default function ResolucionDisolucion() {
         setPuedeAvanzar(slaCumplido && resolucionSubida && pagoCopiasRegistrado)
     }, [diasRestantes, resolucionDisolucion, pagoCopiasRegistrado])
 
-    // ====================================================================
-    // FUNCIÓN PARA REGISTRAR EL SEGUNDO PAGO
-    // ====================================================================
     const handleRegistrarSegundoPago = async (e) => {
         e.preventDefault()
         if (!fechaSegundoPago) {
@@ -178,17 +173,14 @@ export default function ResolucionDisolucion() {
         try {
             const result = await registrarSegundoPago(id, fechaSegundoPago)
             const datosActualizados = result?.data
-
             setExpediente(prev => ({
                 ...prev,
                 fecha_pago_disolucion: datosActualizados?.fecha_pago_disolucion || fechaSegundoPago,
                 etapa: datosActualizados?.etapa || 'DISOLUCION',
                 estado: datosActualizados?.estado || prev?.estado
             }))
-
             actualizarDiasRestantes(datosActualizados?.fecha_pago_disolucion || fechaSegundoPago)
             setMensaje({ tipo: 'success', texto: 'Segundo pago registrado correctamente.' })
-
         } catch (err) {
             setMensaje({ tipo: 'error', texto: err.message })
         } finally {
@@ -196,9 +188,6 @@ export default function ResolucionDisolucion() {
         }
     }
 
-    // ====================================================================
-    // FORMULARIO PARA SEGUNDO PAGO (si el expediente aún no tiene fecha)
-    // ====================================================================
     if (!cargando && !error && !expediente?.fecha_pago_disolucion) {
         return (
             <>
@@ -233,9 +222,6 @@ export default function ResolucionDisolucion() {
         )
     }
 
-    // ====================================================================
-    // INTERFAZ PRINCIPAL (cuando ya existe el segundo pago)
-    // ====================================================================
     const handleArchivoChange = (file) => {
         if (file && file.type !== 'application/pdf') {
             setMensaje({ tipo: 'error', texto: 'Solo se permiten archivos PDF' })
@@ -326,8 +312,7 @@ export default function ResolucionDisolucion() {
         }
     }
 
-    // Renderizados condicionales para estados especiales
-    if (expediente?.estado === 'CANCELADO' || expediente?.estado === 'ARCHIVADO') {
+    if (expediente?.estado === 'CANCELADO') {
         return (
             <>
                 <Sidebar />
@@ -337,9 +322,9 @@ export default function ResolucionDisolucion() {
                         <h1>Resolución de Disolución</h1>
                     </div>
                     <div className="seccion estado-container">
-                        <div className="estado-icono">{expediente?.estado === 'CANCELADO' ? '❌' : '🗄️'}</div>
-                        <h2>{expediente?.estado === 'CANCELADO' ? 'Expediente Cancelado' : 'Expediente Archivado'}</h2>
-                        <p>{expediente?.estado === 'CANCELADO' ? 'Este expediente ha sido cancelado.' : 'Este expediente ya concluyó su proceso de disolución.'}</p>
+                        <div className="estado-icono">❌</div>
+                        <h2>Expediente Cancelado</h2>
+                        <p>Este expediente ha sido cancelado.</p>
                         <button className="btn-continuar" style={{ marginTop: 20, width: 'auto', padding: '10px 28px' }} onClick={() => navigate(`/modulo3/detalle/${id}`)}>
                             Volver al detalle
                         </button>
@@ -376,14 +361,12 @@ export default function ResolucionDisolucion() {
     )
 
     const yaTieneResolucion = resolucionDisolucion !== null
-    const bloqueado = etapaActual === 'ARCHIVADO'
+    const bloqueado = expediente?.estado === 'ARCHIVADO'
     const fechaPagoInicio = expediente?.fecha_pago_disolucion
     
-    // Calcular fecha límite usando días hábiles (para mostrar en el grid)
     let fechaPagoFin = null
     if (fechaPagoInicio) {
-        const fechaInicioObj = new Date(fechaPagoInicio)
-        fechaPagoFin = sumarDiasHabiles(fechaInicioObj, 15)
+        fechaPagoFin = sumarDiasHabiles(new Date(fechaPagoInicio), 15)
     }
 
     const formatearFechaLegible = (fechaStr) => {
@@ -404,12 +387,6 @@ export default function ResolucionDisolucion() {
                 </div>
 
                 <PlazoAlerta expediente={expediente} audienciaActual={null} />
-
-                {bloqueado && (
-                    <div className="mensaje success" style={{ textAlign: 'center', marginBottom: 24 }}>
-                         Este expediente ya está ARCHIVADO. El proceso ha sido completado.
-                    </div>
-                )}
 
                 <div className="rf-layout">
                     <div className="rf-main">
@@ -436,7 +413,7 @@ export default function ResolucionDisolucion() {
                             </div>
                         </div>
 
-                        {/* Datos del expediente (resto igual) */}
+                        {/* Datos del expediente */}
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
                             <div className="datos-grid">
@@ -463,7 +440,7 @@ export default function ResolucionDisolucion() {
                             </div>
                         </div>
 
-                        {/* SECCIÓN 1: EMISIÓN DE RESOLUCIÓN (sin cambios) */}
+                        {/* SECCIÓN 1: EMISIÓN DE RESOLUCIÓN */}
                         <div className="seccion">
                             <h2>Emisión de Resolución de Disolución</h2>
                             {yaTieneResolucion && (
@@ -483,7 +460,7 @@ export default function ResolucionDisolucion() {
                                     </div>
                                     <div className="documento-acciones">
                                         <span className="estado-subido">Subido y bloqueado</span>
-                                        <button className="btn-ver" onClick={() => window.open(getPdfUrl(resolucionDisolucion.ruta_archivo), '_blank')}>
+                                        <button className="btn-ver" onClick={() => verPdfEnModal(resolucionDisolucion.ruta_archivo, 'Resolución de Disolución')}>
                                             Ver PDF
                                         </button>
                                     </div>
@@ -543,7 +520,7 @@ export default function ResolucionDisolucion() {
                             )}
                         </div>
 
-                        {/* SECCIÓN 2: PAGO DE COPIAS CERTIFICADAS (sin cambios) */}
+                        {/* SECCIÓN 2: PAGO DE COPIAS CERTIFICADAS */}
                         <div className="seccion" style={{ borderLeft: '4px solid #eab308', backgroundColor: '#fefce8' }}>
                             <h2> Comprobante de Pago</h2>
                             <div className="rf-campos-fila">
@@ -567,11 +544,12 @@ export default function ResolucionDisolucion() {
                                             type="date"
                                             value={fechaPagoCopias}
                                             onChange={(e) => setFechaPagoCopias(e.target.value)}
+                                            disabled={bloqueado}
                                         />
                                     )}
                                 </div>
                             </div>
-                            {!pagoCopiasRegistrado ? (
+                            {!pagoCopiasRegistrado && !bloqueado ? (
                                 <button 
                                     type="button"
                                     className="btn-subir" 
@@ -581,17 +559,17 @@ export default function ResolucionDisolucion() {
                                 >
                                     {enviando ? 'Registrando...' : 'Registrar pago de copias'}
                                 </button>
-                            ) : (
+                            ) : pagoCopiasRegistrado ? (
                                 <div style={{ marginTop: 12, color: '#2b6e2b', fontWeight: 'bold', padding: '0.5rem', backgroundColor: '#e0f5e0', borderRadius: '0.5rem' }}>
                                      Pago registrado el {formatearFechaLegible(fechaPagoCopias)}
                                 </div>
-                            )}
+                            ) : null}
                             {mensajeCopias && (
                                 <div className={`mensaje ${mensajeCopias.tipo}`} style={{ marginTop: 12 }}>{mensajeCopias.texto}</div>
                             )}
                             <p style={{ fontSize: '0.75rem', marginTop: 12, color: '#6b7280' }}>
                                 Este registro es independiente de la resolución de disolución y debe realizarse después de emitirla.
-                                {!pagoCopiasRegistrado && ' Es necesario para habilitar el archivamiento.'}
+                                {!pagoCopiasRegistrado && !bloqueado && ' Es necesario para habilitar el archivamiento.'}
                             </p>
                         </div>
 
@@ -602,6 +580,29 @@ export default function ResolucionDisolucion() {
                         <PipelineVisual etapaActual={getPipelineEtapa()} />
                     </div>
                 </div>
+
+                {/* Modal visor de PDF */}
+                {visorAbierto && (
+                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
+                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>{tituloPdf}</h3>
+                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
+                            </div>
+                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
+                                <iframe
+                                    src={pdfUrl}
+                                    title={tituloPdf}
+                                    style={{ width: '100%', height: '100%', border: 'none' }}
+                                />
+                            </div>
+                            <div className="modal-footer">
+                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </main>
         </>
     )

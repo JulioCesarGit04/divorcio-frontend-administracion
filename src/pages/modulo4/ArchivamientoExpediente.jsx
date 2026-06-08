@@ -19,9 +19,13 @@ export default function ArchivamientoExpediente() {
     const [mensaje, setMensaje] = useState('')
     const [enviando, setEnviando] = useState(false)
 
-    // Estados para saber si ya existen archivos previos (bloqueados)
     const [archivosExistentes, setArchivosExistentes] = useState({ sunarp: null, reniec: null })
     const [yaFinalizado, setYaFinalizado] = useState(false)
+
+    // Estados para el visor de PDF
+    const [visorAbierto, setVisorAbierto] = useState(false)
+    const [pdfUrl, setPdfUrl] = useState('')
+    const [tituloPdf, setTituloPdf] = useState('')
 
     useEffect(() => {
         const cargar = async () => {
@@ -29,11 +33,9 @@ export default function ArchivamientoExpediente() {
                 const res = await getArchivamientoData(id)
                 if (res.ok && res.data) {
                     setExpediente(res.data)
-                    // Verificar si ya hay archivos de cargos externos subidos
                     const sunarpExistente = res.data.ruta_sunarp || null
                     const reniecExistente = res.data.ruta_reniec || null
                     setArchivosExistentes({ sunarp: sunarpExistente, reniec: reniecExistente })
-                    // Si ambos ya existen, consideramos que ya se finalizó esta etapa (no se puede modificar)
                     if (sunarpExistente && reniecExistente) {
                         setYaFinalizado(true)
                     }
@@ -69,7 +71,6 @@ export default function ArchivamientoExpediente() {
             setMensaje('Este expediente ya fue finalizado. No se pueden subir archivos nuevamente.')
             return
         }
-        // Validar: si no hay archivos existentes, deben seleccionarse nuevos
         const tieneSunarp = archivos.sunarp || archivosExistentes.sunarp
         const tieneReniec = archivos.reniec || archivosExistentes.reniec
         if (!tieneSunarp || !tieneReniec) {
@@ -79,13 +80,12 @@ export default function ArchivamientoExpediente() {
         setEnviando(true)
         setMensaje('')
         try {
-            // Solo enviar los archivos que sean nuevos (no existentes)
             const sunarpFile = archivos.sunarp || null
             const reniecFile = archivos.reniec || null
             const result = await subirCargosExternos(id, sunarpFile, reniecFile)
             if (result.ok) {
                 setMensaje(' Expediente finalizado correctamente. Redirigiendo...')
-                setYaFinalizado(true) // Marcar como finalizado localmente
+                setYaFinalizado(true)
                 setTimeout(() => navigate('/modulo3/expedientes'), 2000)
             } else {
                 setMensaje('Error: ' + (result.mensaje || 'No se pudo finalizar'))
@@ -97,7 +97,6 @@ export default function ArchivamientoExpediente() {
         }
     }
 
-    // ✅ FUNCIÓN MODIFICADA: Formato sin conversión a Date (evita desfase de zona horaria)
     const formatFecha = (fechaStr) => {
         if (!fechaStr) return '—'
         const clean = fechaStr.split('T')[0]
@@ -105,11 +104,29 @@ export default function ArchivamientoExpediente() {
         return `${day}/${month}/${year}`
     }
 
-    // Función para obtener nombre de archivo a partir de ruta
     const getNombreArchivo = (ruta) => {
         if (!ruta) return null
         const partes = ruta.split('/')
         return partes[partes.length - 1]
+    }
+
+    const getPdfUrl = (ruta) => {
+        if (!ruta) return '#'
+        if (ruta.startsWith('http')) return ruta
+        if (ruta.startsWith('/uploads')) return `http://localhost:3000${ruta}`
+        return `http://localhost:3000/uploads/${ruta}`
+    }
+
+    // Abrir PDF en modal
+    const verPdfEnModal = (ruta, titulo) => {
+        const url = getPdfUrl(ruta)
+        if (url !== '#') {
+            setPdfUrl(url)
+            setTituloPdf(titulo || 'Visualizador de PDF')
+            setVisorAbierto(true)
+        } else {
+            alert('No se puede abrir el PDF')
+        }
     }
 
     const etapaActual = expediente?.etapa || 'ARCHIVADO'
@@ -156,7 +173,6 @@ export default function ArchivamientoExpediente() {
 
                 <div className="rf-layout">
                     <div className="rf-main">
-                        {/* Datos del expediente - versión simplificada */}
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
                             <div className="datos-grid">
@@ -168,7 +184,6 @@ export default function ArchivamientoExpediente() {
                             </div>
                         </div>
 
-                        {/* Cargas SUNARP y RENIEC con bloqueo si ya existen */}
                         <div className="seccion">
                             <h2>Cargos SUNARP y RENIEC</h2>
                             {yaFinalizado ? (
@@ -181,15 +196,23 @@ export default function ArchivamientoExpediente() {
                                 </p>
                             )}
                             <div className="rf-campos-fila" style={{ flexDirection: 'column', gap: '1rem' }}>
+
+                                {/* SUNARP */}
                                 <div className="rf-campo">
                                     <label>Constancia SUNARP (PDF):</label>
                                     <div className="rf-archivo" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         {archivosExistentes.sunarp ? (
                                             <>
                                                 <span className="archivo-ok" style={{ backgroundColor: '#e6f7e6', padding: '0.3rem 0.7rem', borderRadius: '0.5rem' }}>
-                                                     {getNombreArchivo(archivosExistentes.sunarp)}
+                                                    {getNombreArchivo(archivosExistentes.sunarp)}
                                                 </span>
-                                                <span className="estado-subido">Bloqueado</span>
+                                                <span className="estado-subido">✔ Bloqueado</span>
+                                                <button
+                                                    className="btn-ver"
+                                                    onClick={() => verPdfEnModal(archivosExistentes.sunarp, 'Constancia SUNARP')}
+                                                >
+                                                    Ver PDF
+                                                </button>
                                             </>
                                         ) : (
                                             <>
@@ -202,15 +225,23 @@ export default function ArchivamientoExpediente() {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* RENIEC */}
                                 <div className="rf-campo">
                                     <label>Constancia RENIEC (PDF):</label>
                                     <div className="rf-archivo" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         {archivosExistentes.reniec ? (
                                             <>
                                                 <span className="archivo-ok" style={{ backgroundColor: '#e6f7e6', padding: '0.3rem 0.7rem', borderRadius: '0.5rem' }}>
-                                                     {getNombreArchivo(archivosExistentes.reniec)}
+                                                    {getNombreArchivo(archivosExistentes.reniec)}
                                                 </span>
-                                                <span className="estado-subido">Bloqueado</span>
+                                                <span className="estado-subido">✔ Bloqueado</span>
+                                                <button
+                                                    className="btn-ver"
+                                                    onClick={() => verPdfEnModal(archivosExistentes.reniec, 'Constancia RENIEC')}
+                                                >
+                                                    Ver PDF
+                                                </button>
                                             </>
                                         ) : (
                                             <>
@@ -223,6 +254,7 @@ export default function ArchivamientoExpediente() {
                                         )}
                                     </div>
                                 </div>
+
                             </div>
                             {!yaFinalizado && (
                                 <button className="btn-continuar" onClick={handleFinalizar} disabled={enviando || (!archivos.sunarp && !archivosExistentes.sunarp) || (!archivos.reniec && !archivosExistentes.reniec)} style={{ marginTop: '1rem' }}>
@@ -238,6 +270,29 @@ export default function ArchivamientoExpediente() {
                         <PipelineVisual etapaActual={getPipelineEtapa()} />
                     </div>
                 </div>
+
+                {/* Modal visor de PDF */}
+                {visorAbierto && (
+                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
+                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>{tituloPdf}</h3>
+                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
+                            </div>
+                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
+                                <iframe
+                                    src={pdfUrl}
+                                    title={tituloPdf}
+                                    style={{ width: '100%', height: '100%', border: 'none' }}
+                                />
+                            </div>
+                            <div className="modal-footer">
+                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </main>
         </>
     )
