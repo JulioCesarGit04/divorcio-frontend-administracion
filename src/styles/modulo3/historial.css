@@ -1,511 +1,319 @@
-/* ====================================================================
-   HISTORIAL - ESTILO MODERNO CON TARJETAS
-   ==================================================================== */
-
-.contenido-modulo3 {
-    padding: 24px 32px;
-    background: #f0f2f5;
-    min-height: calc(100vh - 52px);
-}
-
-/* Header */
-.pagina-header {
-    margin-bottom: 28px;
-}
-
-.pagina-header h1 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #1e293b;
-    margin-bottom: 6px;
-}
-
-.pagina-header p {
-    color: #64748b;
-    font-size: 0.85rem;
-}
-
-/* ====================================================================
-   FILTROS
-   ==================================================================== */
-
-.historial-filtros {
-    background: white;
-    border-radius: 16px;
-    padding: 20px 24px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.filtros-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    align-items: flex-end;
-}
-
-.filtro-grupo {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.filtro-grupo label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.filtro-grupo input {
-    padding: 10px 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    transition: all 0.2s;
-}
-
-.filtro-grupo input:focus {
-    outline: none;
-    border-color: #0054a6;
-    box-shadow: 0 0 0 3px rgba(0, 84, 166, 0.1);
-}
-
-.acciones-filtros {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.btn-limpiar {
-    padding: 10px 20px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    color: #475569;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-limpiar:hover {
-    background: #e2e8f0;
-}
-
-/* Resultados info */
-.resultados-info {
-    margin-bottom: 20px;
-    font-size: 0.8rem;
-    color: #64748b;
-    text-align: right;
-}
-
-/* ====================================================================
-   TARJETAS DE HISTORIAL
-   ==================================================================== */
-
+/* Contenedor de tarjetas */
 .historial-cards {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 1rem;
+    margin-top: 1rem;
 }
 
-.historial-card {
+/* Tarjeta principal */
+.hg-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.2s;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+.hg-card--abierta {
+    border-color: #93c5fd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-.historial-card:hover {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-}
-
-/* Header de la tarjeta */
-.historial-card-header {
+/* Cabecera de la tarjeta */
+.hg-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 24px;
-    background: #f8fafc;
+    width: 100%;
+    padding: 0.9rem 1.2rem;
+    background: none;
+    border: none;
     cursor: pointer;
-    transition: background 0.2s;
+    text-align: left;
+    font-family: inherit;
 }
-
-.historial-card-header:hover {
-    background: #f1f5f9;
+.hg-card-header:hover {
+    background-color: #f8fafc;
 }
-
-.historial-card-header.expandido {
-    background: #fef9f5;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.card-header-info {
+.hg-card-header-left {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
 }
-
-.card-icono {
+.hg-toggle-icon {
     font-size: 0.8rem;
     color: #64748b;
-    width: 24px;
+    margin-top: 0.2rem;
 }
-
-.card-titulo {
+.hg-card-titulos {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0.2rem;
+    overflow: hidden;
 }
-
-.card-codigo {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #0054a6;
-    font-family: monospace;
+.hg-card-codigo {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #1e40af;
 }
-
-.card-conyuges {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
-}
-
-.solicitante {
-    color: #1e293b;
-    font-weight: 500;
-}
-
-.demandado {
+.hg-card-expte {
+    font-size: 0.75rem;
     color: #64748b;
 }
-
-.separador {
-    color: #cbd5e1;
+.hg-card-conyuges {
+    font-size: 0.85rem;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-
-.card-header-stats {
+.hg-card-header-right {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 4px;
+    gap: 0.3rem;
+    flex-shrink: 0;
 }
-
-.card-movimientos {
+.hg-badges-estado {
+    display: flex;
+    gap: 0.5rem;
+}
+.hg-etapa-pill {
     font-size: 0.7rem;
     font-weight: 600;
-    color: #0054a6;
-    background: #e0f2fe;
-    padding: 2px 8px;
-    border-radius: 20px;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    white-space: nowrap;
+}
+.hg-etapa-cancelado {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+.hg-etapa-archivado {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+.hg-stat, .hg-stat-fecha {
+    font-size: 0.7rem;
+    color: #6b7280;
+}
+.hg-stat-fecha {
+    color: #9ca3af;
 }
 
-.card-ultimo {
-    font-size: 0.65rem;
-    color: #64748b;
+/* Cuerpo de la tarjeta (expandible) */
+.hg-card-body {
+    border-top: 1px solid #f1f5f9;
+    padding: 1rem 1.2rem 1.2rem 1.2rem;
 }
 
-/* Cuerpo de la tarjeta (timeline) */
-.historial-card-body {
-    padding: 24px;
-    background: white;
+/* Sección de pre‑solicitud */
+.hg-seccion-pre {
+    margin-bottom: 1.5rem;
+}
+.hg-seccion-titulo {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin-bottom: 0.75rem;
 }
 
-/* Timeline */
-.timeline {
+/* Timeline de etapas */
+.hg-timeline {
     display: flex;
     flex-direction: column;
-    position: relative;
 }
-
-.timeline-item {
+.hg-etapa {
     display: flex;
-    gap: 16px;
-    position: relative;
+    gap: 0;
 }
-
-.timeline-marker {
+.hg-etapa-rail {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 32px;
-    position: relative;
+    width: 28px;
+    flex-shrink: 0;
+    padding-top: 1rem;
 }
-
-.timeline-dot {
+.hg-etapa-dot {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #0054a6;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px #e2e8f0;
-    z-index: 2;
+    background-color: #3b82f6;
+    border: 2px solid #bfdbfe;
 }
-
-.timeline-line {
+.hg-etapa-linea {
     width: 2px;
     flex: 1;
-    background: #e2e8f0;
-    margin: 4px 0;
-    min-height: 20px;
+    background-color: #e2e8f0;
+    margin-top: 4px;
+    min-height: 24px;
 }
-
-.timeline-content {
+.hg-etapa-contenido {
     flex: 1;
-    padding-bottom: 24px;
+    padding-bottom: 1.2rem;
+    min-width: 0;
 }
-
-.timeline-item:last-child .timeline-content {
-    padding-bottom: 0;
-}
-
-.timeline-header {
+.hg-etapa-header {
+    width: 100%;
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-    gap: 8px;
+    align-items: center;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-family: inherit;
 }
-
-.timeline-fecha {
-    font-size: 0.7rem;
-    font-family: monospace;
-    color: #64748b;
+.hg-etapa-header:hover {
+    background-color: #f1f5f9;
 }
-
-.timeline-nro-mesa {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #0054a6;
-    background: #e0f2fe;
-    padding: 2px 8px;
-    border-radius: 20px;
-    font-family: monospace;
-}
-
-.timeline-body {
+.hg-etapa-left {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
+    gap: 0.6rem;
 }
-
-.timeline-accion {
-    display: inline-flex;
+.hg-etapa-nombre {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #1e293b;
+}
+.hg-etapa-count {
+    font-size: 0.7rem;
+    background-color: #e0e7ff;
+    color: #4338ca;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-weight: 600;
+}
+.hg-etapa-right {
+    display: flex;
     align-items: center;
-    gap: 6px;
-    background: #f1f5f9;
-    padding: 4px 12px;
-    border-radius: 20px;
+    gap: 0.8rem;
 }
-
-.accion-icono {
+.hg-etapa-fecha {
     font-size: 0.75rem;
-}
-
-.accion-texto {
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: #475569;
-}
-
-.timeline-estado {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
-.estado-recibido {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.estado-evaluacion {
-    background: #fed7aa;
-    color: #9a3412;
-}
-
-.estado-separacion {
-    background: #d9f99d;
-    color: #3f6212;
-}
-
-.estado-disolucion {
-    background: #bfdbfe;
-    color: #1e3a8a;
-}
-
-.estado-archivo {
-    background: #e2e8f0;
-    color: #475569;
-}
-
-.estado-anulado {
-    background: #fee2e2;
-    color: #b91c1c;
-}
-
-.timeline-detalle {
-    font-size: 0.7rem;
-    color: #64748b;
-    margin: 8px 0;
-    padding: 8px 12px;
-    background: #f8fafc;
-    border-radius: 8px;
-    font-style: italic;
-}
-
-.timeline-footer {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 8px;
-}
-
-.timeline-usuario {
-    font-size: 0.65rem;
     color: #64748b;
 }
-
-.timeline-rol {
-    font-size: 0.6rem;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 12px;
-    background: #f1f5f9;
+.hg-chevron {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+.hg-etapa-body {
+    margin-top: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+    background-color: #fafafa;
+}
+.hg-etapa-detalle {
+    font-size: 0.85rem;
     color: #475569;
+    margin: 0 0 0.3rem;
+}
+.hg-etapa-usuario {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 0 0 0.6rem;
+}
+.hg-sin-sub {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin: 0;
 }
 
-/* Skeleton loader */
-.skeleton-historial {
+/* Lista de sub‑eventos */
+.hg-sub-lista {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
 }
-
-.skeleton-card-h {
-    height: 100px;
-    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
-    border-radius: 16px;
-}
-
-@keyframes skeleton-loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-/* Estados vacíos */
-.vacio {
-    text-align: center;
-    padding: 60px 20px;
+.hg-sub-evento {
+    padding: 0.5rem 0.7rem;
     background: white;
-    border-radius: 16px;
-    color: #94a3b8;
     border: 1px solid #e2e8f0;
-}
-
-.cargando {
-    text-align: center;
-    padding: 60px 20px;
-    color: #94a3b8;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .contenido-modulo3 {
-        padding: 16px;
-    }
-    
-    .filtros-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .acciones-filtros {
-        justify-content: stretch;
-    }
-    
-    .btn-limpiar {
-        width: 100%;
-    }
-    
-    .historial-card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-    
-    .card-header-stats {
-        flex-direction: row;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .timeline-header {
-        flex-direction: column;
-    }
-    
-    .timeline-body {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-/* Botones de búsqueda y limpieza */
-.btn-buscar, .btn-limpiar {
-    padding: 8px 16px;
     border-radius: 8px;
+}
+.hg-sub-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem;
+}
+.hg-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    background-color: #f1f5f9;
+    color: #475569;
+}
+.hg-sub-detalle {
+    font-size: 0.8rem;
+    color: #334155;
+    word-break: break-word;
+}
+.hg-sub-fecha {
+    font-size: 0.7rem;
+    color: #9ca3af;
+}
+.hg-sub-usuario {
+    font-size: 0.7rem;
+    color: #6b7280;
+}
+.hg-sub-cancelado {
+    background-color: #fff5f5;
+    border-color: #fca5a5;
+}
+.hg-sub-archivado {
+    background-color: #f0fdf4;
+    border-color: #86efac;
+}
+
+/* Estados de carga y vacío */
+.hg-estado-pantalla {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem 2rem;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+.hg-error {
+    color: #b91c1c;
+}
+.hg-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Botón texto para limpiar filtros */
+.btn-texto-limpiar {
+    background: none;
     border: none;
+    color: #3b82f6;
+    font-size: 0.8rem;
     cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s;
+    text-decoration: underline;
+    margin-left: 0.5rem;
 }
-.btn-buscar {
-    background-color: #3b82f6;
-    color: white;
-}
-.btn-buscar:hover {
-    background-color: #2563eb;
-}
-.btn-limpiar {
-    background-color: #f3f4f6;
-    color: #374151;
-}
-.btn-limpiar:hover {
-    background-color: #e5e7eb;
-}
-
-/* Badges de estado en el timeline */
-.estado-activo {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-.estado-cancelado {
-    background-color: #fee2e2;
-    color: #991b1b;
-}
-.estado-archivado {
-    background-color: #e0e7ff;
-    color: #3730a3;
-}
-
-/* Línea de etapa */
-.timeline-etapa {
-    font-size: 13px;
-    color: #4b5563;
-    margin-top: 6px;
-    margin-bottom: 8px;
-}
-/* Select wrapper para que el combobox tenga el mismo estilo */
-.select-wrapper {
-    position: relative;
-    width: 100%;
+.btn-texto-limpiar:hover {
+    color: #1d4ed8;
 }
