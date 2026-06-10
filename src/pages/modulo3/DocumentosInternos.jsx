@@ -20,14 +20,12 @@ export default function DocumentosInternos() {
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false)
     const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
 
-    // Estados para los modales de subida
     const [modalAbierto, setModalAbierto] = useState(false)
     const [tipoDocumento, setTipoDocumento] = useState('')
     const [numeroDocumento, setNumeroDocumento] = useState('')
     const [fechaElaboracion, setFechaElaboracion] = useState('')
     const [archivo, setArchivo] = useState(null)
 
-    // Estados para el modal de reemplazo
     const [modalReemplazoAbierto, setModalReemplazoAbierto] = useState(false)
     const [tipoDocumentoReemplazo, setTipoDocumentoReemplazo] = useState('')
     const [motivoReemplazo, setMotivoReemplazo] = useState('')
@@ -35,14 +33,11 @@ export default function DocumentosInternos() {
     const [enviandoReemplazo, setEnviandoReemplazo] = useState(false)
     const [mensajeReemplazo, setMensajeReemplazo] = useState(null)
 
-    // Estados para el visor de PDF
     const [visorAbierto, setVisorAbierto] = useState(false)
     const [pdfUrl, setPdfUrl] = useState('')
 
-    // Determinar si el expediente está cancelado o archivado (solo lectura)
     const esSoloLectura = expediente?.estado === 'CANCELADO' || expediente?.estado === 'ARCHIVADO'
 
-    // Mapear etapa de la BD a la vista del pipeline
     const getPipelineEtapa = () => {
         switch(etapaActual) {
             case 'EVALUACION': return 'revision'
@@ -188,7 +183,6 @@ export default function DocumentosInternos() {
         return { estado: 'pendiente', fecha: null, nombre: null, archivo: null }
     }
 
-    // Función modificada: abre el modal en lugar de window.open
     const verPdf = (ruta) => {
         const url = getPdfUrl(ruta)
         if (url !== '#') {
@@ -284,7 +278,6 @@ export default function DocumentosInternos() {
                 )}
 
                 <div style={{ display: 'flex', gap: '24px' }}>
-                    {/* COLUMNA IZQUIERDA */}
                     <div style={{ flex: 2 }}>
                         <PlazoAlerta 
                             expediente={expediente}
@@ -326,11 +319,9 @@ export default function DocumentosInternos() {
                             </div>
                         </div>
 
-                        {/* Documentos requeridos */}
                         <div className="seccion documentos-subida">
                             <h2>Documentos requeridos</h2>
                             <div className="documentos-lista">
-                                {/* INFORME LEGAL */}
                                 <div className="documento-item">
                                     <div className="documento-info">
                                         <div className="documento-icono"></div>
@@ -372,7 +363,6 @@ export default function DocumentosInternos() {
                                     </div>
                                 </div>
 
-                                {/* RESOLUCION DE ADMISION */}
                                 <div className="documento-item">
                                     <div className="documento-info">
                                         <div className="documento-icono"></div>
@@ -416,7 +406,6 @@ export default function DocumentosInternos() {
                             </div>
                         </div>
 
-                        {/* Boton Continuar */}
                         {(etapaActual === 'DOCUMENTOS_INTERNOS' || etapaActual === 'EVALUACION') && (
                             <div className="seccion acciones">
                                 <button 
@@ -431,18 +420,15 @@ export default function DocumentosInternos() {
                         )}
                     </div>
 
-                    {/* COLUMNA DERECHA */}
                     <div style={{ flex: 1 }}>
                         <BotonesNavegacion 
                             expedienteId={id} 
                             etapaActual={etapaActual} 
                             documentosInternosCompletados={informeLegal.estado === 'subido' && resolucionAdmision.estado === 'subido'}
                         />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} />
-                    </div>
+                    <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />                    </div>
                 </div>
 
-                {/* Modales existentes (subida, reemplazo, confirmación) */}
                 {modalAbierto && (
                     <div className="modal-overlay" onClick={() => !subiendo && setModalAbierto(false)}>
                         <div className="modal-contenido" onClick={e => e.stopPropagation()}>
@@ -523,7 +509,6 @@ export default function DocumentosInternos() {
                     </div>
                 )}
 
-                {/* NUEVO MODAL VISOR DE PDF */}
                 {visorAbierto && (
                     <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
                         <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>

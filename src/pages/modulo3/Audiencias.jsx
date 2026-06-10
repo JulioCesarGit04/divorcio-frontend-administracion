@@ -11,7 +11,6 @@ export default function Audiencias() {
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState(null);
     
-    // Filtros temporales (vinculados a los inputs)
     const [filtrosTemp, setFiltrosTemp] = useState({
         numeroExpediente: '',
         numeroMesaPartes: '',
@@ -20,7 +19,6 @@ export default function Audiencias() {
         fechaDesde: '',
         fechaHasta: '',
     });
-    // Filtros aplicados (los que realmente usa la consulta)
     const [filtrosAplicados, setFiltrosAplicados] = useState({
         numeroExpediente: '',
         numeroMesaPartes: '',
@@ -33,19 +31,15 @@ export default function Audiencias() {
     const formatFechaHora = (fechaStr) => {
     if (!fechaStr) return '—';
     
-    // Si la cadena incluye 'Z' (formato UTC), eliminar la 'Z' para tratarla como local
     let cadena = fechaStr;
     if (cadena.endsWith('Z')) {
-        cadena = cadena.slice(0, -1); // quita la 'Z'
+        cadena = cadena.slice(0, -1); 
     }
-    // Reemplazar 'T' por espacio para facilitar el parseo
     cadena = cadena.replace('T', ' ');
-    // Separar fecha y hora
     const [fechaParte, horaParte] = cadena.split(' ');
     const [year, month, day] = fechaParte.split('-');
     const [hour, minute] = horaParte.split(':');
     
-    // Crear fecha local (sin offset UTC)
     const fecha = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
     
     return fecha.toLocaleString('es-PE', {
@@ -62,7 +56,6 @@ export default function Audiencias() {
         setCargando(true);
         setError(null);
         try {
-            // Obtener todos los expedientes con estado ACTIVO
             const resExp = await getExpedientes({ estado: 'ACTIVO' });
             let expedientes = [];
             if (resExp && Array.isArray(resExp.data)) {
@@ -73,7 +66,6 @@ export default function Audiencias() {
                 expedientes = [];
             }
 
-            // Para cada expediente, obtener su audiencia actual (si existe)
             const promesas = expedientes.map(async (exp) => {
                 let audienciaActual = null;
                 let tieneAudiencia = false;
@@ -91,13 +83,9 @@ export default function Audiencias() {
                     console.error(`Error al obtener audiencia del expediente ${exp.id}`, err);
                 }
 
-                // Incluir expediente si:
-                // - Tiene audiencia (cualquier estado) O
-                // - Está en etapa AUDIENCIA o DOCUMENTOS_INTERNOS (para poder programar)
                 const debeIncluir = tieneAudiencia || exp.etapa === 'AUDIENCIA' || exp.etapa === 'DOCUMENTOS_INTERNOS';
                 if (!debeIncluir) return null;
 
-                // Si tiene audiencia, devolvemos los datos de la misma
                 if (audienciaActual) {
                     return {
                         expedienteId: exp.id,
@@ -114,7 +102,6 @@ export default function Audiencias() {
                         tieneAudiencia: true,
                     };
                 } else {
-                    // No tiene audiencia pero está en etapa que permite programar
                     return {
                         expedienteId: exp.id,
                         numeroExpediente: exp.numero_expediente,
@@ -135,7 +122,6 @@ export default function Audiencias() {
             let resultados = await Promise.all(promesas);
             resultados = resultados.filter(r => r !== null);
 
-            // Aplicar filtros según filtrosAplicados
             let filtrados = resultados;
             if (filtrosAplicados.numeroExpediente) {
                 filtrados = filtrados.filter(a =>
@@ -165,7 +151,6 @@ export default function Audiencias() {
                 filtrados = filtrados.filter(a => a.fechaProgramada && new Date(a.fechaProgramada) <= new Date(filtrosAplicados.fechaHasta));
             }
 
-            // Ordenar: primero los que tienen fecha (próximas primero), luego los sin programar
             filtrados.sort((a, b) => {
                 if (!a.fechaProgramada && !b.fechaProgramada) return 0;
                 if (!a.fechaProgramada) return 1;
@@ -182,7 +167,6 @@ export default function Audiencias() {
         }
     };
 
-    // Cargar al montar y cuando cambien los filtros aplicados
     useEffect(() => {
         cargar();
     }, [filtrosAplicados]);

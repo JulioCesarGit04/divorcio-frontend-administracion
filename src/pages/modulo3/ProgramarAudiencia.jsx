@@ -248,7 +248,6 @@ export default function ProgramarAudiencia() {
                 <div className="detalle-header">
                     <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                     <h1>Programar Audiencia</h1>
-                    <span className="estado-badge">Expediente {numeroMesaPartes || '—'}</span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '30px' }}>
@@ -297,7 +296,6 @@ export default function ProgramarAudiencia() {
                         </div>
 
                         <div className="seccion">
-                            {/* 1. Audiencia realizada (incluso si cancelado) */}
                             {audienciaRealizada && (
                                 <>
                                     <h2>Audiencia ya realizada</h2>
@@ -342,7 +340,6 @@ export default function ProgramarAudiencia() {
                                 </>
                             )}
 
-                            {/* 2. Audiencia programada (no realizada) */}
                             {!audienciaRealizada && audienciaProgramada && !modoReprogramacion && (
                                 <>
                                     <h2>Audiencia programada</h2>
@@ -401,13 +398,12 @@ export default function ProgramarAudiencia() {
                                     </div>
                                     {estaCancelado && (
                                         <div className="aviso-cancelado" style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#991b1b' }}>
-                                            ⚠️ Expediente cancelado. No se pueden modificar los datos de la audiencia.
+                                             Expediente cancelado. No se pueden modificar los datos de la audiencia.
                                         </div>
                                     )}
                                 </>
                             )}
 
-                            {/* 3. No hay audiencia (ni realizada ni programada) */}
                             {!audienciaRealizada && !audienciaProgramada && (
                                 <>
                                     {estaCancelado ? (
@@ -516,8 +512,7 @@ export default function ProgramarAudiencia() {
 
                     <div style={{ flex: 1 }}>
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} />
-                    </div>
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />                    </div>
                 </div>
             </main>
         </>

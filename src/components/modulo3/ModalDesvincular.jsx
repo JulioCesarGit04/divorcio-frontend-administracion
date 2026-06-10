@@ -26,7 +26,6 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
         }
     };
 
-    // Sugerencias rápidas para el motivo
     const sugerencias = [
         'Número de Mesa de Partes incorrecto',
         'Documentos incompletos o incorrectos',
@@ -42,7 +41,6 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
     return (
         <div className="modal-overlay">
             <div className="modal-desvincular">
-                {/* Header con icono de advertencia */}
                 <div className="modal-header-desvincular">
                     <div className="header-icono"></div>
                     <div className="header-texto">
@@ -53,7 +51,6 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
                 </div>
 
                 <div className="modal-body-desvincular">
-                    {/* Alerta de advertencia */}
                     <div className="alerta-desvincular">
                         <div className="alerta-icono"></div>
                         <div className="alerta-contenido">
@@ -74,7 +71,6 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
                         </div>
                     </div>
 
-                    {/* Campo de motivo */}
                     <div className="campo-motivo">
                         <label>
                             Motivo de desvinculación <span className="requerido">*</span>
@@ -90,7 +86,6 @@ export default function ModalDesvincular({ expedienteId, expedienteNro, onCerrar
                         </div>
                     </div>
 
-                    {/* Sugerencias rápidas */}
                     <div className="sugerencias">
                         <label> Sugerencias rápidas:</label>
                         <div className="sugerencias-botones">

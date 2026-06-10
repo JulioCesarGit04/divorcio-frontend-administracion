@@ -36,12 +36,10 @@ export default function ResolucionFundada() {
 
     const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false)
 
-    // Estados para el modal de cancelación
     const [modalCancelacionAbierto, setModalCancelacionAbierto] = useState(false)
     const [motivoCancelacion, setMotivoCancelacion] = useState('')
     const [enviandoCancelacion, setEnviandoCancelacion] = useState(false)
 
-    // Estados para el visor de PDF
     const [visorAbierto, setVisorAbierto] = useState(false)
     const [pdfUrl, setPdfUrl] = useState('')
 
@@ -56,7 +54,7 @@ export default function ResolucionFundada() {
             case 'DOCUMENTOS_INTERNOS': return 'documentos'
             case 'AUDIENCIA': return 'audiencia'
             case 'ESPERA_LEGAL': return 'resolucion'
-            case 'DISOLUCION': return 'completado'
+            case 'DISOLUCION': return 'disolucion'
             default: return 'revision'
         }
     }
@@ -80,6 +78,8 @@ export default function ResolucionFundada() {
                 const resExp = await getExpedienteById(id)
                 const data = resExp?.data || resExp
                 const expedienteData = data?.expediente || data
+                console.log('Datos del expediente desde la API:', expedienteData);
+
                 setExpediente(expedienteData)
 
                 if (expedienteData?.fecha_fin_espera) {
@@ -250,7 +250,6 @@ export default function ResolucionFundada() {
         }
     }
 
-    // Función para ver PDF en modal
     const verPdfEnModal = (ruta) => {
         const url = getPdfUrl(ruta)
         if (url !== '#') {
@@ -302,8 +301,7 @@ export default function ResolucionFundada() {
                 </div>
 
                 {bloqueado && !esSoloLectura && (
-                    <div className="mensaje success" style={{ textAlign: 'center', marginBottom: 24 }}>
-                         Este expediente ya está en DISOLUCIÓN. El proceso ha sido completado.
+                    <div >
                     </div>
                 )}
 
@@ -499,7 +497,7 @@ export default function ResolucionFundada() {
                                                 Seleccionar archivo
                                             </label>
                                             {archivo
-                                                ? <span className="archivo-ok">✅ {archivo.name}</span>
+                                                ? <span className="archivo-ok"> {archivo.name}</span>
                                                 : <span className="archivo-pendiente">Ningún archivo seleccionado</span>
                                             }
                                         </div>
@@ -534,7 +532,6 @@ export default function ResolucionFundada() {
                             )}
                         </div>
 
-                        {/* Botones de acción: solo se muestran si NO es solo lectura y la etapa es ESPERA_LEGAL */}
                         {!esSoloLectura && etapaActual === 'ESPERA_LEGAL' && (
                             <div className="seccion acciones" style={{ display: 'flex', gap: '16px', justifyContent: 'space-between' }}>
                                 <button
@@ -578,11 +575,10 @@ export default function ResolucionFundada() {
 
                     <div className="detalle-derecha">
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} />
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />
                     </div>
                 </div>
 
-                {/* Modales existentes (reemplazo, confirmación, cancelación) */}
                 {modalReemplazoAbierto && (
                     <div className="modal-overlay" onClick={() => !enviandoReemplazo && setModalReemplazoAbierto(false)}>
                         <div className="modal-contenido" onClick={e => e.stopPropagation()}>
@@ -702,7 +698,6 @@ export default function ResolucionFundada() {
                     </div>
                 )}
 
-                {/* Nuevo modal visor de PDF */}
                 {visorAbierto && (
                     <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
                         <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>

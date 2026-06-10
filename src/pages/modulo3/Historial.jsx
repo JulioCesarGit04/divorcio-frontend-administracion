@@ -4,26 +4,25 @@ import Sidebar from '../../components/modulo3/Sidebar';
 import { getHistorialGlobal } from '../../services/ProcedimientoService';
 import '../../styles/modulo3/historial.css';
 
-// ─── Formato de fechas (hora local de Perú) ─────────────────────────────
 const formatFechaHora = (fechaStr) => {
     if (!fechaStr) return '—';
-    return new Date(fechaStr).toLocaleString('es-PE', {
-        timeZone: 'America/Lima',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
+    let cadena = fechaStr.replace('T', ' ');
+    if (cadena.includes('.')) cadena = cadena.substring(0, cadena.indexOf('.'));
+    const partes = cadena.split(' ');
+    if (partes.length < 2) return cadena;
+    const [fechaParte, horaParte] = partes;
+    const [year, month, day] = fechaParte.split('-');
+    const [hour, minute] = horaParte.split(':');
+    return `${day}/${month}/${year}, ${hour}:${minute}`;
 };
 
 const formatFecha = (fechaStr) => {
     if (!fechaStr) return '—';
-    return new Date(fechaStr).toLocaleDateString('es-PE', { timeZone: 'America/Lima' });
+    let cadena = fechaStr.split('T')[0];
+    const [year, month, day] = cadena.split('-');
+    return `${day}/${month}/${year}`;
 };
 
-// ─── Textos amigables para etapas y acciones ─────────────────────────────
 const etapaTexto = {
     EVALUACION: 'Revisión documentaria',
     DOCUMENTOS_INTERNOS: 'Documentos internos',
@@ -44,9 +43,10 @@ const accionTexto = {
     APROBADO: 'Aprobado',
     OBSERVADO: 'Observado',
     INADMISIBLE: 'Inadmisible',
-    PROGRAMACION: 'Audiencia programada',
-    REPROGRAMACION: 'Audiencia reprogramada',
-    RESULTADO: 'Resultado de audiencia',
+    PRIMERA_CONVOCATORIA: '1.ª convocatoria',
+    SEGUNDA_CONVOCATORIA: '2.ª convocatoria',
+    REPROGRAMACION: 'Reprogramación',
+    RESULTADO: 'Resultado',
     CANCELACION: 'Audiencia cancelada',
     CANCELADO: 'Expediente cancelado',
     ARCHIVADO: 'Expediente archivado',
@@ -54,7 +54,6 @@ const accionTexto = {
     CAMBIO_ESTADO: 'Cambio de estado'
 };
 
-// ─── Reglas fijas de asignación de sub‑eventos a etapas ─────────────────
 const ETAPA_POR_TIPO_DOC = {
     INFORME_LEGAL: 'DOCUMENTOS_INTERNOS',
     RESOLUCION_ADMISIBLE: 'DOCUMENTOS_INTERNOS',
@@ -71,7 +70,6 @@ const ETAPA_POR_PAGO = {
     PAGO_COPIAS_CERTIFICADAS: 'DISOLUCION'
 };
 
-// ─── Determina a qué etapa pertenece un sub‑evento (o si es estructural) ─
 function resolverEtapaDestino(item) {
     const { tipo_evento, accion, documento_tipo } = item;
     if (tipo_evento === 'PRE_SOLICITUD') return '__PRE__';
@@ -99,8 +97,6 @@ function resolverEtapaDestino(item) {
     return null;
 }
 
-// ─── Procesa eventos de pre‑solicitud: devuelve todos los eventos individuales
-//     (documentos, evaluaciones, cambio de estado) ordenados por fecha.
 function agruparEventosPre(eventos) {
     if (!eventos.length) return [];
     return [...eventos].sort((a, b) => 
@@ -109,27 +105,22 @@ function agruparEventosPre(eventos) {
     );
 }
 
-// ─── Orden personalizado para sub‑eventos de la etapa AUDIENCIA ─────────
-// Se ordena por: PROGRAMACION → REPROGRAMACION → RESULTADO (y otros)
-// Dentro de cada grupo, por fecha ascendente.
 function ordenarSubEventosAudiencia(eventos) {
     const prioridad = {
+        'PRIMERA_CONVOCATORIA': 1,
         'PROGRAMACION': 1,
         'REPROGRAMACION': 2,
-        'RESULTADO': 3
+        'SEGUNDA_CONVOCATORIA': 3,
+        'RESULTADO': 4
     };
     return [...eventos].sort((a, b) => {
-        const priorA = prioridad[a.accion] || 4;
-        const priorB = prioridad[b.accion] || 4;
+        const priorA = prioridad[a.accion] || 99;
+        const priorB = prioridad[b.accion] || 99;
         if (priorA !== priorB) return priorA - priorB;
-        // Misma prioridad: ordenar por fecha ascendente
-        const diffFecha = new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
-        if (diffFecha !== 0) return diffFecha;
-        return (a.id || 0) - (b.id || 0);
+        return new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
     });
 }
 
-// ─── Orden estándar para sub‑eventos de cualquier otra etapa (por fecha ascendente) ──
 function ordenarSubEventosPorFecha(eventos) {
     return [...eventos].sort((a, b) => {
         const diff = new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
@@ -138,7 +129,6 @@ function ordenarSubEventosPorFecha(eventos) {
     });
 }
 
-// ─── Agrupación principal por pre‑solicitud (con orden de etapas FIJO) ──
 function agruparPorPreSolicitud(items) {
     const grupos = {};
 
@@ -150,7 +140,6 @@ function agruparPorPreSolicitud(items) {
         'DISOLUCION'
     ];
 
-    // Primera pasada: construir bloques de etapa
     for (const item of items) {
         const preId = item.pre_solicitud_id;
         if (!grupos[preId]) {
@@ -189,7 +178,6 @@ function agruparPorPreSolicitud(items) {
         }
     }
 
-    // Ordenar etapas según orden fijo
     for (const g of Object.values(grupos)) {
         g.etapas.sort((a, b) => {
             const idxA = ordenEtapaFijo.indexOf(a.etapa);
@@ -201,7 +189,6 @@ function agruparPorPreSolicitud(items) {
         });
     }
 
-    // Segunda pasada: asignar sub‑eventos a las etapas
     for (const item of items) {
         const grupo = grupos[item.pre_solicitud_id];
         if (!grupo) continue;
@@ -219,7 +206,6 @@ function agruparPorPreSolicitud(items) {
         }
     }
 
-    // Ordenar sub‑eventos dentro de cada etapa
     for (const g of Object.values(grupos)) {
         g.eventos_pre = agruparEventosPre(g.eventos_pre);
         for (const etapa of g.etapas) {
@@ -231,7 +217,6 @@ function agruparPorPreSolicitud(items) {
         }
     }
 
-    // Ordenar grupos por fecha de la última etapa (más reciente primero)
     return Object.values(grupos).sort((a, b) => {
         const fa = new Date(a.etapas[a.etapas.length - 1]?.fecha || 0);
         const fb = new Date(b.etapas[b.etapas.length - 1]?.fecha || 0);
@@ -239,9 +224,7 @@ function agruparPorPreSolicitud(items) {
     });
 }
 
-// ─── Componente para mostrar un sub‑evento ──────────────────────────────
 function SubEvento({ item }) {
-    // Documento ciudadano (subida)
     if (item.tipo_evento === 'DOCUMENTO_CIUDADANO') {
         return (
             <div className="hg-sub-evento">
@@ -255,7 +238,6 @@ function SubEvento({ item }) {
         );
     }
 
-    // Evaluación de documento
     if (item.tipo_evento === 'EVALUACION_DOCUMENTO') {
         let badgeText = '';
         if (item.accion === 'APROBADO') badgeText = 'Aprobado';
@@ -275,7 +257,21 @@ function SubEvento({ item }) {
         );
     }
 
-    // Eventos normales (expediente, documentos internos, etc.)
+    if (item.tipo_evento === 'AUDIENCIA' && 
+        (item.accion === 'PRIMERA_CONVOCATORIA' || item.accion === 'SEGUNDA_CONVOCATORIA' || item.accion === 'PROGRAMACION')) {
+        const fechaAudiencia = formatFechaHora(item.fecha);
+        return (
+            <div className="hg-sub-evento">
+                <div className="hg-sub-info">
+                    <span className="hg-badge">{accionTexto[item.accion] || item.accion}</span>
+                    <span className="hg-sub-detalle">
+                        {item.detalle} <span style={{ color: '#6b7280', fontSize: '0.7rem' }}>(programada para {fechaAudiencia})</span>
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
     const esCancelado = item.tipo_evento === 'EXPEDIENTE' && item.estado_nuevo === 'CANCELADO';
     const esArchivado = item.tipo_evento === 'EXPEDIENTE' && item.estado_nuevo === 'ARCHIVADO';
     const accionLabel = esCancelado ? 'CANCELADO' : esArchivado ? 'ARCHIVADO' : item.accion;
@@ -296,7 +292,6 @@ function SubEvento({ item }) {
     );
 }
 
-// ─── Componente para una etapa (expandible) ─────────────────────────────
 function EtapaTimeline({ etapa, esUltima }) {
     const [expandida, setExpandida] = useState(true);
     const tieneSubEventos = etapa.sub_eventos.length > 0;
@@ -336,7 +331,6 @@ function EtapaTimeline({ etapa, esUltima }) {
     );
 }
 
-// ─── Tarjeta principal (pre‑solicitud / expediente) ─────────────────────
 function PreSolicitudCard({ pre, expandido, onToggle }) {
     const ultimaFecha = pre.etapas[pre.etapas.length - 1]?.fecha;
     const etapaActual = pre.etapas[pre.etapas.length - 1]?.etapa;
@@ -388,7 +382,6 @@ function PreSolicitudCard({ pre, expandido, onToggle }) {
     );
 }
 
-// ─── Componente principal ────────────────────────────────────────────────
 export default function Historial() {
     const [todos, setTodos] = useState([]);
     const [filtrados, setFiltrados] = useState([]);

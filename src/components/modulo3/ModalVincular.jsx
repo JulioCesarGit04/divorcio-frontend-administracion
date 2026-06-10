@@ -9,7 +9,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
     const [error, setError] = useState('');
     const [cargando, setCargando] = useState(false);
 
-    // Validar que la fecha no sea futura
     const validarFechaPago = (fecha) => {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
@@ -22,25 +21,21 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
     };
 
     const handleConfirmar = async () => {
-        // Validación 1: Número de Mesa de Partes
         if (!nroMesaPartes.trim()) {
             setError('El número de Mesa de Partes es requerido.');
             return;
         }
         
-        // Validación 2: Confirmación del número
         if (nroMesaPartes.trim() !== nroMesaPartesConfirm.trim()) {
             setError('Los números de Mesa de Partes no coinciden.');
             return;
         }
         
-        // Validación 3: Fecha de pago
         if (!fechaPago) {
             setError('La fecha de pago es requerida.');
             return;
         }
         
-        // Validación 4: Fecha de pago no futura
         const errorFecha = validarFechaPago(fechaPago);
         if (errorFecha) {
             setError(errorFecha);
@@ -78,7 +73,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
         <div className="modal-overlay" onClick={onCerrar}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
 
-                {/* Header */}
                 <div className="modal-header">
                     <div>
                         <h3>Vincular con Mesa de Partes</h3>
@@ -89,10 +83,8 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                     <button className="modal-close" onClick={onCerrar} disabled={cargando}>×</button>
                 </div>
 
-                {/* Body */}
                 <div className="modal-body">
 
-                    {/* Aviso informativo */}
                     <div className="modal-aviso">
                         <div className="modal-aviso-icono">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -107,7 +99,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                         </p>
                     </div>
 
-                    {/* Número de Mesa de Partes */}
                     <div className="campo">
                         <label>Número de Mesa de Partes <span className="campo-requerido">*</span></label>
                         <input
@@ -121,7 +112,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                         <span className="campo-ayuda">Escríbalo exactamente como aparece en el correo</span>
                     </div>
 
-                    {/* Confirmación del número */}
                     <div className="campo">
                         <label>Confirme el número <span className="campo-requerido">*</span></label>
                         <input
@@ -146,7 +136,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                         </span>
                     </div>
 
-                    {/* Fecha de Pago - NUEVO CAMPO */}
                     <div className="campo">
                         <label>Fecha de pago <span className="campo-requerido">*</span></label>
                         <input
@@ -154,7 +143,7 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                             value={fechaPago}
                             onChange={e => { setFechaPago(e.target.value); setError(''); }}
                             disabled={cargando}
-                            max={new Date().toISOString().split('T')[0]} // No permite fechas futuras
+                            max={new Date().toISOString().split('T')[0]} 
                         />
                         <span className="campo-ayuda">
                             Fecha del voucher de pago (no puede ser futura)
@@ -164,7 +153,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                     {error && <div className="error-mensaje">{error}</div>}
                 </div>
 
-                {/* Footer */}
                 <div className="modal-footer">
                     <button className="btn-cancelar" onClick={onCerrar} disabled={cargando}>
                         Cancelar

@@ -1,70 +1,64 @@
 import { useNavigate } from 'react-router-dom'
-//import './BotonesNavegacion.css'  // ← Así, no con "modulo3/"
 import '../../styles/modulo3/BotonesNavegacion.css'
 
 
 export default function BotonesNavegacion({ expedienteId, etapaActual, documentosInternosCompletados = false }) {
     const navigate = useNavigate()
 
-    // Mapeo de etapas a índices (incluyendo DOCUMENTOS_INTERNOS)
     const ordenEtapas = ['EVALUACION', 'DOCUMENTOS_INTERNOS', 'AUDIENCIA', 'ESPERA_LEGAL', 'DISOLUCION']
     const etapaActualIndex = ordenEtapas.indexOf(etapaActual)
 
-    // Definición de botones con su etapa mínima requerida (como índice)
     const botones = [
         { 
             id: 'revision', 
             label: 'Revisión Documentaria',
             ruta: `/modulo3/detalle/${expedienteId}`,
-            etapaMinimaIndex: 0  // EVALUACION
+            etapaMinimaIndex: 0  
         },
         { 
             id: 'documentos', 
             label: 'Documentos Internos',
             ruta: `/modulo3/expediente/${expedienteId}/documentos-internos`,
-            etapaMinimaIndex: 1  // DOCUMENTOS_INTERNOS
+            etapaMinimaIndex: 1 
         },
         { 
             id: 'audiencia', 
             label: 'Programar Audiencia', 
             ruta: `/modulo3/expediente/${expedienteId}/programar-audiencia`,
-            etapaMinimaIndex: 2  // AUDIENCIA
+            etapaMinimaIndex: 2  
         },
         { 
             id: 'resolucion', 
             label: 'Resolución Fundada',
             ruta: `/modulo3/expediente/${expedienteId}/resolucion-fundada`,
-            etapaMinimaIndex: 3  // ESPERA_LEGAL
+            etapaMinimaIndex: 3  
         },
-                // --- BOTONES DEL MÓDULO 4 ---
+              
         {
             id: 'disolucion',
             label: 'Resolución de Disolución',
             ruta: `/modulo4/resolucion-disolucion/${expedienteId}`,
-            etapaMinimaIndex: 3  // Habilitado cuando llega a ESPERA_LEGAL
+            etapaMinimaIndex: 3 
         },
         {
             id: 'archivar',
             label: 'Archivamiento del Expediente',
             ruta: `/modulo4/archivamiento/${expedienteId}`,
-            etapaMinimaIndex: 4  // Habilitado cuando ya pasó a DISOLUCION
+            etapaMinimaIndex: 4  
         }
     ]
 
-    // Verificar si el botón debe estar habilitado
     const isButtonEnabled = (btn) => {
-        // Para el botón de audiencia, se necesita etapa >= AUDIENCIA
+       
         if (btn.id === 'audiencia') {
             return etapaActualIndex >= btn.etapaMinimaIndex
         }
-        // Para documentos internos, se necesita etapa >= DOCUMENTOS_INTERNOS
         if (btn.id === 'documentos') {
             return etapaActualIndex >= btn.etapaMinimaIndex
         }
         return etapaActualIndex >= btn.etapaMinimaIndex
     }
 
-    // Tooltips para botones deshabilitados
     const getButtonTooltip = (btn) => {
         if (isButtonEnabled(btn)) return ''
         
@@ -76,7 +70,6 @@ export default function BotonesNavegacion({ expedienteId, etapaActual, documento
         return 'Etapa no disponible'
     }
 
-    // Saber si es la vista actual (para resaltar el botón)
     const isCurrentView = (id) => {
         if (id === 'revision' && etapaActual === 'EVALUACION') return true
         if (id === 'documentos' && etapaActual === 'DOCUMENTOS_INTERNOS') return true

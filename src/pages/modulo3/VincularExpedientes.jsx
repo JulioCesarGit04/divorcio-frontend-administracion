@@ -18,7 +18,6 @@ export default function VincularExpedientes() {
         fechaHasta: ''
     })
 
-    // Ordena de más antiguo a más reciente
     const ordenarPorFecha = (lista) => {
         return [...lista].sort((a, b) =>
             new Date(a.PreSolicitudes_CreadoEn) - new Date(b.PreSolicitudes_CreadoEn)
@@ -42,7 +41,6 @@ export default function VincularExpedientes() {
 
     useEffect(() => { cargar() }, [])
 
-    // Los filtros solo se aplican al hacer click en Buscar
     const aplicarFiltros = () => {
         let filtrados = [...preExpedientes]
 
@@ -99,7 +97,6 @@ export default function VincularExpedientes() {
                     <p>Pre-expedientes admisibles pendientes de vinculación</p>
                 </div>
 
-                {/* Filtros — usa .filtros-grid que ya tienes en el CSS */}
                 <div className="filtros-panel">
                     <div className="filtros-grid">
                         <div className="filtro-grupo">
@@ -178,7 +175,6 @@ export default function VincularExpedientes() {
                                     <th>Demandado</th>
                                     <th>DNI</th>
                                     <th>Teléfono</th>
-                                    <th>Documentos</th>
                                     <th>Fecha</th>
                                     <th>Acción</th>
                                 </tr>
@@ -194,11 +190,7 @@ export default function VincularExpedientes() {
                                         <td className="nombre-demandado">{getNombre(pe.Demandado_Nombres, pe.Demandado_Apellidos)}</td>
                                         <td className="dni-cell">{pe.Demandado_Dni || '—'}</td>
                                         <td>{pe.Demandado_Telefono || '—'}</td>
-                                        <td>
-                                            <span className="badge badge-recibido">
-                                                📄 {pe.CantidadDocumentos || 0}
-                                            </span>
-                                        </td>
+                                        
                                         <td className="fecha-cell">
                                             {new Date(pe.PreSolicitudes_CreadoEn).toLocaleDateString('es-PE')}
                                         </td>
