@@ -267,8 +267,7 @@ export default function ArchivamientoExpediente() {
 
                     <div className="rf-sidebar">
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} />
-                    </div>
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />                    </div>
                 </div>
 
                 {/* Modal visor de PDF */}

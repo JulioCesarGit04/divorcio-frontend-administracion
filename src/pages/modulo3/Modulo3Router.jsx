@@ -9,7 +9,7 @@ import DocumentosInternos from './DocumentosInternos';
 import ProgramarAudiencia from './ProgramarAudiencia';
 import ResolucionFundada from './ResolucionFundada';
 import RegistrarAudiencia from './RegistrarAudiencia';
-import Audiencias from './Audiencias';              // ← IMPORTAR
+import Audiencias from './Audiencias';              
 import Layout from '../../components/Layout';
 
 export default function Modulo3Router() {
@@ -25,7 +25,6 @@ export default function Modulo3Router() {
                 <Route path="/alertas" element={<Alertas />} />
                 <Route path="/audiencias" element={<Audiencias />} />
                 
-                {/* RUTAS DEL MÓDULO 03 */}
                 <Route path="/expediente/:id/documentos-internos" element={<DocumentosInternos />} />
                 <Route path="/expediente/:id/programar-audiencia" element={<ProgramarAudiencia />} />
                 <Route path="/expediente/:id/resolucion-fundada" element={<ResolucionFundada />} />

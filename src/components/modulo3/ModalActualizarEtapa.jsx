@@ -22,7 +22,6 @@ export default function ModalActualizarEtapa({ expedienteId, estadoActual, onCer
         try {
             let result
 
-            // Según el tipo de acción o estado actual
             if (tipoAccion === 'archivar' || estadoActual === 'RES_DISOLUCION') {
                 if (!ubicacion.trim()) {
                     setError('La ubicación física es obligatoria para archivar...')
@@ -55,7 +54,6 @@ export default function ModalActualizarEtapa({ expedienteId, estadoActual, onCer
         }
     }
 
-    // Determinar el título y mensaje según la acción
     const getTitulo = () => {
         if (tipoAccion === 'archivar' || estadoActual === 'RES_DISOLUCION') return 'Archivar expediente'
         if (tipoAccion === 'separacion' || estadoActual === 'EVALUACION') return 'Generar Resolución de Separación'

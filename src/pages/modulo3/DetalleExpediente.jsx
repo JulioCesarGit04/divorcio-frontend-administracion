@@ -20,7 +20,6 @@ export default function DetalleExpediente() {
     const [mensajeGlobal, setMensajeGlobal] = useState(null)
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false)
 
-    // Estados para el visor de PDF
     const [visorAbierto, setVisorAbierto] = useState(false)
     const [pdfUrl, setPdfUrl] = useState('')
 
@@ -299,7 +298,6 @@ export default function DetalleExpediente() {
                 </div>
 
                 <div className="detalle-grid">
-                    {/* COLUMNA IZQUIERDA */}
                     <div className="detalle-izquierda">
                         <PlazoAlerta 
                             expediente={expediente}
@@ -335,7 +333,6 @@ export default function DetalleExpediente() {
                             </div>
                         </div>
 
-                        {/* Cónyuges */}
                         <div className="seccion">
                             <h2>Cónyuges</h2>
                             <div className="conyuges-grid-moderno">
@@ -401,7 +398,6 @@ export default function DetalleExpediente() {
                             </div>
                         </div>
 
-                        {/* Documentos del ciudadano */}
                         <div className="seccion">
                             <h2>Documentos del ciudadano</h2>
                             {documentos.length === 0 ? (
@@ -420,7 +416,6 @@ export default function DetalleExpediente() {
                             )}
                         </div>
 
-                        {/* Botón Continuar */}
                         {!confirmado && etapaActual === 'EVALUACION' && (
                             <div className="seccion acciones">
                                 <button className="btn-continuar" onClick={handleConfirmarRevision}>
@@ -430,14 +425,13 @@ export default function DetalleExpediente() {
                         )}
                     </div>
 
-                    {/* COLUMNA DERECHA */}
                     <div className="detalle-derecha">
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} />
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />
+
                     </div>
                 </div>
 
-                {/* Modal de confirmación avanzar */}
                 {mostrarConfirmacion && (
                     <div className="modal-overlay" onClick={() => setMostrarConfirmacion(false)}>
                         <div className="modal-contenido" onClick={e => e.stopPropagation()}>
@@ -457,7 +451,6 @@ export default function DetalleExpediente() {
                     </div>
                 )}
 
-                {/* Modal visor de PDF */}
                 {visorAbierto && (
                     <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
                         <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>

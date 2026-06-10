@@ -18,7 +18,6 @@ export default function RegistrarAudiencia() {
     const [enviando, setEnviando] = useState(false)
     const [mensaje, setMensaje] = useState(null)
     
-    // Estado para el modal de confirmación
     const [modalConfirmacion, setModalConfirmacion] = useState({
         abierto: false,
         titulo: '',
@@ -42,7 +41,6 @@ export default function RegistrarAudiencia() {
         acta3: null
     })
 
-    // Estados para el visor de PDF
     const [visorAbierto, setVisorAbierto] = useState(false)
     const [pdfUrl, setPdfUrl] = useState('')
 
@@ -102,6 +100,25 @@ export default function RegistrarAudiencia() {
     const ambosAsistieron = () => {
         return asistioSolicitante && asistioDemandado
     }
+
+    const alMenosUnoAsistio = () => {
+        return asistioSolicitante || asistioDemandado
+    }
+
+    const estaCancelado = expediente?.estado === 'CANCELADO'
+    const estaArchivado = expediente?.estado === 'ARCHIVADO'
+    const yaFueRegistrada = audiencia?.estado === 'REALIZADA'
+
+    useEffect(() => {
+        if (yaFueRegistrada) return
+        if (resultado === 'RATIFICACION' && !ambosAsistieron()) {
+            setResultado('')
+        } else if (resultado === 'DESISTIMIENTO' && !alMenosUnoAsistio()) {
+            setResultado('')
+        } else if (resultado === 'INASISTENCIA' && ambosAsistieron()) {
+            setResultado('')
+        }
+    }, [asistioSolicitante, asistioDemandado, yaFueRegistrada, resultado])
 
     useEffect(() => {
         const cargar = async () => {
@@ -180,7 +197,6 @@ export default function RegistrarAudiencia() {
         setMensaje(null)
     }
 
-    // Función para ver PDF en modal
     const verPdfEnModal = (ruta) => {
         const url = getPdfUrl(ruta)
         if (url !== '#') {
@@ -274,13 +290,11 @@ export default function RegistrarAudiencia() {
             }
         }
 
-        // Ratificación: ejecutar directamente
         if (resultado === 'RATIFICACION') {
             await ejecutarRegistro()
             return
         }
 
-        // Desistimiento: mostrar modal
         if (resultado === 'DESISTIMIENTO') {
             setModalConfirmacion({
                 abierto: true,
@@ -295,7 +309,6 @@ export default function RegistrarAudiencia() {
             return
         }
 
-        // Inasistencia: mostrar modal según el intento
         if (resultado === 'INASISTENCIA') {
             const intentoActual = audiencia?.numero_intento || 1
             
@@ -326,12 +339,7 @@ export default function RegistrarAudiencia() {
         }
     }
 
-    // ========== LÓGICA PARA EXPEDIENTE CANCELADO PERO CON AUDIENCIA REALIZADA ==========
-    const estaCancelado = expediente?.estado === 'CANCELADO'
-    const estaArchivado = expediente?.estado === 'ARCHIVADO'
-    const yaFueRegistrada = audiencia?.estado === 'REALIZADA'
 
-    // Si está cancelado o archivado y NO hay una audiencia realizada → mostrar mensaje de cancelado (sin datos)
     if ((estaCancelado || estaArchivado) && !yaFueRegistrada) {
         return (
             <>
@@ -342,7 +350,7 @@ export default function RegistrarAudiencia() {
                         <h1>Registrar Audiencia</h1>
                     </div>
                     <div className="estado-container">
-                        <div className="estado-icono">{estaCancelado ? '❌' : '✅'}</div>
+                        <div className="estado-icono">{estaCancelado ? '' : ''}</div>
                         <h2>{estaCancelado ? 'Expediente Cancelado' : 'Expediente Archivado'}</h2>
                         <p>{estaCancelado 
                             ? 'Este expediente ha sido cancelado.' 
@@ -358,7 +366,6 @@ export default function RegistrarAudiencia() {
         )
     }
 
-    // Resto de la lógica (carga, errores, etc.) igual
     if (cargando) {
         return (
             <>
@@ -406,7 +413,6 @@ export default function RegistrarAudiencia() {
 
                 <div style={{ display: 'flex', gap: '30px' }}>
                     <div style={{ flex: 2 }}>
-                        {/* Aviso si el expediente está cancelado pero tiene audiencia realizada */}
                         
 
                         {yaFueRegistrada && !estaCancelado && (
@@ -529,12 +535,13 @@ export default function RegistrarAudiencia() {
                                     {!ambosAsistieron() && <small className="aviso-requisito"> (Requiere que ambos asistan)</small>}
                                 </label>
                                 <label className={`opcion-resultado ${resultado === 'DESISTIMIENTO' ? 'seleccionado' : ''}`}>
-                                    <input type="radio" name="resultado" value="DESISTIMIENTO" checked={resultado === 'DESISTIMIENTO'} onChange={(e) => setResultado(e.target.value)} disabled={yaFueRegistrada} />
+                                    <input type="radio" name="resultado" value="DESISTIMIENTO" checked={resultado === 'DESISTIMIENTO'} onChange={(e) => setResultado(e.target.value)} disabled={yaFueRegistrada || !alMenosUnoAsistio()} />
                                     <span>Desistimiento</span>
                                     <small>Uno o ambos cónyuges ya no desean divorciarse</small>
+                                    {!alMenosUnoAsistio() && <small className="aviso-requisito"> (Requiere al menos un asistente)</small>}
                                 </label>
                                 <label className={`opcion-resultado ${resultado === 'INASISTENCIA' ? 'seleccionado' : ''}`}>
-                                    <input type="radio" name="resultado" value="INASISTENCIA" checked={resultado === 'INASISTENCIA'} onChange={(e) => setResultado(e.target.value)} disabled={yaFueRegistrada} />
+                                    <input type="radio" name="resultado" value="INASISTENCIA" checked={resultado === 'INASISTENCIA'} onChange={(e) => setResultado(e.target.value)} disabled={yaFueRegistrada || ambosAsistieron()} />
                                     <span>Inasistencia</span>
                                     <small>Uno o ambos cónyuges no asistieron a la audiencia</small>
                                     {audiencia?.numero_intento >= 2 && (
@@ -585,7 +592,6 @@ export default function RegistrarAudiencia() {
                             </div>
                         )}
 
-                        {/* Botones de acción (solo si la audiencia NO está ya registrada y el expediente no está cancelado) */}
                         {!yaFueRegistrada && !estaCancelado && resultado === 'DESISTIMIENTO' && (
                             <div className="seccion">
                                 <div className="aviso-desistimiento" style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
@@ -632,11 +638,9 @@ export default function RegistrarAudiencia() {
 
                     <div style={{ flex: 1 }}>
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} />
-                    </div>
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />                    </div>
                 </div>
 
-                {/* Modal de confirmación personalizado */}
                 {modalConfirmacion.abierto && (
                     <div className="modal-confirmacion-overlay" onClick={() => !enviando && setModalConfirmacion({ ...modalConfirmacion, abierto: false })}>
                         <div className="modal-confirmacion-contenido" onClick={e => e.stopPropagation()}>
@@ -669,7 +673,6 @@ export default function RegistrarAudiencia() {
                     </div>
                 )}
 
-                {/* Modal visor de PDF */}
                 {visorAbierto && (
                     <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
                         <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>

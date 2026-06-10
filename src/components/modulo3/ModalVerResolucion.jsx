@@ -1,6 +1,4 @@
-// ── ModalVerResolucion.jsx ──
 import '../../styles/modulo3/modales.css'
-//mensaje
 export default function ModalVerResolucion({ resoluciones, onCerrar }) {
     return (
         <div className="modal-overlay">

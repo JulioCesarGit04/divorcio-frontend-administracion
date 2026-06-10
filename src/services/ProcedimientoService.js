@@ -3,23 +3,14 @@ const API_URL = 'http://localhost:3000/api/procedimiento';
 const AUTH_URL = 'http://localhost:3000/api/auth';
 const UPLOADS_URL = 'http://localhost:3000';
 
-// ====================================================================
-// TIMEOUTS por tipo de operación
-// ====================================================================
 export const TIMEOUTS = {
     DEFAULT: 15000,
     MUTATION: 20000,
     UPLOAD: 120000,
 };
 
-// ====================================================================
-// Códigos HTTP que NO se reintentan
-// ====================================================================
 export const NO_RETRY_CODES = [400, 401, 403, 404, 422];
 
-// ====================================================================
-// HELPER: fetch con reintentos
-// ====================================================================
 export const fetchWithRetry = async (url, options = {}, maxRetries = 3, timeout = TIMEOUTS.DEFAULT) => {
     for (let i = 1; i <= maxRetries; i++) {
         const controller = new AbortController();
@@ -43,9 +34,6 @@ export const fetchWithRetry = async (url, options = {}, maxRetries = 3, timeout 
     }
 };
 
-// ====================================================================
-// HELPER: parsear JSON de forma segura
-// ====================================================================
 export const safeJson = async (response) => {
     try {
         return await response.json();
@@ -54,9 +42,7 @@ export const safeJson = async (response) => {
     }
 };
 
-// ====================================================================
-// AUTH
-// ====================================================================
+
 export const login = async (correo, password) => {
     try {
         const response = await fetchWithRetry(
@@ -183,9 +169,7 @@ export const getUsuarioSesion = async () => {
     }
 };
 
-// ====================================================================
-// CRONOGRAMA / AUDIENCIAS
-// ====================================================================
+
 export const getCronograma = async () => {
     const response = await fetchWithRetry(`${API_URL}/cronograma`, { headers: { 'Content-Type': 'application/json' } }, 3, TIMEOUTS.DEFAULT);
     const data = await safeJson(response);
@@ -224,9 +208,7 @@ export const getAudiencias = async (expediente_id) => {
     return data;
 };
 
-// ====================================================================
-// PRE-EXPEDIENTES
-// ====================================================================
+
 export const getPreExpedientes = async () => {
     const response = await fetchWithRetry(`${API_URL}/pre-expedientes`, { headers: { 'Content-Type': 'application/json' } }, 3, TIMEOUTS.DEFAULT);
     const data = await safeJson(response);
@@ -261,7 +243,7 @@ export const subirDocumentoInterno = async (expediente_id, tipo_documento, numer
     formData.append('fecha_elaboracion', fecha_elaboracion);
     formData.append('archivo', archivo);
     
-    // ✅ Enviar el motivo si existe
+
     if (motivo_reemplazo) {
         formData.append('motivo_reemplazo', motivo_reemplazo);
     }
@@ -277,9 +259,7 @@ export const subirDocumentoInterno = async (expediente_id, tipo_documento, numer
     return data;
 };
 
-// ====================================================================
-// EXPEDIENTES
-// ====================================================================
+
 export const vincularExpediente = async (pre_solicitud_id, nro_mesa_partes, fecha_pago) => {
     const response = await fetchWithRetry(`${API_URL}/expedientes/vincular`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pre_solicitud_id, nro_mesa_partes, fecha_pago }) }, 3, TIMEOUTS.MUTATION);
     const data = await safeJson(response);
@@ -338,9 +318,7 @@ export const desvincularExpediente = async (id, motivo) => {
     return data;
 };
 
-// ====================================================================
-// HISTORIAL
-// ====================================================================
+
 export const getHistorial = async (id) => {
     const response = await fetchWithRetry(`${API_URL}/expedientes/${id}/historial`, { headers: { 'Content-Type': 'application/json' } }, 3, TIMEOUTS.DEFAULT);
     const data = await safeJson(response);

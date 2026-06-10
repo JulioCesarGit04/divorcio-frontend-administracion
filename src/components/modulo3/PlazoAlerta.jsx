@@ -1,3 +1,4 @@
+// src/components/modulo3/PlazoAlerta.jsx
 import { useEffect, useState } from 'react'
 import '../../styles/modulo3/PlazoAlerta.css'
 
@@ -19,7 +20,6 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
         mostrar: false
     })
 
-    // Caso 1: Expediente CANCELADO
     if (expediente?.estado === 'CANCELADO') {
         return (
             <div className="plazo-alerta" style={{ borderLeftColor: '#dc2626' }}>
@@ -34,7 +34,6 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
         )
     }
     
-    // Caso 2: Expediente ARCHIVADO (proceso completado)
     if (expediente?.estado === 'ARCHIVADO') {
         return (
             <div className="plazo-alerta" style={{ borderLeftColor: '#22c55e' }}>
@@ -56,19 +55,14 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
 
     const calcularDiasHabilesRestantes = (fechaLimite) => {
         if (!fechaLimite) return null;
-        
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
         const limite = new Date(fechaLimite);
-        
         if (limite < hoy) return -1;
-        
         let contador = 0;
         let fecha = new Date(hoy);
         while (fecha <= limite) {
-            if (esDiaHabil(fecha)) {
-                contador++;
-            }
+            if (esDiaHabil(fecha)) contador++;
             fecha.setDate(fecha.getDate() + 1);
         }
         return contador;
@@ -80,15 +74,12 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
         hoy.setHours(0, 0, 0, 0);
         const limite = new Date(fechaLimite);
         const diffTime = limite - hoy;
-        const dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return dias;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
     const formatHoraLocal = (fechaStr) => {
         if (!fechaStr) return null;
-        
         let hora, minuto;
-        
         if (fechaStr.includes('T')) {
             const horaParte = fechaStr.split('T')[1];
             hora = horaParte.split(':')[0];
@@ -100,11 +91,9 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
         } else {
             return null;
         }
-        
         const horaInt = parseInt(hora);
         const hora12 = horaInt % 12 || 12;
         const ampm = horaInt >= 12 ? 'p. m.' : 'a. m.';
-        
         return `${hora12}:${minuto} ${ampm}`;
     }
 
@@ -116,69 +105,8 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
         const tieneAudienciaRealizada = audienciaActual && audienciaActual.estado === 'REALIZADA';
         const tieneAudienciaReprogramada = audienciaActual && audienciaActual.estado === 'REPROGRAMADA';
         
-        console.log('========== PLAZO ALERTA CONDICIONES ==========')
-        console.log('etapa:', etapa)
-        console.log('tieneAudienciaProgramada:', tieneAudienciaProgramada)
-        console.log('tieneAudienciaRealizada:', tieneAudienciaRealizada)
-        console.log('tieneAudienciaReprogramada:', tieneAudienciaReprogramada)
-        console.log('audienciaActual:', audienciaActual)
-        console.log('==============================================')
-
-        // Caso 1: Hay audiencia PROGRAMADA
-        if (tieneAudienciaProgramada) {
-            console.log('CASO 1: Audiencia PROGRAMADA')
-            const fechaStr = audienciaActual.fecha_programada;
-            const horaFormateada = formatHoraLocal(fechaStr);
-            
-            setInfo({
-                titulo: 'Audiencia programada',
-                fechaLimite: null,
-                fechaEvento: fechaStr,
-                horaEvento: horaFormateada,
-                mostrar: true
-            });
-            setDiasRestantes(null);
-            return;
-        }
-
-        // Caso 2: Hay audiencia REALIZADA
-        if (tieneAudienciaRealizada) {
-            console.log('CASO 2: Audiencia REALIZADA')
-            const fechaStr = audienciaActual.fecha_programada;
-            const horaFormateada = formatHoraLocal(fechaStr);
-            
-            setInfo({
-                titulo: 'Audiencia realizada',
-                fechaLimite: null,
-                fechaEvento: fechaStr,
-                horaEvento: horaFormateada,
-                mostrar: true
-            });
-            setDiasRestantes(null);
-            return;
-        }
-
-        // Caso 3: Hay audiencia REPROGRAMADA
-        if (tieneAudienciaReprogramada && expediente.fecha_limite_audiencia) {
-            console.log('CASO 3: Audiencia REPROGRAMADA')
-            const dias = calcularDiasHabilesRestantes(expediente.fecha_limite_audiencia);
-            const fechaOriginalStr = audienciaActual.fecha_programada;
-            const horaOriginal = formatHoraLocal(fechaOriginalStr);
-            
-            setDiasRestantes(dias);
-            setInfo({
-                titulo: 'Reprogramacion de audiencia',
-                fechaLimite: expediente.fecha_limite_audiencia,
-                fechaEvento: fechaOriginalStr,
-                horaEvento: horaOriginal,
-                mostrar: true
-            });
-            return;
-        }
-
-        // Caso 4: Expediente en ESPERA_LEGAL
+        
         if (etapa === 'ESPERA_LEGAL' && expediente.fecha_fin_espera) {
-            console.log('CASO 4: ESPERA_LEGAL')
             const dias = calcularDiasCalendarioRestantes(expediente.fecha_fin_espera);
             setDiasRestantes(dias);
             setInfo({
@@ -191,10 +119,9 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
             return;
         }
 
-        // Caso 5: Expediente en DISOLUCION
         if (etapa === 'DISOLUCION') {
             setInfo({
-                titulo: 'Proceso completado',
+                titulo: 'Etapa de Disolución',
                 fechaLimite: null,
                 fechaEvento: null,
                 horaEvento: null,
@@ -204,7 +131,49 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
             return;
         }
 
-        // Caso 6: Expediente en EVALUACION, DOCUMENTOS_INTERNOS o AUDIENCIA (sin audiencia programada)
+        if (tieneAudienciaProgramada) {
+            const fechaStr = audienciaActual.fecha_programada;
+            const horaFormateada = formatHoraLocal(fechaStr);
+            setInfo({
+                titulo: 'Audiencia programada',
+                fechaLimite: null,
+                fechaEvento: fechaStr,
+                horaEvento: horaFormateada,
+                mostrar: true
+            });
+            setDiasRestantes(null);
+            return;
+        }
+
+        if (tieneAudienciaRealizada) {
+            const fechaStr = audienciaActual.fecha_programada;
+            const horaFormateada = formatHoraLocal(fechaStr);
+            setInfo({
+                titulo: 'Audiencia realizada',
+                fechaLimite: null,
+                fechaEvento: fechaStr,
+                horaEvento: horaFormateada,
+                mostrar: true
+            });
+            setDiasRestantes(null);
+            return;
+        }
+
+        if (tieneAudienciaReprogramada && expediente.fecha_limite_audiencia) {
+            const dias = calcularDiasHabilesRestantes(expediente.fecha_limite_audiencia);
+            const fechaOriginalStr = audienciaActual.fecha_programada;
+            const horaOriginal = formatHoraLocal(fechaOriginalStr);
+            setDiasRestantes(dias);
+            setInfo({
+                titulo: 'Reprogramación de audiencia',
+                fechaLimite: expediente.fecha_limite_audiencia,
+                fechaEvento: fechaOriginalStr,
+                horaEvento: horaOriginal,
+                mostrar: true
+            });
+            return;
+        }
+
         if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUDIENCIA') && expediente.fecha_limite_audiencia) {
             const dias = calcularDiasHabilesRestantes(expediente.fecha_limite_audiencia);
             setDiasRestantes(dias);
@@ -218,7 +187,6 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
             return;
         }
 
-        // Caso por defecto
         setInfo({ ...info, mostrar: false });
         
     }, [expediente, audienciaActual]);
@@ -248,29 +216,20 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
     }
 
     const getDescripcion = () => {
-        if (estado === 'vencido') {
-            return 'PLAZO VENCIDO';
-        }
+        if (estado === 'vencido') return 'PLAZO VENCIDO';
         if (diasRestantes === null) return null;
-        
-        if (info.titulo === 'Plazo para programar audiencia' || info.titulo === 'Reprogramacion de audiencia') {
-            if (diasRestantes === 0) return 'Ultimo dia habil';
-            return `${diasRestantes} ${diasRestantes === 1 ? 'dia habil restante' : 'dias habiles restantes'}`;
+        if (info.titulo === 'Plazo para programar audiencia' || info.titulo === 'Reprogramación de audiencia') {
+            if (diasRestantes === 0) return 'Último día hábil';
+            return `${diasRestantes} ${diasRestantes === 1 ? 'día hábil restante' : 'días hábiles restantes'}`;
         }
         if (info.titulo === 'Plazo de espera legal') {
-            if (diasRestantes === 0) return 'Ultimo dia';
-            return `${diasRestantes} ${diasRestantes === 1 ? 'dia restante' : 'dias restantes'}`;
+            if (diasRestantes === 0) return 'Último día';
+            return `${diasRestantes} ${diasRestantes === 1 ? 'día restante' : 'días restantes'}`;
         }
         return null;
     }
 
     const getIcono = () => {
-        if (info.titulo === 'Reprogramacion de audiencia') return '';
-        if (info.titulo === 'Audiencia programada') return '';
-        if (info.titulo === 'Audiencia realizada') return '';
-        if (info.titulo === 'Proceso completado') return '';
-        if (estado === 'vencido') return '';
-        if (estado === 'urgente') return '';
         return '';
     }
 
@@ -278,9 +237,7 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
 
     return (
         <div className="plazo-alerta" style={{ borderLeftColor: color }}>
-            <div className="plazo-alerta-icono">
-                {getIcono()}
-            </div>
+            <div className="plazo-alerta-icono">{getIcono()}</div>
             <div className="plazo-alerta-contenido">
                 <div className="plazo-alerta-titulo">{info.titulo}</div>
                 
@@ -307,10 +264,10 @@ export default function PlazoAlerta({ expediente, audienciaActual }) {
                 
                 {info.fechaLimite && (
                     <div className="plazo-alerta-fecha">
-                        {info.titulo === 'Reprogramacion de audiencia' ? 'Nueva fecha limite:' : 'Fecha limite:'} {formatFecha(info.fechaLimite)}
+                        {info.titulo === 'Reprogramación de audiencia' ? 'Nueva fecha límite:' : 'Fecha límite:'} {formatFecha(info.fechaLimite)}
                     </div>
                 )}
             </div>
         </div>
-    )
+    );
 }
