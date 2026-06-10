@@ -39,9 +39,7 @@ export default function Sidebar() {
                     <button onClick={() => navigate('/modulo3/historial')} className={esActivo('/historial')}>
                         Historial global
                     </button>
-                    <button onClick={() => navigate('/modulo3/alertas')} className={esActivo('/alertas')}>
-                        Alertas de plazo
-                    </button>
+                    
                     
                 </div>
 

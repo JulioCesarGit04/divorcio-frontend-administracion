@@ -4,388 +4,505 @@ import Sidebar from '../../components/modulo3/Sidebar';
 import { getHistorialGlobal } from '../../services/ProcedimientoService';
 import '../../styles/modulo3/historial.css';
 
+// ─── Formato de fechas (hora local de Perú) ─────────────────────────────
+const formatFechaHora = (fechaStr) => {
+    if (!fechaStr) return '—';
+    return new Date(fechaStr).toLocaleString('es-PE', {
+        timeZone: 'America/Lima',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+};
+
+const formatFecha = (fechaStr) => {
+    if (!fechaStr) return '—';
+    return new Date(fechaStr).toLocaleDateString('es-PE', { timeZone: 'America/Lima' });
+};
+
+// ─── Textos amigables para etapas y acciones ─────────────────────────────
+const etapaTexto = {
+    EVALUACION: 'Revisión documentaria',
+    DOCUMENTOS_INTERNOS: 'Documentos internos',
+    AUDIENCIA: 'Audiencia',
+    ESPERA_LEGAL: 'Espera legal',
+    DISOLUCION: 'Disolución'
+};
+
+const accionTexto = {
+    CREACION: 'Creación de expediente',
+    ACTUALIZACION: 'Actualización',
+    SUBIDA: 'Documento subido',
+    REEMPLAZO: 'Documento reemplazado',
+    RECEPCION: 'Cargo recibido',
+    PAGO_INICIAL: 'Pago inicial',
+    PAGO_DISOLUCION: 'Pago de disolución',
+    PAGO_COPIAS_CERTIFICADAS: 'Pago de copias',
+    APROBADO: 'Aprobado',
+    OBSERVADO: 'Observado',
+    INADMISIBLE: 'Inadmisible',
+    PROGRAMACION: 'Audiencia programada',
+    REPROGRAMACION: 'Audiencia reprogramada',
+    RESULTADO: 'Resultado de audiencia',
+    CANCELACION: 'Audiencia cancelada',
+    CANCELADO: 'Expediente cancelado',
+    ARCHIVADO: 'Expediente archivado',
+    REGISTRO: 'Asistencia registrada',
+    CAMBIO_ESTADO: 'Cambio de estado'
+};
+
+// ─── Reglas fijas de asignación de sub‑eventos a etapas ─────────────────
+const ETAPA_POR_TIPO_DOC = {
+    INFORME_LEGAL: 'DOCUMENTOS_INTERNOS',
+    RESOLUCION_ADMISIBLE: 'DOCUMENTOS_INTERNOS',
+    ACTA_AUDIENCIA_01: 'AUDIENCIA',
+    ACTA_AUDIENCIA_02: 'AUDIENCIA',
+    ACTA_AUDIENCIA_03: 'AUDIENCIA',
+    RESOLUCION_FUNDADA: 'ESPERA_LEGAL',
+    RESOLUCION_DISOLUCION: 'DISOLUCION'
+};
+
+const ETAPA_POR_PAGO = {
+    PAGO_INICIAL: 'EVALUACION',
+    PAGO_DISOLUCION: 'DISOLUCION',
+    PAGO_COPIAS_CERTIFICADAS: 'DISOLUCION'
+};
+
+// ─── Determina a qué etapa pertenece un sub‑evento (o si es estructural) ─
+function resolverEtapaDestino(item) {
+    const { tipo_evento, accion, documento_tipo } = item;
+    if (tipo_evento === 'PRE_SOLICITUD') return '__PRE__';
+    if (tipo_evento === 'DOCUMENTO_CIUDADANO') return '__PRE__';
+    if (tipo_evento === 'EVALUACION_DOCUMENTO') return '__PRE__';
+    if (tipo_evento === 'EXPEDIENTE') {
+        if (accion === 'CREACION') return '__ETAPA__';
+        if (accion === 'ACTUALIZACION' && item.etapa_nueva) return item.etapa_nueva;
+        if (accion === 'ELIMINACION_LOGICA') return '__ULTIMA__';
+        return '__ETAPA__';
+    }
+    if (tipo_evento === 'AUDIENCIA') {
+        if (accion === 'REPROGRAMACION' && item.detalle?.includes('REALIZADA')) return null;
+        return 'AUDIENCIA';
+    }
+    if (tipo_evento === 'ASISTENCIA') return 'AUDIENCIA';
+    if (tipo_evento === 'DOCUMENTO_EXTERNO') return 'DISOLUCION';
+    if (tipo_evento === 'PAGO') return ETAPA_POR_PAGO[accion] || 'DISOLUCION';
+    if (tipo_evento === 'DOCUMENTO_INTERNO') {
+        const tipo = documento_tipo || '';
+        for (const key of Object.keys(ETAPA_POR_TIPO_DOC))
+            if (tipo.includes(key)) return ETAPA_POR_TIPO_DOC[key];
+        return 'DOCUMENTOS_INTERNOS';
+    }
+    return null;
+}
+
+// ─── Procesa eventos de pre‑solicitud: devuelve todos los eventos individuales
+//     (documentos, evaluaciones, cambio de estado) ordenados por fecha.
+function agruparEventosPre(eventos) {
+    if (!eventos.length) return [];
+    return [...eventos].sort((a, b) => 
+        new Date(a.fecha).getTime() - new Date(b.fecha).getTime() ||
+        (a.id || 0) - (b.id || 0)
+    );
+}
+
+// ─── Orden personalizado para sub‑eventos de la etapa AUDIENCIA ─────────
+// Se ordena por: PROGRAMACION → REPROGRAMACION → RESULTADO (y otros)
+// Dentro de cada grupo, por fecha ascendente.
+function ordenarSubEventosAudiencia(eventos) {
+    const prioridad = {
+        'PROGRAMACION': 1,
+        'REPROGRAMACION': 2,
+        'RESULTADO': 3
+    };
+    return [...eventos].sort((a, b) => {
+        const priorA = prioridad[a.accion] || 4;
+        const priorB = prioridad[b.accion] || 4;
+        if (priorA !== priorB) return priorA - priorB;
+        // Misma prioridad: ordenar por fecha ascendente
+        const diffFecha = new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
+        if (diffFecha !== 0) return diffFecha;
+        return (a.id || 0) - (b.id || 0);
+    });
+}
+
+// ─── Orden estándar para sub‑eventos de cualquier otra etapa (por fecha ascendente) ──
+function ordenarSubEventosPorFecha(eventos) {
+    return [...eventos].sort((a, b) => {
+        const diff = new Date(a.fecha).getTime() - new Date(b.fecha).getTime();
+        if (diff !== 0) return diff;
+        return (a.id || 0) - (b.id || 0);
+    });
+}
+
+// ─── Agrupación principal por pre‑solicitud (con orden de etapas FIJO) ──
+function agruparPorPreSolicitud(items) {
+    const grupos = {};
+
+    const ordenEtapaFijo = [
+        'EVALUACION',
+        'DOCUMENTOS_INTERNOS',
+        'AUDIENCIA',
+        'ESPERA_LEGAL',
+        'DISOLUCION'
+    ];
+
+    // Primera pasada: construir bloques de etapa
+    for (const item of items) {
+        const preId = item.pre_solicitud_id;
+        if (!grupos[preId]) {
+            grupos[preId] = {
+                pre_solicitud_id: preId,
+                pre_solicitud_codigo: item.pre_solicitud_codigo,
+                solicitante: item.solicitante || '—',
+                demandado: item.demandado || '—',
+                expediente_id: item.expediente_id,
+                numero_expediente: item.numero_expediente,
+                etapas: [],
+                eventos_pre: [],
+                estado_expediente: null
+            };
+        }
+        const grupo = grupos[preId];
+        if (item.tipo_evento === 'EXPEDIENTE' && (item.accion === 'CREACION' || item.accion === 'ACTUALIZACION')) {
+            if (item.estado_nuevo) grupo.estado_expediente = item.estado_nuevo;
+            if (!item.etapa_nueva) continue;
+            const existe = grupo.etapas.find(e => e.etapa === item.etapa_nueva);
+            if (!existe) {
+                grupo.etapas.push({
+                    etapa: item.etapa_nueva,
+                    fecha: item.fecha,
+                    usuario: item.usuario,
+                    detalle: item.detalle || '',
+                    sub_eventos: []
+                });
+            } else if (item.accion === 'CREACION') {
+                if (new Date(item.fecha) > new Date(existe.fecha)) {
+                    existe.fecha = item.fecha;
+                    existe.usuario = item.usuario;
+                    existe.detalle = item.detalle || existe.detalle;
+                }
+            }
+        }
+    }
+
+    // Ordenar etapas según orden fijo
+    for (const g of Object.values(grupos)) {
+        g.etapas.sort((a, b) => {
+            const idxA = ordenEtapaFijo.indexOf(a.etapa);
+            const idxB = ordenEtapaFijo.indexOf(b.etapa);
+            if (idxA === -1 && idxB === -1) return 0;
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+        });
+    }
+
+    // Segunda pasada: asignar sub‑eventos a las etapas
+    for (const item of items) {
+        const grupo = grupos[item.pre_solicitud_id];
+        if (!grupo) continue;
+        const destino = resolverEtapaDestino(item);
+        if (destino === '__PRE__') {
+            grupo.eventos_pre.push(item);
+        } else if (destino === '__ETAPA__') {
+            continue;
+        } else if (destino === '__ULTIMA__') {
+            if (grupo.etapas.length) grupo.etapas[grupo.etapas.length - 1].sub_eventos.push(item);
+        } else if (destino) {
+            const bloque = grupo.etapas.find(e => e.etapa === destino);
+            if (bloque) bloque.sub_eventos.push(item);
+            else if (grupo.etapas.length) grupo.etapas[grupo.etapas.length - 1].sub_eventos.push(item);
+        }
+    }
+
+    // Ordenar sub‑eventos dentro de cada etapa
+    for (const g of Object.values(grupos)) {
+        g.eventos_pre = agruparEventosPre(g.eventos_pre);
+        for (const etapa of g.etapas) {
+            if (etapa.etapa === 'AUDIENCIA') {
+                etapa.sub_eventos = ordenarSubEventosAudiencia(etapa.sub_eventos);
+            } else {
+                etapa.sub_eventos = ordenarSubEventosPorFecha(etapa.sub_eventos);
+            }
+        }
+    }
+
+    // Ordenar grupos por fecha de la última etapa (más reciente primero)
+    return Object.values(grupos).sort((a, b) => {
+        const fa = new Date(a.etapas[a.etapas.length - 1]?.fecha || 0);
+        const fb = new Date(b.etapas[b.etapas.length - 1]?.fecha || 0);
+        return fb - fa;
+    });
+}
+
+// ─── Componente para mostrar un sub‑evento ──────────────────────────────
+function SubEvento({ item }) {
+    // Documento ciudadano (subida)
+    if (item.tipo_evento === 'DOCUMENTO_CIUDADANO') {
+        return (
+            <div className="hg-sub-evento">
+                <div className="hg-sub-info">
+                    <span className="hg-badge">Documento subido</span>
+                    <span className="hg-sub-detalle">{item.detalle}</span>
+                    <span className="hg-sub-fecha">{formatFechaHora(item.fecha)}</span>
+                    {item.usuario && <span className="hg-sub-usuario">Usuario: {item.usuario}</span>}
+                </div>
+            </div>
+        );
+    }
+
+    // Evaluación de documento
+    if (item.tipo_evento === 'EVALUACION_DOCUMENTO') {
+        let badgeText = '';
+        if (item.accion === 'APROBADO') badgeText = 'Aprobado';
+        else if (item.accion === 'OBSERVADO') badgeText = 'Observado';
+        else if (item.accion === 'INADMISIBLE') badgeText = 'Inadmisible';
+        else badgeText = 'Evaluado';
+
+        return (
+            <div className="hg-sub-evento">
+                <div className="hg-sub-info">
+                    <span className="hg-badge">{badgeText}</span>
+                    <span className="hg-sub-detalle">{item.detalle}</span>
+                    <span className="hg-sub-fecha">{formatFechaHora(item.fecha)}</span>
+                    {item.usuario && <span className="hg-sub-usuario">Usuario: {item.usuario}</span>}
+                </div>
+            </div>
+        );
+    }
+
+    // Eventos normales (expediente, documentos internos, etc.)
+    const esCancelado = item.tipo_evento === 'EXPEDIENTE' && item.estado_nuevo === 'CANCELADO';
+    const esArchivado = item.tipo_evento === 'EXPEDIENTE' && item.estado_nuevo === 'ARCHIVADO';
+    const accionLabel = esCancelado ? 'CANCELADO' : esArchivado ? 'ARCHIVADO' : item.accion;
+    let textoDetalle = item.detalle || '';
+    textoDetalle = textoDetalle.replace(/[→\u2192]/g, '->');
+
+    return (
+        <div className={`hg-sub-evento ${esCancelado ? 'hg-sub-cancelado' : ''} ${esArchivado ? 'hg-sub-archivado' : ''}`}>
+            <div className="hg-sub-info">
+                <span className="hg-badge">{accionTexto[accionLabel] || accionLabel}</span>
+                <span className="hg-sub-detalle">{textoDetalle}</span>
+                <span className="hg-sub-fecha">{formatFechaHora(item.fecha)}</span>
+                {item.usuario && item.usuario !== 'Sistema' && (
+                    <span className="hg-sub-usuario">Usuario: {item.usuario}</span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Componente para una etapa (expandible) ─────────────────────────────
+function EtapaTimeline({ etapa, esUltima }) {
+    const [expandida, setExpandida] = useState(true);
+    const tieneSubEventos = etapa.sub_eventos.length > 0;
+
+    return (
+        <div className="hg-etapa">
+            <div className="hg-etapa-rail">
+                <div className="hg-etapa-dot" />
+                {!esUltima && <div className="hg-etapa-linea" />}
+            </div>
+            <div className="hg-etapa-contenido">
+                <button className="hg-etapa-header" onClick={() => setExpandida(!expandida)}>
+                    <div className="hg-etapa-left">
+                        <span className="hg-etapa-nombre">{etapaTexto[etapa.etapa] || etapa.etapa}</span>
+                        {tieneSubEventos && <span className="hg-etapa-count">{etapa.sub_eventos.length}</span>}
+                    </div>
+                    <div className="hg-etapa-right">
+                        <span className="hg-etapa-fecha">{formatFechaHora(etapa.fecha)}</span>
+                        <span className="hg-chevron">{expandida ? '▲' : '▼'}</span>
+                    </div>
+                </button>
+                {expandida && (
+                    <div className="hg-etapa-body">
+                        {etapa.detalle && <p className="hg-etapa-detalle">{etapa.detalle}</p>}
+                        {etapa.usuario && <p className="hg-etapa-usuario">Registrado por: <strong>{etapa.usuario}</strong></p>}
+                        {tieneSubEventos ? (
+                            <div className="hg-sub-lista">
+                                {etapa.sub_eventos.map((ev, idx) => <SubEvento key={ev.id || idx} item={ev} />)}
+                            </div>
+                        ) : (
+                            <p className="hg-sin-sub">Sin eventos adicionales en esta etapa.</p>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Tarjeta principal (pre‑solicitud / expediente) ─────────────────────
+function PreSolicitudCard({ pre, expandido, onToggle }) {
+    const ultimaFecha = pre.etapas[pre.etapas.length - 1]?.fecha;
+    const etapaActual = pre.etapas[pre.etapas.length - 1]?.etapa;
+    const totalSubEventos = pre.etapas.reduce((acc, e) => acc + e.sub_eventos.length, 0) + pre.eventos_pre.length;
+
+    return (
+        <div className={`hg-card ${expandido ? 'hg-card--abierta' : ''}`}>
+            <button className="hg-card-header" onClick={onToggle}>
+                <div className="hg-card-header-left">
+                    <span className="hg-toggle-icon">{expandido ? '▼' : '▶'}</span>
+                    <div className="hg-card-titulos">
+                        <span className="hg-card-codigo">{pre.pre_solicitud_codigo}</span>
+                        {pre.numero_expediente && <span className="hg-card-expte">Expediente {pre.numero_expediente}</span>}
+                        <span className="hg-card-conyuges">{pre.solicitante} — {pre.demandado}</span>
+                    </div>
+                </div>
+                <div className="hg-card-header-right">
+                    <div className="hg-badges-estado">
+                        {etapaActual && <span className="hg-etapa-pill">{etapaTexto[etapaActual] || etapaActual}</span>}
+                        {pre.estado_expediente === 'CANCELADO' && <span className="hg-etapa-pill hg-etapa-cancelado">Cancelado</span>}
+                        {pre.estado_expediente === 'ARCHIVADO' && <span className="hg-etapa-pill hg-etapa-archivado">Archivado</span>}
+                    </div>
+                    <span className="hg-stat">{pre.etapas.length} etapas · {totalSubEventos} eventos</span>
+                    <span className="hg-stat-fecha">Últ. movimiento: {formatFecha(ultimaFecha)}</span>
+                </div>
+            </button>
+            {expandido && (
+                <div className="hg-card-body">
+                    {pre.eventos_pre.length > 0 && (
+                        <div className="hg-seccion-pre">
+                            <h4 className="hg-seccion-titulo">Pre‑solicitud</h4>
+                            <div className="hg-sub-lista">
+                                {pre.eventos_pre.map((ev, idx) => <SubEvento key={ev.id || idx} item={ev} />)}
+                            </div>
+                        </div>
+                    )}
+                    {pre.etapas.length > 0 ? (
+                        <div className="hg-timeline">
+                            {pre.etapas.map((etapa, idx) => (
+                                <EtapaTimeline key={`${etapa.etapa}-${idx}`} etapa={etapa} esUltima={idx === pre.etapas.length - 1} />
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="hg-sin-sub" style={{ padding: '1rem 0' }}>Esta solicitud aún no tiene expediente.</p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Componente principal ────────────────────────────────────────────────
 export default function Historial() {
-    const [preExpedientes, setPreExpedientes] = useState([]);
-    const [preExpedientesFiltrados, setPreExpedientesFiltrados] = useState([]);
+    const [todos, setTodos] = useState([]);
+    const [filtrados, setFiltrados] = useState([]);
     const [expandido, setExpandido] = useState(null);
     const [cargando, setCargando] = useState(true);
-    
-    // Estados para los filtros (temporales y aplicados)
+    const [error, setError] = useState(null);
+
     const [filtrosTemp, setFiltrosTemp] = useState({
-        codigo: '',
-        solicitante: '',
-        demandado: '',
-        estado: '',
-        etapa: '',
-        fechaDesde: '',
-        fechaHasta: ''
+        codigo: '', solicitante: '', demandado: '', etapa: '', fechaDesde: '', fechaHasta: ''
     });
-    const [filtrosAplicados, setFiltrosAplicados] = useState({
-        codigo: '',
-        solicitante: '',
-        demandado: '',
-        estado: '',
-        etapa: '',
-        fechaDesde: '',
-        fechaHasta: ''
+    const [filtrosApl, setFiltrosApl] = useState({
+        codigo: '', solicitante: '', demandado: '', etapa: '', fechaDesde: '', fechaHasta: ''
     });
 
-    // Obtener datos del backend
     useEffect(() => {
         getHistorialGlobal()
-            .then(response => {
-                const historialData = response?.data || [];
-                const grupos = {};
-                
-                historialData.forEach(item => {
-                    const preId = item.pre_solicitud_id;
-                    if (!grupos[preId]) {
-                        grupos[preId] = {
-                            pre_solicitud_id: preId,
-                            pre_solicitud_codigo: item.pre_solicitud_codigo,
-                            solicitante: item.solicitante,
-                            demandado: item.demandado,
-                            acciones: []
-                        };
-                    }
-                    grupos[preId].acciones.push({
-                        historial_id: item.historial_id,
-                        historial_fecha_hora: item.fecha_historial,
-                        expedientes_nro_mesa_partes: item.numero_mesa_partes,
-                        historial_accion: item.historial_accion,
-                        historial_estado_nuevo: item.historial_estado_nuevo,
-                        historial_etapa_nueva: item.historial_etapa_nueva,
-                        historial_detalle: item.historial_detalle,
-                        Usuario: item.Usuario,
-                        Rol: item.Rol
-                    });
-                });
-                
-                // Ordenar acciones por fecha ascendente
-                Object.values(grupos).forEach(grupo => {
-                    grupo.acciones.sort((a, b) => new Date(a.historial_fecha_hora) - new Date(b.historial_fecha_hora));
-                });
-                
-                const gruposArray = Object.values(grupos);
-                setPreExpedientes(gruposArray);
-                setPreExpedientesFiltrados(gruposArray);
+            .then(res => {
+                const raw = (res?.data || []).sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+                const agrupados = agruparPorPreSolicitud(raw);
+                setTodos(agrupados);
+                setFiltrados(agrupados);
             })
             .catch(err => {
-                console.error('Error cargando historial:', err);
-                setPreExpedientes([]);
-                setPreExpedientesFiltrados([]);
+                console.error(err);
+                setError('No se pudo cargar el historial. Inténtelo de nuevo.');
             })
             .finally(() => setCargando(false));
     }, []);
 
-    // Aplicar filtros según filtrosAplicados
-    const aplicarFiltros = () => {
-        let filtrados = [...preExpedientes];
-        
-        if (filtrosAplicados.codigo) {
-            filtrados = filtrados.filter(pre => 
-                pre.pre_solicitud_codigo?.toLowerCase().includes(filtrosAplicados.codigo.toLowerCase())
-            );
-        }
-        if (filtrosAplicados.solicitante) {
-            filtrados = filtrados.filter(pre => 
-                pre.solicitante?.toLowerCase().includes(filtrosAplicados.solicitante.toLowerCase())
-            );
-        }
-        if (filtrosAplicados.demandado) {
-            filtrados = filtrados.filter(pre => 
-                pre.demandado?.toLowerCase().includes(filtrosAplicados.demandado.toLowerCase())
-            );
-        }
-        if (filtrosAplicados.estado) {
-            // Filtrar por el último estado registrado
-            filtrados = filtrados.filter(pre => {
-                const ultimaAccion = pre.acciones[pre.acciones.length - 1];
-                return ultimaAccion?.historial_estado_nuevo === filtrosAplicados.estado;
-            });
-        }
-        if (filtrosAplicados.etapa) {
-            // Filtrar por la última etapa registrada
-            filtrados = filtrados.filter(pre => {
-                const ultimaAccion = pre.acciones[pre.acciones.length - 1];
-                return ultimaAccion?.historial_etapa_nueva === filtrosAplicados.etapa;
-            });
-        }
-        if (filtrosAplicados.fechaDesde) {
-            filtrados = filtrados.filter(pre => {
-                const primeraFecha = new Date(pre.acciones[0]?.historial_fecha_hora);
-                return primeraFecha >= new Date(filtrosAplicados.fechaDesde);
-            });
-        }
-        if (filtrosAplicados.fechaHasta) {
-            filtrados = filtrados.filter(pre => {
-                const ultimaFecha = new Date(pre.acciones[pre.acciones.length - 1]?.historial_fecha_hora);
-                return ultimaFecha <= new Date(filtrosAplicados.fechaHasta);
-            });
-        }
-        
-        setPreExpedientesFiltrados(filtrados);
-    };
-
-    // Ejecutar filtros cada vez que cambian filtrosAplicados o preExpedientes
     useEffect(() => {
-        if (preExpedientes.length > 0) {
-            aplicarFiltros();
+        if (!todos.length) return;
+        let resultado = [...todos];
+        const f = filtrosApl;
+        if (f.codigo) resultado = resultado.filter(p => p.pre_solicitud_codigo?.toLowerCase().includes(f.codigo.toLowerCase()));
+        if (f.solicitante) resultado = resultado.filter(p => p.solicitante?.toLowerCase().includes(f.solicitante.toLowerCase()));
+        if (f.demandado) resultado = resultado.filter(p => p.demandado?.toLowerCase().includes(f.demandado.toLowerCase()));
+        if (f.etapa) resultado = resultado.filter(p => p.etapas.some(e => e.etapa === f.etapa));
+        if (f.fechaDesde) {
+            const desde = new Date(f.fechaDesde);
+            resultado = resultado.filter(p => p.etapas.length && new Date(p.etapas[0].fecha) >= desde);
         }
-    }, [filtrosAplicados, preExpedientes]);
+        if (f.fechaHasta) {
+            const hasta = new Date(f.fechaHasta);
+            hasta.setHours(23, 59, 59);
+            resultado = resultado.filter(p => {
+                const ult = p.etapas[p.etapas.length - 1]?.fecha;
+                return ult && new Date(ult) <= hasta;
+            });
+        }
+        setFiltrados(resultado);
+    }, [filtrosApl, todos]);
 
-    // Manejar cambios en filtros temporales
-    const handleFiltroChange = (campo, valor) => {
-        setFiltrosTemp(prev => ({ ...prev, [campo]: valor }));
+    const handleChange = (campo, valor) => setFiltrosTemp(prev => ({ ...prev, [campo]: valor }));
+    const handleBuscar = () => setFiltrosApl({ ...filtrosTemp });
+    const handleLimpiar = () => {
+        setFiltrosTemp({ codigo: '', solicitante: '', demandado: '', etapa: '', fechaDesde: '', fechaHasta: '' });
+        setFiltrosApl({ codigo: '', solicitante: '', demandado: '', etapa: '', fechaDesde: '', fechaHasta: '' });
     };
-
-    // Al hacer clic en Buscar, copiar filtrosTemp a filtrosAplicados
-    const handleBuscar = () => {
-        setFiltrosAplicados({ ...filtrosTemp });
-    };
-
-    // Limpiar todos los filtros
-    const limpiarFiltros = () => {
-        const vacios = {
-            codigo: '',
-            solicitante: '',
-            demandado: '',
-            estado: '',
-            etapa: '',
-            fechaDesde: '',
-            fechaHasta: ''
-        };
-        setFiltrosTemp(vacios);
-        setFiltrosAplicados(vacios);
-        setPreExpedientesFiltrados(preExpedientes);
-    };
-
-    const toggleExpandir = (id) => {
-        setExpandido(expandido === id ? null : id);
-    };
-
-    // Funciones para mostrar nombres amigables
-    const getAccionTexto = (accion) => {
-        const acciones = {
-            INSERT: 'Creación',
-            UPDATE: 'Cambio de estado',
-            SOFT_DELETE: 'Eliminación lógica'
-        };
-        return acciones[accion] || accion;
-    };
-
-    const getEstadoTexto = (estado) => {
-        const textos = {
-            ACTIVO: 'Activo',
-            CANCELADO: 'Cancelado',
-            ARCHIVADO: 'Archivado'
-        };
-        return textos[estado] || estado;
-    };
-
-    const getEtapaTexto = (etapa) => {
-        const textos = {
-            EVALUACION: 'Revisión Documentaria',
-            DOCUMENTOS_INTERNOS: 'Documentos Internos',
-            AUDIENCIA: 'Audiencia',
-            ESPERA_LEGAL: 'Espera Legal',
-            DISOLUCION: 'Disolución',
-            RECIBIDO: 'Recibido'
-        };
-        return textos[etapa] || etapa;
-    };
-
-    const getColorEstado = (estado) => {
-        if (estado === 'ACTIVO') return 'estado-activo';
-        if (estado === 'CANCELADO') return 'estado-cancelado';
-        if (estado === 'ARCHIVADO') return 'estado-archivado';
-        return '';
-    };
+    const toggleCard = (id) => setExpandido(prev => (prev === id ? null : id));
 
     return (
         <>
             <Sidebar />
             <main className="contenido-modulo3">
                 <div className="pagina-header">
-                    <h1> Historial de solicitudes</h1>
-                    <p>Registro completo de todos los movimientos y cambios de estado</p>
+                    <h1>Historial de solicitudes</h1>
+                    <p>Registro completo de movimientos y documentos por etapa</p>
                 </div>
 
-                {/* Panel de filtros (estilo consistente con ExpedientesActivos) */}
                 <div className="filtros-panel">
                     <div className="filtros-grid">
-                        <div className="filtro-grupo">
-                            <label>Código</label>
-                            <input
-                                type="text"
-                                placeholder="Buscar por código"
-                                value={filtrosTemp.codigo}
-                                onChange={e => handleFiltroChange('codigo', e.target.value)}
-                            />
-                        </div>
-                        <div className="filtro-grupo">
-                            <label>Solicitante</label>
-                            <input
-                                type="text"
-                                placeholder="Nombre del solicitante"
-                                value={filtrosTemp.solicitante}
-                                onChange={e => handleFiltroChange('solicitante', e.target.value)}
-                            />
-                        </div>
-                        <div className="filtro-grupo">
-                            <label>Demandado</label>
-                            <input
-                                type="text"
-                                placeholder="Nombre del demandado"
-                                value={filtrosTemp.demandado}
-                                onChange={e => handleFiltroChange('demandado', e.target.value)}
-                            />
-                        </div>
-
-                        <div className="filtro-grupo">
-                            <label>Estado actual</label>
+                        <div className="filtro-grupo"><label>Código</label><input type="text" placeholder="Ej. PRE-2024-001" value={filtrosTemp.codigo} onChange={e => handleChange('codigo', e.target.value)} /></div>
+                        <div className="filtro-grupo"><label>Solicitante</label><input type="text" placeholder="Nombre completo" value={filtrosTemp.solicitante} onChange={e => handleChange('solicitante', e.target.value)} /></div>
+                        <div className="filtro-grupo"><label>Demandado</label><input type="text" placeholder="Nombre completo" value={filtrosTemp.demandado} onChange={e => handleChange('demandado', e.target.value)} /></div>
+                        <div className="filtro-grupo"><label>Etapa actual</label>
                             <div className="select-wrapper">
-                                <select
-                                    value={filtrosTemp.estado}
-                                    onChange={e => handleFiltroChange('estado', e.target.value)}
-                                >
-                                    <option value="">Todos</option>
-                                    <option value="ACTIVO">Activo</option>
-                                    <option value="CANCELADO">Cancelado</option>
-                                    <option value="ARCHIVADO">Archivado</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="filtro-grupo">
-                            <label>Etapa actual</label>
-                            <div className="select-wrapper">
-                                <select
-                                    value={filtrosTemp.etapa}
-                                    onChange={e => handleFiltroChange('etapa', e.target.value)}
-                                >
-                                    <option value="">Todas</option>
-                                    <option value="EVALUACION">Revisión Documentaria</option>
-                                    <option value="DOCUMENTOS_INTERNOS">Documentos Internos</option>
+                                <select value={filtrosTemp.etapa} onChange={e => handleChange('etapa', e.target.value)}>
+                                    <option value="">Todas las etapas</option>
+                                    <option value="EVALUACION">Revisión documentaria</option>
+                                    <option value="DOCUMENTOS_INTERNOS">Documentos internos</option>
                                     <option value="AUDIENCIA">Audiencia</option>
-                                    <option value="ESPERA_LEGAL">Espera Legal</option>
+                                    <option value="ESPERA_LEGAL">Espera legal</option>
                                     <option value="DISOLUCION">Disolución</option>
                                 </select>
                             </div>
                         </div>
-
-                        <div className="filtro-grupo">
-                            <label>Fecha desde</label>
-                            <input
-                                type="date"
-                                value={filtrosTemp.fechaDesde}
-                                onChange={e => handleFiltroChange('fechaDesde', e.target.value)}
-                            />
-                        </div>
-
-                        <div className="filtro-grupo">
-                            <label>Fecha hasta</label>
-                            <input
-                                type="date"
-                                value={filtrosTemp.fechaHasta}
-                                onChange={e => handleFiltroChange('fechaHasta', e.target.value)}
-                            />
-                        </div>
-
-                        <div className="acciones-filtros">
-                            <button onClick={handleBuscar} className="btn-buscar">🔍 Buscar</button>
-                            <button onClick={limpiarFiltros} className="btn-limpiar">🗑️ Limpiar</button>
-                        </div>
+                        <div className="filtro-grupo"><label>Fecha desde</label><input type="date" value={filtrosTemp.fechaDesde} onChange={e => handleChange('fechaDesde', e.target.value)} /></div>
+                        <div className="filtro-grupo"><label>Fecha hasta</label><input type="date" value={filtrosTemp.fechaHasta} onChange={e => handleChange('fechaHasta', e.target.value)} /></div>
+                        <div className="acciones-filtros"><button className="btn-buscar" onClick={handleBuscar}>Buscar</button><button className="btn-limpiar" onClick={handleLimpiar}>Limpiar</button></div>
                     </div>
                 </div>
 
-                <div className="resultados-info">
-                    Mostrando {preExpedientesFiltrados.length} de {preExpedientes.length} solicitudes
-                </div>
+                {!cargando && !error && (
+                    <div className="resultados-info">
+                        Mostrando <strong>{filtrados.length}</strong> de <strong>{todos.length}</strong> solicitudes
+                        {filtrados.length !== todos.length && <button className="btn-texto-limpiar" onClick={handleLimpiar}>× Quitar filtros</button>}
+                    </div>
+                )}
 
                 {cargando ? (
-                    <div className="skeleton-historial">
-                        {[1, 2, 3].map(i => <div key={i} className="skeleton-card-h"></div>)}
-                    </div>
-                ) : preExpedientesFiltrados.length === 0 ? (
-                    <div className="vacio">
-                        <p>No hay registros en el historial.</p>
-                    </div>
+                    <div className="hg-estado-pantalla"><div className="hg-spinner"></div><p>Cargando historial…</p></div>
+                ) : error ? (
+                    <div className="hg-estado-pantalla hg-error"><p>{error}</p><button className="btn-buscar" onClick={() => window.location.reload()}>Reintentar</button></div>
+                ) : filtrados.length === 0 ? (
+                    <div className="hg-estado-pantalla">{todos.length === 0 ? <p>No hay solicitudes registradas aún.</p> : <p>Ninguna solicitud coincide con los filtros aplicados.</p>}</div>
                 ) : (
                     <div className="historial-cards">
-                        {preExpedientesFiltrados.map(pre => (
-                            <div key={pre.pre_solicitud_id} className="historial-card">
-                                <div
-                                    className={`historial-card-header ${expandido === pre.pre_solicitud_id ? 'expandido' : ''}`}
-                                    onClick={() => toggleExpandir(pre.pre_solicitud_id)}
-                                >
-                                    <div className="card-header-info">
-                                        <div className="card-icono">{expandido === pre.pre_solicitud_id ? '▼' : '▶'}</div>
-                                        <div className="card-titulo">
-                                            <span className="card-codigo">{pre.pre_solicitud_codigo}</span>
-                                            <div className="card-conyuges">
-                                                <span className="solicitante">{pre.solicitante}</span>
-                                                <span className="separador">•</span>
-                                                <span className="demandado">{pre.demandado}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="card-header-stats">
-                                        <span className="card-movimientos">{pre.acciones.length} movimientos</span>
-                                        <span className="card-ultimo">
-                                            Último: {new Date(pre.acciones[pre.acciones.length - 1]?.historial_fecha_hora).toLocaleDateString('es-PE')}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {expandido === pre.pre_solicitud_id && (
-                                    <div className="historial-card-body">
-                                        <div className="timeline">
-                                            {pre.acciones.map((acc, idx) => (
-                                                <div key={acc.historial_id || idx} className="timeline-item">
-                                                    <div className="timeline-marker">
-                                                        <div className="timeline-dot"></div>
-                                                        {idx < pre.acciones.length - 1 && <div className="timeline-line"></div>}
-                                                    </div>
-                                                    <div className="timeline-content">
-                                                        <div className="timeline-header">
-                                                            <div className="timeline-fecha">
-                                                                {new Date(acc.historial_fecha_hora).toLocaleString('es-PE')}
-                                                            </div>
-                                                            <div className="timeline-nro-mesa">
-                                                                N° {acc.expedientes_nro_mesa_partes || 'Sin número'}
-                                                            </div>
-                                                        </div>
-                                                        <div className="timeline-body">
-                                                            <div className="timeline-accion">
-                                                                <span className="accion-icono">
-                                                                    {acc.historial_accion === 'INSERT' ? '' : ''}
-                                                                </span>
-                                                                <span className="accion-texto">{getAccionTexto(acc.historial_accion)}</span>
-                                                            </div>
-                                                            <div className={`timeline-estado ${getColorEstado(acc.historial_estado_nuevo)}`}>
-                                                                {getEstadoTexto(acc.historial_estado_nuevo)}
-                                                            </div>
-                                                        </div>
-                                                        <div className="timeline-etapa">
-                                                            <strong>Etapa:</strong> {getEtapaTexto(acc.historial_etapa_nueva)}
-                                                        </div>
-                                                        {acc.historial_detalle && (
-                                                            <div className="timeline-detalle">
-                                                                 {acc.historial_detalle}
-                                                            </div>
-                                                        )}
-                                                        <div className="timeline-footer">
-                                                            <span className="timeline-usuario"> {acc.Usuario || 'Sistema'}</span>
-                                                            <span className="timeline-rol">{acc.Rol || 'admin'}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                        {filtrados.map(pre => (
+                            <PreSolicitudCard
+                                key={pre.pre_solicitud_id}
+                                pre={pre}
+                                expandido={expandido === pre.pre_solicitud_id}
+                                onToggle={() => toggleCard(pre.pre_solicitud_id)}
+                            />
                         ))}
                     </div>
                 )}

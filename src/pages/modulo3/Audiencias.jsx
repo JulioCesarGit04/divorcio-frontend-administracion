@@ -31,22 +31,38 @@ export default function Audiencias() {
     });
 
     const formatFechaHora = (fechaStr) => {
-        if (!fechaStr) return '—';
-        const fecha = new Date(fechaStr);
-        return fecha.toLocaleString('es-PE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
+    if (!fechaStr) return '—';
+    
+    // Si la cadena incluye 'Z' (formato UTC), eliminar la 'Z' para tratarla como local
+    let cadena = fechaStr;
+    if (cadena.endsWith('Z')) {
+        cadena = cadena.slice(0, -1); // quita la 'Z'
+    }
+    // Reemplazar 'T' por espacio para facilitar el parseo
+    cadena = cadena.replace('T', ' ');
+    // Separar fecha y hora
+    const [fechaParte, horaParte] = cadena.split(' ');
+    const [year, month, day] = fechaParte.split('-');
+    const [hour, minute] = horaParte.split(':');
+    
+    // Crear fecha local (sin offset UTC)
+    const fecha = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+    
+    return fecha.toLocaleString('es-PE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+};
 
     const cargar = async () => {
         setCargando(true);
         setError(null);
         try {
-            // Obtener TODOS los expedientes
+            // Obtener todos los expedientes con estado ACTIVO
             const resExp = await getExpedientes({ estado: 'ACTIVO' });
             let expedientes = [];
             if (resExp && Array.isArray(resExp.data)) {
@@ -57,8 +73,10 @@ export default function Audiencias() {
                 expedientes = [];
             }
 
-            // Para cada expediente, obtener su audiencia actual
+            // Para cada expediente, obtener su audiencia actual (si existe)
             const promesas = expedientes.map(async (exp) => {
+                let audienciaActual = null;
+                let tieneAudiencia = false;
                 try {
                     const resAud = await getAudiencias(exp.id);
                     let audienciasData = [];
@@ -67,26 +85,50 @@ export default function Audiencias() {
                     } else if (Array.isArray(resAud)) {
                         audienciasData = resAud;
                     }
-                    const audienciaActual = audienciasData.find(a => a.es_actual === true);
-                    if (audienciaActual) {
-                        return {
-                            expedienteId: exp.id,
-                            numeroExpediente: exp.numero_expediente,
-                            numeroMesaPartes: exp.numero_mesa_partes,
-                            solicitante: `${exp.Solicitante_Nombres || ''} ${exp.Solicitante_Apellidos || ''}`.trim(),
-                            demandado: `${exp.Demandado_Nombres || ''} ${exp.Demandado_Apellidos || ''}`.trim(),
-                            dniSolicitante: exp.Solicitante_Dni || '',
-                            dniDemandado: exp.Demandado_Dni || '',
-                            fechaProgramada: audienciaActual.fecha_programada,
-                            estadoAudiencia: audienciaActual.estado,
-                            numeroIntento: audienciaActual.numero_intento,
-                            audienciaId: audienciaActual.id,
-                        };
-                    }
-                    return null;
+                    audienciaActual = audienciasData.find(a => a.es_actual === true);
+                    tieneAudiencia = audienciaActual !== undefined;
                 } catch (err) {
                     console.error(`Error al obtener audiencia del expediente ${exp.id}`, err);
-                    return null;
+                }
+
+                // Incluir expediente si:
+                // - Tiene audiencia (cualquier estado) O
+                // - Está en etapa AUDIENCIA o DOCUMENTOS_INTERNOS (para poder programar)
+                const debeIncluir = tieneAudiencia || exp.etapa === 'AUDIENCIA' || exp.etapa === 'DOCUMENTOS_INTERNOS';
+                if (!debeIncluir) return null;
+
+                // Si tiene audiencia, devolvemos los datos de la misma
+                if (audienciaActual) {
+                    return {
+                        expedienteId: exp.id,
+                        numeroExpediente: exp.numero_expediente,
+                        numeroMesaPartes: exp.numero_mesa_partes,
+                        solicitante: `${exp.Solicitante_Nombres || ''} ${exp.Solicitante_Apellidos || ''}`.trim(),
+                        demandado: `${exp.Demandado_Nombres || ''} ${exp.Demandado_Apellidos || ''}`.trim(),
+                        dniSolicitante: exp.Solicitante_Dni || '',
+                        dniDemandado: exp.Demandado_Dni || '',
+                        fechaProgramada: audienciaActual.fecha_programada,
+                        estadoAudiencia: audienciaActual.estado,
+                        numeroIntento: audienciaActual.numero_intento,
+                        audienciaId: audienciaActual.id,
+                        tieneAudiencia: true,
+                    };
+                } else {
+                    // No tiene audiencia pero está en etapa que permite programar
+                    return {
+                        expedienteId: exp.id,
+                        numeroExpediente: exp.numero_expediente,
+                        numeroMesaPartes: exp.numero_mesa_partes,
+                        solicitante: `${exp.Solicitante_Nombres || ''} ${exp.Solicitante_Apellidos || ''}`.trim(),
+                        demandado: `${exp.Demandado_Nombres || ''} ${exp.Demandado_Apellidos || ''}`.trim(),
+                        dniSolicitante: exp.Solicitante_Dni || '',
+                        dniDemandado: exp.Demandado_Dni || '',
+                        fechaProgramada: null,
+                        estadoAudiencia: 'SIN_PROGRAMAR',
+                        numeroIntento: null,
+                        audienciaId: null,
+                        tieneAudiencia: false,
+                    };
                 }
             });
 
@@ -111,22 +153,25 @@ export default function Audiencias() {
                     a.dniSolicitante?.includes(dni) || a.dniDemandado?.includes(dni)
                 );
             }
-            if (filtrosAplicados.estadoAudiencia) {
+            if (filtrosAplicados.estadoAudiencia && filtrosAplicados.estadoAudiencia !== 'SIN_PROGRAMAR') {
                 filtrados = filtrados.filter(a => a.estadoAudiencia === filtrosAplicados.estadoAudiencia);
+            } else if (filtrosAplicados.estadoAudiencia === 'SIN_PROGRAMAR') {
+                filtrados = filtrados.filter(a => !a.tieneAudiencia);
             }
-            if (filtrosAplicados.fechaDesde) {
-                const desde = new Date(filtrosAplicados.fechaDesde);
-                desde.setHours(0, 0, 0);
-                filtrados = filtrados.filter(a => new Date(a.fechaProgramada) >= desde);
+            if (filtrosAplicados.fechaDesde && !filtrosAplicados.estadoAudiencia === 'SIN_PROGRAMAR') {
+                filtrados = filtrados.filter(a => a.fechaProgramada && new Date(a.fechaProgramada) >= new Date(filtrosAplicados.fechaDesde));
             }
-            if (filtrosAplicados.fechaHasta) {
-                const hasta = new Date(filtrosAplicados.fechaHasta);
-                hasta.setHours(23, 59, 59);
-                filtrados = filtrados.filter(a => new Date(a.fechaProgramada) <= hasta);
+            if (filtrosAplicados.fechaHasta && !filtrosAplicados.estadoAudiencia === 'SIN_PROGRAMAR') {
+                filtrados = filtrados.filter(a => a.fechaProgramada && new Date(a.fechaProgramada) <= new Date(filtrosAplicados.fechaHasta));
             }
 
-            // Ordenar por fechaProgramada ascendente
-            filtrados.sort((a, b) => new Date(a.fechaProgramada) - new Date(b.fechaProgramada));
+            // Ordenar: primero los que tienen fecha (próximas primero), luego los sin programar
+            filtrados.sort((a, b) => {
+                if (!a.fechaProgramada && !b.fechaProgramada) return 0;
+                if (!a.fechaProgramada) return 1;
+                if (!b.fechaProgramada) return -1;
+                return new Date(a.fechaProgramada) - new Date(b.fechaProgramada);
+            });
 
             setAudiencias(filtrados);
         } catch (err) {
@@ -165,6 +210,10 @@ export default function Audiencias() {
 
     const handleRegistrar = (expedienteId) => {
         navigate(`/modulo3/expediente/${expedienteId}/registrar-audiencia`);
+    };
+
+    const handleProgramar = (expedienteId) => {
+        navigate(`/modulo3/expediente/${expedienteId}/programar-audiencia`);
     };
 
     return (
@@ -216,6 +265,7 @@ export default function Audiencias() {
                                     <option value="PROGRAMADA">Programada</option>
                                     <option value="REALIZADA">Realizada</option>
                                     <option value="REPROGRAMADA">Reprogramada</option>
+                                    <option value="SIN_PROGRAMAR">Sin programar</option>
                                 </select>
                             </div>
                         </div>
@@ -272,16 +322,30 @@ export default function Audiencias() {
                                         <td>{a.numeroMesaPartes}</td>
                                         <td>{a.solicitante}</td>
                                         <td>{a.demandado}</td>
-                                        <td>{formatFechaHora(a.fechaProgramada)}</td>
                                         <td>
-                                            <span className={`estado-audiencia ${a.estadoAudiencia.toLowerCase()}`}>
-                                                {a.estadoAudiencia === 'PROGRAMADA' ? 'Programada' :
-                                                 a.estadoAudiencia === 'REALIZADA' ? 'Realizada' : 'Reprogramada'}
-                                            </span>
+                                            {a.fechaProgramada ? formatFechaHora(a.fechaProgramada) : '—'}
                                         </td>
-                                        <td>{a.numeroIntento}/2</td>
                                         <td>
-                                            {a.estadoAudiencia !== 'REALIZADA' ? (
+                                            {a.estadoAudiencia === 'SIN_PROGRAMAR' ? (
+                                                <span className="estado-audiencia sin-programar">
+                                                    Sin programar
+                                                </span>
+                                            ) : (
+                                                <span className={`estado-audiencia ${a.estadoAudiencia.toLowerCase()}`}>
+                                                    {a.estadoAudiencia === 'PROGRAMADA' ? 'Programada' :
+                                                     a.estadoAudiencia === 'REALIZADA' ? 'Realizada' : 'Reprogramada'}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            {a.numeroIntento ? `${a.numeroIntento}/2` : '—'}
+                                        </td>
+                                        <td>
+                                            {!a.tieneAudiencia ? (
+                                                <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
+                                                    Programar
+                                                </button>
+                                            ) : a.estadoAudiencia !== 'REALIZADA' ? (
                                                 <button className="btn-registrar" onClick={() => handleRegistrar(a.expedienteId)}>
                                                     Registrar
                                                 </button>
