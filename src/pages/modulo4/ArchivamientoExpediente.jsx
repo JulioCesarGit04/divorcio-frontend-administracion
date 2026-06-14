@@ -4,10 +4,7 @@ import Sidebar from '../../components/modulo3/Sidebar'
 import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
-import { 
-    getArchivamientoData,
-    subirCargosExternos
-} from '../../services/Modulo4Service'
+import { getArchivamientoData, subirCargosExternos } from '../../services/Modulo4Service'
 import '../../styles/modulo3/resolucion-fundada.css'
 
 export default function ArchivamientoExpediente() {
@@ -22,10 +19,9 @@ export default function ArchivamientoExpediente() {
     const [archivosExistentes, setArchivosExistentes] = useState({ sunarp: null, reniec: null })
     const [yaFinalizado, setYaFinalizado] = useState(false)
 
-    // Estados para el visor de PDF
-    const [visorAbierto, setVisorAbierto] = useState(false)
-    const [pdfUrl, setPdfUrl] = useState('')
-    const [tituloPdf, setTituloPdf] = useState('')
+    // Estados para acordeón (solo cuando ya existen)
+    const [pdfAbiertoSunarp, setPdfAbiertoSunarp] = useState(false)
+    const [pdfAbiertoReniec, setPdfAbiertoReniec] = useState(false)
 
     useEffect(() => {
         const cargar = async () => {
@@ -33,18 +29,15 @@ export default function ArchivamientoExpediente() {
                 const res = await getArchivamientoData(id)
                 if (res.ok && res.data) {
                     setExpediente(res.data)
-                    const sunarpExistente = res.data.ruta_sunarp || null
-                    const reniecExistente = res.data.ruta_reniec || null
-                    setArchivosExistentes({ sunarp: sunarpExistente, reniec: reniecExistente })
-                    if (sunarpExistente && reniecExistente) {
-                        setYaFinalizado(true)
-                    }
+                    const sunarp = res.data.ruta_sunarp ? { ruta: res.data.ruta_sunarp, fecha: res.data.fecha_sunarp } : null
+                    const reniec = res.data.ruta_reniec ? { ruta: res.data.ruta_reniec, fecha: res.data.fecha_reniec } : null
+                    setArchivosExistentes({ sunarp, reniec })
+                    if (sunarp && reniec) setYaFinalizado(true)
                 } else {
                     setMensaje('No se pudo cargar la información del expediente')
                 }
             } catch (err) {
-                console.error(err)
-                setMensaje('Error al cargar el expediente: ' + err.message)
+                setMensaje('Error al cargar: ' + err.message)
             } finally {
                 setCargando(false)
             }
@@ -54,7 +47,7 @@ export default function ArchivamientoExpediente() {
 
     const handleFileChange = (e, tipo) => {
         if (yaFinalizado) {
-            setMensaje('Los archivos ya fueron subidos y no se pueden modificar')
+            setMensaje('Expediente ya finalizado, no se pueden cambiar archivos')
             return
         }
         const file = e.target.files[0]
@@ -68,30 +61,35 @@ export default function ArchivamientoExpediente() {
 
     const handleFinalizar = async () => {
         if (yaFinalizado) {
-            setMensaje('Este expediente ya fue finalizado. No se pueden subir archivos nuevamente.')
+            setMensaje('El expediente ya está finalizado')
             return
         }
+
+        // Verificar si hay archivos nuevos o ya existentes
         const tieneSunarp = archivos.sunarp || archivosExistentes.sunarp
         const tieneReniec = archivos.reniec || archivosExistentes.reniec
         if (!tieneSunarp || !tieneReniec) {
-            setMensaje('Debe adjuntar las constancias de SUNARP y RENIEC')
+            setMensaje('Debe adjuntar ambas constancias (SUNARP y RENIEC)')
             return
         }
+
         setEnviando(true)
         setMensaje('')
         try {
+            // Enviar los archivos nuevos (si existen) o null si ya estaban
             const sunarpFile = archivos.sunarp || null
             const reniecFile = archivos.reniec || null
             const result = await subirCargosExternos(id, sunarpFile, reniecFile)
             if (result.ok) {
-                setMensaje(' Expediente finalizado correctamente. Redirigiendo...')
+                setMensaje('✅ Expediente finalizado correctamente. Redirigiendo...')
                 setYaFinalizado(true)
                 setTimeout(() => navigate('/modulo3/expedientes'), 2000)
             } else {
-                setMensaje('Error: ' + (result.mensaje || 'No se pudo finalizar'))
+                setMensaje('❌ Error: ' + (result.mensaje || 'No se pudo finalizar'))
             }
         } catch (err) {
-            setMensaje('Error de conexión: ' + err.message)
+            console.error('Error en handleFinalizar:', err)
+            setMensaje('❌ Error de conexión: ' + (err.response?.data?.mensaje || err.message))
         } finally {
             setEnviando(false)
         }
@@ -99,9 +97,7 @@ export default function ArchivamientoExpediente() {
 
     const formatFecha = (fechaStr) => {
         if (!fechaStr) return '—'
-        const clean = fechaStr.split('T')[0]
-        const [year, month, day] = clean.split('-')
-        return `${day}/${month}/${year}`
+        return fechaStr.split('T')[0].split('-').reverse().join('/')
     }
 
     const getNombreArchivo = (ruta) => {
@@ -117,16 +113,9 @@ export default function ArchivamientoExpediente() {
         return `http://localhost:3000/uploads/${ruta}`
     }
 
-    // Abrir PDF en modal
-    const verPdfEnModal = (ruta, titulo) => {
-        const url = getPdfUrl(ruta)
-        if (url !== '#') {
-            setPdfUrl(url)
-            setTituloPdf(titulo || 'Visualizador de PDF')
-            setVisorAbierto(true)
-        } else {
-            alert('No se puede abrir el PDF')
-        }
+    const formatearFechaSubida = (fecha) => {
+        if (!fecha) return ''
+        return new Date(fecha).toLocaleDateString('es-PE')
     }
 
     const etapaActual = expediente?.etapa || 'ARCHIVADO'
@@ -140,7 +129,7 @@ export default function ArchivamientoExpediente() {
                     <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                     <h1>Archivo del Expediente</h1>
                 </div>
-                <p>Cargando expediente...</p>
+                <p>Cargando...</p>
             </main>
         </>
     )
@@ -153,8 +142,8 @@ export default function ArchivamientoExpediente() {
                     <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                     <h1>Archivo del Expediente</h1>
                 </div>
-                <p>No se encontró el expediente</p>
-                <button className="btn-continuar" onClick={() => navigate('/modulo4')}>Volver</button>
+                <p>Expediente no encontrado</p>
+                <button className="btn-continuar" onClick={() => navigate('/modulo3/expedientes')}>Volver</button>
             </main>
         </>
     )
@@ -173,6 +162,7 @@ export default function ArchivamientoExpediente() {
 
                 <div className="rf-layout">
                     <div className="rf-main">
+                        {/* Datos del expediente */}
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
                             <div className="datos-grid">
@@ -184,114 +174,163 @@ export default function ArchivamientoExpediente() {
                             </div>
                         </div>
 
+                        {/* Cargos SUNARP y RENIEC */}
                         <div className="seccion">
                             <h2>Cargos SUNARP y RENIEC</h2>
-                            {yaFinalizado ? (
+                            {yaFinalizado && (
                                 <div className="mensaje success" style={{ marginBottom: '1rem' }}>
-                                     Ambos cargos ya fueron subidos y registrados. El expediente está finalizado.
+                                    Ambos cargos registrados. El expediente está finalizado.
+                                </div>
+                            )}
+
+                            {/* SUNARP */}
+                            {archivosExistentes.sunarp ? (
+                                // ✅ YA SUBIDO: Acordeón
+                                <div style={{ marginBottom: '24px', border: '1.5px solid #9ae6b4', borderRadius: '12px', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f0fff4' }}>
+                                        <button
+                                            onClick={() => setPdfAbiertoSunarp(!pdfAbiertoSunarp)}
+                                            style={{
+                                                background: '#0f3b6f', border: 'none', borderRadius: '8px', width: '32px', height: '32px',
+                                                color: 'white', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
+                                                transform: pdfAbiertoSunarp ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                transition: 'transform 0.2s'
+                                            }}
+                                        >
+                                            ▶
+                                        </button>
+                                        <div style={{ flex: 1 }}>
+                                            <strong style={{ color: '#0f3b6f' }}>CARGO SUNARP</strong>
+                                            <div style={{ fontSize: '0.75rem', color: '#4a5568', marginTop: '2px' }}>
+                                                {getNombreArchivo(archivosExistentes.sunarp.ruta)}
+                                            </div>
+                                            {archivosExistentes.sunarp.fecha && (
+                                                <div style={{ fontSize: '0.7rem', color: '#718096', marginTop: '2px' }}>
+                                                    Fecha de subida: {formatearFechaSubida(archivosExistentes.sunarp.fecha)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span style={{
+                                            padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
+                                            background: '#f0fff4', color: '#276749', border: '1px solid #9ae6b4'
+                                        }}>
+                                            Subido
+                                        </span>
+                                    </div>
+                                    {pdfAbiertoSunarp && (
+                                        <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
+                                            <div style={{ background: '#0f3b6f', padding: '8px 16px', display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#c7a03a', fontSize: '0.75rem' }}>Constancia SUNARP</span>
+                                                <a href={getPdfUrl(archivosExistentes.sunarp.ruta)} target="_blank" rel="noreferrer" style={{ color: 'white', fontSize: '0.75rem' }}>
+                                                    Abrir en nueva pestaña ↗
+                                                </a>
+                                            </div>
+                                            <iframe
+                                                src={getPdfUrl(archivosExistentes.sunarp.ruta)}
+                                                title="SUNARP"
+                                                style={{ width: '100%', height: '500px', border: 'none', display: 'block' }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
-                                <p style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '1rem' }}>
-                                    Adjunte las constancias de SUNARP y RENIEC. Una vez subidas, quedarán bloqueadas.
-                                </p>
+                                // ❌ NO SUBIDO: Selector de archivo
+                                <div style={{ marginBottom: '24px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Constancia SUNARP (PDF):</label>
+                                    <input
+                                        type="file"
+                                        accept=".pdf"
+                                        onChange={(e) => handleFileChange(e, 'sunarp')}
+                                        disabled={enviando || yaFinalizado}
+                                        style={{ display: 'block', marginBottom: '8px' }}
+                                    />
+                                    {archivos.sunarp && <span className="archivo-ok">✅ {archivos.sunarp.name}</span>}
+                                </div>
                             )}
-                            <div className="rf-campos-fila" style={{ flexDirection: 'column', gap: '1rem' }}>
 
-                                {/* SUNARP */}
-                                <div className="rf-campo">
-                                    <label>Constancia SUNARP (PDF):</label>
-                                    <div className="rf-archivo" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        {archivosExistentes.sunarp ? (
-                                            <>
-                                                <span className="archivo-ok" style={{ backgroundColor: '#e6f7e6', padding: '0.3rem 0.7rem', borderRadius: '0.5rem' }}>
-                                                    {getNombreArchivo(archivosExistentes.sunarp)}
-                                                </span>
-                                                <span className="estado-subido">✔ Bloqueado</span>
-                                                <button
-                                                    className="btn-ver"
-                                                    onClick={() => verPdfEnModal(archivosExistentes.sunarp, 'Constancia SUNARP')}
-                                                >
-                                                    Ver PDF
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <input type="file" accept=".pdf" onChange={(e) => handleFileChange(e, 'sunarp')} disabled={enviando || yaFinalizado} id="sunarp-file" style={{ display: 'none' }} />
-                                                <label htmlFor="sunarp-file" className="btn-ver" style={{ cursor: yaFinalizado ? 'not-allowed' : 'pointer', opacity: yaFinalizado ? 0.6 : 1 }}>
-                                                    Seleccionar archivo
-                                                </label>
-                                                {archivos.sunarp && <span className="archivo-ok">{archivos.sunarp.name}</span>}
-                                            </>
-                                        )}
+                            {/* RENIEC */}
+                            {archivosExistentes.reniec ? (
+                                // ✅ YA SUBIDO: Acordeón
+                                <div style={{ marginBottom: '24px', border: '1.5px solid #9ae6b4', borderRadius: '12px', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f0fff4' }}>
+                                        <button
+                                            onClick={() => setPdfAbiertoReniec(!pdfAbiertoReniec)}
+                                            style={{
+                                                background: '#0f3b6f', border: 'none', borderRadius: '8px', width: '32px', height: '32px',
+                                                color: 'white', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
+                                                transform: pdfAbiertoReniec ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                transition: 'transform 0.2s'
+                                            }}
+                                        >
+                                            ▶
+                                        </button>
+                                        <div style={{ flex: 1 }}>
+                                            <strong style={{ color: '#0f3b6f' }}>CARGO RENIEC</strong>
+                                            <div style={{ fontSize: '0.75rem', color: '#4a5568', marginTop: '2px' }}>
+                                                {getNombreArchivo(archivosExistentes.reniec.ruta)}
+                                            </div>
+                                            {archivosExistentes.reniec.fecha && (
+                                                <div style={{ fontSize: '0.7rem', color: '#718096', marginTop: '2px' }}>
+                                                    Fecha de subida: {formatearFechaSubida(archivosExistentes.reniec.fecha)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span style={{
+                                            padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,
+                                            background: '#f0fff4', color: '#276749', border: '1px solid #9ae6b4'
+                                        }}>
+                                            Subido
+                                        </span>
                                     </div>
+                                    {pdfAbiertoReniec && (
+                                        <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
+                                            <div style={{ background: '#0f3b6f', padding: '8px 16px', display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#c7a03a', fontSize: '0.75rem' }}>Constancia RENIEC</span>
+                                                <a href={getPdfUrl(archivosExistentes.reniec.ruta)} target="_blank" rel="noreferrer" style={{ color: 'white', fontSize: '0.75rem' }}>
+                                                    Abrir en nueva pestaña ↗
+                                                </a>
+                                            </div>
+                                            <iframe
+                                                src={getPdfUrl(archivosExistentes.reniec.ruta)}
+                                                title="RENIEC"
+                                                style={{ width: '100%', height: '500px', border: 'none', display: 'block' }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
-
-                                {/* RENIEC */}
-                                <div className="rf-campo">
-                                    <label>Constancia RENIEC (PDF):</label>
-                                    <div className="rf-archivo" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        {archivosExistentes.reniec ? (
-                                            <>
-                                                <span className="archivo-ok" style={{ backgroundColor: '#e6f7e6', padding: '0.3rem 0.7rem', borderRadius: '0.5rem' }}>
-                                                    {getNombreArchivo(archivosExistentes.reniec)}
-                                                </span>
-                                                <span className="estado-subido">✔ Bloqueado</span>
-                                                <button
-                                                    className="btn-ver"
-                                                    onClick={() => verPdfEnModal(archivosExistentes.reniec, 'Constancia RENIEC')}
-                                                >
-                                                    Ver PDF
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <input type="file" accept=".pdf" onChange={(e) => handleFileChange(e, 'reniec')} disabled={enviando || yaFinalizado} id="reniec-file" style={{ display: 'none' }} />
-                                                <label htmlFor="reniec-file" className="btn-ver" style={{ cursor: yaFinalizado ? 'not-allowed' : 'pointer', opacity: yaFinalizado ? 0.6 : 1 }}>
-                                                    Seleccionar archivo
-                                                </label>
-                                                {archivos.reniec && <span className="archivo-ok">{archivos.reniec.name}</span>}
-                                            </>
-                                        )}
-                                    </div>
+                            ) : (
+                                // ❌ NO SUBIDO: Selector
+                                <div style={{ marginBottom: '24px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Constancia RENIEC (PDF):</label>
+                                    <input
+                                        type="file"
+                                        accept=".pdf"
+                                        onChange={(e) => handleFileChange(e, 'reniec')}
+                                        disabled={enviando || yaFinalizado}
+                                        style={{ display: 'block', marginBottom: '8px' }}
+                                    />
+                                    {archivos.reniec && <span className="archivo-ok">✅ {archivos.reniec.name}</span>}
                                 </div>
+                            )}
 
-                            </div>
                             {!yaFinalizado && (
-                                <button className="btn-continuar" onClick={handleFinalizar} disabled={enviando || (!archivos.sunarp && !archivosExistentes.sunarp) || (!archivos.reniec && !archivosExistentes.reniec)} style={{ marginTop: '1rem' }}>
+                                <button
+                                    className="btn-continuar"
+                                    onClick={handleFinalizar}
+                                    disabled={enviando || (!archivos.sunarp && !archivosExistentes.sunarp) || (!archivos.reniec && !archivosExistentes.reniec)}
+                                >
                                     {enviando ? 'Finalizando...' : 'Finalizar Expediente'}
                                 </button>
                             )}
-                            {mensaje && <div className={`mensaje ${mensaje.includes('correctamente') ? 'success' : 'error'}`} style={{ marginTop: '1rem' }}>{mensaje}</div>}
+                            {mensaje && <div className={`mensaje ${mensaje.includes('✅') ? 'success' : 'error'}`} style={{ marginTop: '1rem' }}>{mensaje}</div>}
                         </div>
                     </div>
 
                     <div className="rf-sidebar">
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />                    </div>
-                </div>
-
-                {/* Modal visor de PDF */}
-                {visorAbierto && (
-                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
-                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>{tituloPdf}</h3>
-                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
-                            </div>
-                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
-                                <iframe
-                                    src={pdfUrl}
-                                    title={tituloPdf}
-                                    style={{ width: '100%', height: '100%', border: 'none' }}
-                                />
-                            </div>
-                            <div className="modal-footer">
-                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
-                            </div>
-                        </div>
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />
                     </div>
-                )}
-
+                </div>
             </main>
         </>
     )

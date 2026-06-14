@@ -61,10 +61,8 @@ export default function ResolucionDisolucion() {
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [puedeAvanzar, setPuedeAvanzar] = useState(false)
 
-    // Estados para el visor de PDF
-    const [visorAbierto, setVisorAbierto] = useState(false)
-    const [pdfUrl, setPdfUrl] = useState('')
-    const [tituloPdf, setTituloPdf] = useState('')
+    // Estado para el acordeón
+    const [pdfAbierto, setPdfAbierto] = useState(false)
 
     const etapaActual = expediente?.etapa
 
@@ -85,17 +83,6 @@ export default function ResolucionDisolucion() {
         if (ruta.startsWith('http')) return ruta
         if (ruta.startsWith('/uploads')) return `http://localhost:3000${ruta}`
         return `http://localhost:3000/uploads/${ruta}`
-    }
-
-    const verPdfEnModal = (ruta, titulo) => {
-        const url = getPdfUrl(ruta)
-        if (url !== '#') {
-            setPdfUrl(url)
-            setTituloPdf(titulo || 'Visualizador de PDF')
-            setVisorAbierto(true)
-        } else {
-            alert('No se puede abrir el PDF')
-        }
     }
 
     const formatFecha = (fechaStr) => {
@@ -188,6 +175,9 @@ export default function ResolucionDisolucion() {
         }
     }
 
+    // ============================================================
+    // FORMULARIO DE REGISTRO DE SEGUNDO PAGO (con diseño mejorado)
+    // ============================================================
     if (!cargando && !error && !expediente?.fecha_pago_disolucion) {
         return (
             <>
@@ -198,24 +188,57 @@ export default function ResolucionDisolucion() {
                         <h1>Resolución de Disolución</h1>
                         <span className="estado-badge-rf">{expediente?.numero_mesa_partes || '—'}</span>
                     </div>
-                    <div className="seccion" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
-                        <h2> Registrar Segundo Pago</h2>
-                        <p>Para continuar con el proceso de disolución, debe registrar la fecha en que el solicitante realizó el segundo pago.</p>
-                        <div className="rf-campos-fila" style={{ justifyContent: 'center' }}>
-                            <div className="rf-campo">
-                                <label>Fecha del segundo pago <span className="required">*</span></label>
+                    <div className="seccion" style={{ maxWidth: '550px', margin: '2rem auto', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', padding: '1.5rem' }}>
+                        <h2 style={{ marginTop: 0, borderBottom: '3px solid #c7a03a', paddingBottom: '0.6rem', display: 'inline-block', fontSize: '1.3rem' }}>
+                            Registrar Segundo Pago
+                        </h2>
+                        <p style={{ color: '#4b5563', margin: '1rem 0 1.5rem', lineHeight: '1.4' }}>
+                            Para continuar con el proceso de disolución, debe registrar la fecha en que el solicitante realizó el segundo pago.
+                        </p>
+                        <div className="rf-campos-fila" style={{ justifyContent: 'center', marginBottom: '1.5rem' }}>
+                            <div className="rf-campo" style={{ width: '100%' }}>
+                                <label style={{ fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                                    Fecha del segundo pago <span className="required">*</span>
+                                </label>
                                 <input
                                     type="date"
                                     value={fechaSegundoPago}
                                     onChange={(e) => setFechaSegundoPago(e.target.value)}
                                     max={new Date().toISOString().split('T')[0]}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #cbd5e1',
+                                        fontSize: '0.9rem'
+                                    }}
                                 />
                             </div>
                         </div>
-                        <button className="btn-subir" onClick={handleRegistrarSegundoPago} disabled={enviando || !fechaSegundoPago}>
+                        <button
+                            className="btn-subir"
+                            onClick={handleRegistrarSegundoPago}
+                            disabled={enviando || !fechaSegundoPago}
+                            style={{
+                                width: '100%',
+                                padding: '12px',
+                                fontSize: '1rem',
+                                fontWeight: 'bold',
+                                backgroundColor: '#0f3b6f',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                transition: 'opacity 0.2s'
+                            }}
+                        >
                             {enviando ? 'Registrando...' : 'Registrar segundo pago'}
                         </button>
-                        {mensaje && <div className={`mensaje ${mensaje.tipo}`} style={{ marginTop: '1rem' }}>{mensaje.texto}</div>}
+                        {mensaje && (
+                            <div className={`mensaje ${mensaje.tipo === 'error' ? 'error' : 'success'}`} style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                                {mensaje.texto}
+                            </div>
+                        )}
                     </div>
                 </main>
             </>
@@ -444,26 +467,76 @@ export default function ResolucionDisolucion() {
                         <div className="seccion">
                             <h2>Emisión de Resolución de Disolución</h2>
                             {yaTieneResolucion && (
-                                <div className="documento-item" style={{ marginBottom: 20 }}>
-                                    <div className="documento-info">
-                                        <div className="documento-icono"></div>
-                                        <div>
-                                            <div className="documento-nombre">
+                                <div style={{
+                                    marginBottom: '12px',
+                                    border: '1.5px solid #9ae6b4',
+                                    borderRadius: '10px',
+                                    overflow: 'hidden',
+                                }}>
+                                    {/* Cabecera con botón desplegable */}
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '12px',
+                                        padding: '12px 16px',
+                                        background: '#f0fff4',
+                                    }}>
+                                        <button
+                                            onClick={() => setPdfAbierto(!pdfAbierto)}
+                                            style={{
+                                                background: '#0f3b6f',
+                                                border: 'none', borderRadius: '6px',
+                                                width: '30px', height: '30px',
+                                                color: 'white', cursor: 'pointer',
+                                                fontSize: '0.8rem', fontWeight: 'bold',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                transform: pdfAbierto ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                transition: 'transform 0.2s',
+                                            }}
+                                        >
+                                            ▶
+                                        </button>
+                                        <div style={{ flex: 1 }}>
+                                            <p style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#0f3b6f', margin: 0 }}>
+                                                Resolución de Disolución
+                                            </p>
+                                            <p style={{ fontSize: '0.73rem', color: '#4a5568', margin: '2px 0 0' }}>
                                                 {resolucionDisolucion.numero_documento
                                                     ? `Res. ${resolucionDisolucion.numero_documento}`
                                                     : resolucionDisolucion.nombre_archivo}
-                                            </div>
-                                            <div className="documento-descripcion">
-                                                Fecha de elaboración: {formatFecha(resolucionDisolucion.fecha_elaboracion)}
-                                            </div>
+                                                {` - Fecha: ${formatFecha(resolucionDisolucion.fecha_elaboracion)}`}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <span style={{
+                                                padding: '4px 12px', borderRadius: '20px',
+                                                fontSize: '0.78rem', fontWeight: 700,
+                                                background: '#f0fff4', color: '#276749', border: '1px solid #9ae6b4'
+                                            }}>
+                                                Subido
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className="documento-acciones">
-                                        <span className="estado-subido">Subido y bloqueado</span>
-                                        <button className="btn-ver" onClick={() => verPdfEnModal(resolucionDisolucion.ruta_archivo, 'Resolución de Disolución')}>
-                                            Ver PDF
-                                        </button>
-                                    </div>
+
+                                    {/* Visor inline */}
+                                    {pdfAbierto && (
+                                        <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
+                                            <div style={{
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                padding: '8px 16px', background: '#0f3b6f',
+                                            }}>
+                                                <span style={{ color: '#c7a03a', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                    Resolución de Disolución
+                                                </span>
+                                                <a href={getPdfUrl(resolucionDisolucion.ruta_archivo)} target="_blank" rel="noreferrer" style={{ color: 'white', fontSize: '0.75rem', textDecoration: 'none' }}>
+                                                    Abrir en nueva pestaña ↗
+                                                </a>
+                                            </div>
+                                            <iframe
+                                                src={getPdfUrl(resolucionDisolucion.ruta_archivo)}
+                                                title="Resolución de Disolución"
+                                                style={{ width: '100%', height: '500px', border: 'none', display: 'block' }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             {!bloqueado && (
@@ -511,18 +584,14 @@ export default function ResolucionDisolucion() {
                                                 {enviando ? 'Subiendo...' : 'Subir Resolución'}
                                             </button>
                                         </div>
-                                    ) : (
-                                        <div className="mensaje success" style={{ textAlign: 'center', marginTop: 12 }}>
-                                             Resolución ya subida. No se permite modificación ni reemplazo.
-                                        </div>
-                                    )}
+                                    ) : null /* ❌ Mensaje eliminado: "Resolución ya subida..." */}
                                 </>
                             )}
                         </div>
 
                         {/* SECCIÓN 2: PAGO DE COPIAS CERTIFICADAS */}
                         <div className="seccion" style={{ borderLeft: '4px solid #eab308', backgroundColor: '#fefce8' }}>
-                            <h2> Comprobante de Pago</h2>
+                            <h2> Comprobante de Pago de Copias Certificadas</h2>
                             <div className="rf-campos-fila">
                                 <div className="rf-campo">
                                     <label>Número de Mesa de Partes</label>
@@ -534,7 +603,7 @@ export default function ResolucionDisolucion() {
                                     />
                                 </div>
                                 <div className="rf-campo">
-                                    <label>Fecha de pago de copias</label>
+                                    <label>Fecha de pago</label>
                                     {pagoCopiasRegistrado ? (
                                         <div style={{ padding: '0.7rem 0.9rem', backgroundColor: '#e6f7e6', borderRadius: '0.7rem', border: '1px solid #c0e0c0' }}>
                                              {formatearFechaLegible(fechaPagoCopias)}
@@ -577,31 +646,9 @@ export default function ResolucionDisolucion() {
 
                     <div className="rf-sidebar">
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />                    </div>
-                </div>
-
-                {/* Modal visor de PDF */}
-                {visorAbierto && (
-                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
-                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>{tituloPdf}</h3>
-                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
-                            </div>
-                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
-                                <iframe
-                                    src={pdfUrl}
-                                    title={tituloPdf}
-                                    style={{ width: '100%', height: '100%', border: 'none' }}
-                                />
-                            </div>
-                            <div className="modal-footer">
-                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
-                            </div>
-                        </div>
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />
                     </div>
-                )}
-
+                </div>
             </main>
         </>
     )
