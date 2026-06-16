@@ -56,19 +56,26 @@ function FilaDato({ label, valor }) {
 }
 
 const ICONOS_ESTADO = {
-  APROBADO:    { icon: '✓', color: '#276749', bg: '#f0fff4', border: '#9ae6b4' },
-  OBSERVADO:   { icon: '⚠', color: '#b7791f', bg: '#fffbeb', border: '#f6e05e' },
-  INADMISIBLE: { icon: '✕', color: '#9b2c2c', bg: '#fff5f5', border: '#feb2b2' },
-  SIN_EVALUAR: { icon: '—', color: '#4a5568', bg: '#f4f6f9', border: '#dde2ec' },
+  APROBADO:    { icon: '✓', color: '#276749', bg: '#f0fff4', border: '#9ae6b4', label: 'Aprobado' },
+  OBSERVADO:   { icon: '⚠', color: '#b7791f', bg: '#fffbeb', border: '#f6e05e', label: 'Observado' },
+  INADMISIBLE: { icon: '✕', color: '#9b2c2c', bg: '#fff5f5', border: '#feb2b2', label: 'Inadmisible' },
+  SIN_EVALUAR: { icon: '—', color: '#4a5568', bg: '#f4f6f9', border: '#dde2ec', label: 'Sin evaluar' },
 };
 
 function BotonEstado({ estadoActual, valor, onClick }) {
   const cfg = ICONOS_ESTADO[valor];
   const activo = estadoActual === valor;
+  
+  const titulos = {
+    APROBADO: '✓ Aprobado - Documento correcto',
+    OBSERVADO: '⚠ Observado - Documento tiene errores que se pueden corregir',
+    INADMISIBLE: '✕ Inadmisible - Documento inválido, causa improcedencia del trámite'
+  };
+  
   return (
     <button
       onClick={() => onClick(valor)}
-      title={valor}
+      title={titulos[valor]}
       style={{
         width: '34px', height: '34px', borderRadius: '50%',
         border: `2px solid ${activo ? cfg.color : '#dde2ec'}`,
@@ -88,6 +95,28 @@ function FilaDocumento({ doc, evaluacion, onCambiarEstado, onCambiarObservacion,
   const estadoEv = evaluacion?.estado || 'SIN_EVALUAR';
   const cfg      = ICONOS_ESTADO[estadoEv];
   const urlPdf   = `http://localhost:3000/uploads/${doc.ruta_archivo.split(/[\\/]/).pop()}`;
+  
+  // Mostrar campo de observación para OBSERVADO o INADMISIBLE
+  const mostrarCampoObservacion = !bloqueado && (estadoEv === 'OBSERVADO' || estadoEv === 'INADMISIBLE');
+  
+  const configCampo = {
+    OBSERVADO: {
+      borderColor: '#f6e05e',
+      bgColor: '#fffff0',
+      labelColor: '#b7791f',
+      label: 'Descripción de la observación:',
+      placeholder: 'Ej: El acta de matrimonio está borrosa. Por favor, suba una copia más legible.'
+    },
+    INADMISIBLE: {
+      borderColor: '#feb2b2',
+      bgColor: '#fff5f5',
+      labelColor: '#9b2c2c',
+      label: 'Motivo de inadmisibilidad:',
+      placeholder: 'Ej: El acta de matrimonio no está legalizada por Reniec, requisito indispensable para el trámite.'
+    }
+  };
+  
+  const campoConfig = configCampo[estadoEv] || configCampo.OBSERVADO;
 
   return (
     <div style={{
@@ -143,21 +172,29 @@ function FilaDocumento({ doc, evaluacion, onCambiarEstado, onCambiarObservacion,
         )}
       </div>
 
-      {/* Campo de observación — solo si está OBSERVADO */}
-      {!bloqueado && evaluacion?.estado === 'OBSERVADO' && (
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #f6e05e', background: '#fffff0' }}>
-          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#b7791f', display: 'block', marginBottom: '6px' }}>
-            Descripción de la observación: <span style={{ color: 'var(--rojo-error)' }}>*</span>
+      {/* Campo de observación/motivo — para OBSERVADO o INADMISIBLE */}
+      {mostrarCampoObservacion && (
+        <div style={{ 
+          padding: '12px 16px', 
+          borderTop: `1px solid ${campoConfig.borderColor}`,
+          background: campoConfig.bgColor
+        }}>
+          <label style={{ 
+            fontSize: '0.78rem', fontWeight: 700, 
+            color: campoConfig.labelColor,
+            display: 'block', marginBottom: '6px'
+          }}>
+            {campoConfig.label} <span style={{ color: 'var(--rojo-error)' }}>*</span>
           </label>
           <textarea
-            value={evaluacion.observacion || ''}
+            value={evaluacion?.observacion || ''}
             onChange={(e) => onCambiarObservacion(e.target.value)}
-            placeholder="Ej: El acta de matrimonio está borrosa. Por favor, suba una copia más legible."
+            placeholder={campoConfig.placeholder}
             rows={3}
             style={{
               width: '100%', padding: '8px 12px',
-              border: '1.5px solid #f6e05e', borderRadius: '6px',
-              fontSize: '0.83rem', outline: 'none',
+              border: `1.5px solid ${campoConfig.borderColor}`,
+              borderRadius: '6px', fontSize: '0.83rem', outline: 'none',
               resize: 'vertical', fontFamily: 'inherit',
               background: 'var(--blanco)',
             }}
@@ -209,7 +246,7 @@ export default function DetallePage() {
 
   // Evaluaciones por documento: { [docId]: { estado, observacion } }
   const [evaluaciones, setEvaluaciones] = useState({});
-  const [pdfAbierto, setPdfAbierto]     = useState(null); // id del doc con PDF abierto
+  const [pdfAbierto, setPdfAbierto]     = useState(null);
   const [enviando, setEnviando]         = useState(false);
   const [errEval, setErrEval]           = useState('');
   const [exito, setExito]               = useState('');
@@ -234,16 +271,8 @@ export default function DetallePage() {
       .finally(() => setCargando(false));
   }, [id]);
 
+  // ✅ MODIFICADO: Ya NO marca todos los documentos como INADMISIBLE
   function cambiarEstado(docId, nuevoEstado) {
-    // Si se marca INADMISIBLE, todos los docs se marcan INADMISIBLE
-    if (nuevoEstado === 'INADMISIBLE') {
-      const nuevasEv = {};
-      solicitud.documentos.forEach((doc) => {
-        nuevasEv[doc.id] = { estado: 'INADMISIBLE', observacion: '' };
-      });
-      setEvaluaciones(nuevasEv);
-      return;
-    }
     setEvaluaciones((prev) => ({
       ...prev,
       [docId]: { ...prev[docId], estado: nuevoEstado, observacion: prev[docId]?.observacion || '' },
@@ -261,51 +290,107 @@ export default function DetallePage() {
     setPdfAbierto((prev) => (prev === docId ? null : docId));
   }
 
-  async function handleEvaluar() {
-    setErrEval(''); setExito('');
-
-    const docs = solicitud.documentos || [];
-
-    // Todos deben estar evaluados
-    const sinEvaluar = docs.filter((d) => !evaluaciones[d.id]?.estado);
-    if (sinEvaluar.length > 0) {
-      setErrEval('Debes evaluar todos los documentos antes de confirmar.');
-      return;
+  // Construir mensaje personalizado para el ciudadano
+  function construirMensajeCiudadano(estadoFinal, docs, evaluacionesActuales) {
+    let mensaje = '';
+    
+    if (estadoFinal === 'ADMISIBLE') {
+      mensaje = '✅ SU SOLICITUD HA SIDO ADMITIDA\n\n';
+      mensaje += 'Todos los documentos han sido evaluados como correctos.\n\n';
+      mensaje += '📋 PASOS A SEGUIR:\n';
+      mensaje += '1. Acérquese a Mesa de Partes con su DNI\n';
+      mensaje += '2. Presente el comprobante de pago de la tasa correspondiente\n';
+      mensaje += '3. El personal le indicará los pasos a seguir para continuar con el trámite\n\n';
+      mensaje += 'Gracias por confiar en la Municipalidad Distrital de El Porvenir.';
     }
-
-    // Observados deben tener mensaje
-    const observadoSinMsg = docs.find(
-      (d) => evaluaciones[d.id]?.estado === 'OBSERVADO' && !evaluaciones[d.id]?.observacion?.trim()
-    );
-    if (observadoSinMsg) {
-      setErrEval('Todos los documentos observados deben tener una observación.');
-      return;
+    else if (estadoFinal === 'OBSERVADA') {
+      mensaje = '⚠️ SU SOLICITUD TIENE OBSERVACIONES\n\n';
+      mensaje += 'Los siguientes documentos requieren corrección:\n\n';
+      
+      const docsObservados = docs.filter(d => evaluacionesActuales[d.id]?.estado === 'OBSERVADO');
+      docsObservados.forEach(doc => {
+        mensaje += `📄 ${ETIQUETAS_DOC[doc.tipo_documento] || doc.tipo_documento}:\n`;
+        mensaje += `   Observación: ${evaluacionesActuales[doc.id]?.observacion || 'Documento incorrecto o incompleto'}\n\n`;
+      });
+      
+      mensaje += '🔧 ACCIONES REQUERIDAS:\n';
+      mensaje += '• Corrija los documentos observados según las indicaciones\n';
+      mensaje += '• Vuelva a subir los documentos corregidos en el sistema\n';
+      mensaje += '• Una vez corregidos, su solicitud será reevaluada\n\n';
+      mensaje += 'Plazo para corregir: 5 días hábiles.';
     }
-
-    setEnviando(true);
-    try {
-      const payload = docs.map((doc) => ({
-        documentoId:  doc.id,
-        estado:       evaluaciones[doc.id].estado,
-        observacion:  evaluaciones[doc.id].observacion || '',
-      }));
-
-      const res = await api.post(`/revision/${id}/evaluar`, { evaluaciones: payload });
-      setExito(`✔ Pre-solicitud marcada como ${res.data.nuevoEstado}. Se notificó al ciudadano.`);
-      setSolicitud((prev) => ({ ...prev, estado: res.data.nuevoEstado }));
-    } catch (err) {
-      setErrEval(err.response?.data?.mensaje || 'Error al guardar la evaluación.');
-    } finally {
-      setEnviando(false);
+    else if (estadoFinal === 'IMPROCEDENTE') {
+      mensaje = '❌ SU SOLICITUD HA SIDO DECLARADA IMPROCEDENTE\n\n';
+      mensaje += 'No cumple con los requisitos legales establecidos para el trámite de divorcio municipal.\n\n';
+      mensaje += '📄 DOCUMENTOS QUE CAUSAN LA IMPROCEDENCIA:\n\n';
+      
+      const docsInadmisibles = docs.filter(d => evaluacionesActuales[d.id]?.estado === 'INADMISIBLE');
+      docsInadmisibles.forEach(doc => {
+        mensaje += `✕ ${ETIQUETAS_DOC[doc.tipo_documento] || doc.tipo_documento}:\n`;
+        mensaje += `   Motivo: ${evaluacionesActuales[doc.id]?.observacion || 'Documento no válido para el trámite'}\n\n`;
+      });
+      
+      mensaje += '💡 RECOMENDACIÓN:\n';
+      mensaje += '• Revise los requisitos completos del trámite\n';
+      mensaje += '• Corrija las observaciones señaladas\n';
+      mensaje += '• Puede presentar una NUEVA solicitud corrigiendo los problemas identificados\n\n';
+      mensaje += 'Para mayor información, acérquese a nuestras oficinas o consulte en nuestra página web.';
     }
+    
+    return mensaje;
   }
+
+  async function handleEvaluar() {
+  setErrEval(''); setExito('');
+
+  const docs = solicitud.documentos || [];
+
+  // Todos deben estar evaluados
+  const sinEvaluar = docs.filter((d) => !evaluaciones[d.id]?.estado);
+  if (sinEvaluar.length > 0) {
+    setErrEval('Debes evaluar todos los documentos antes de confirmar.');
+    return;
+  }
+
+  // Observados deben tener mensaje
+  const observadoSinMsg = docs.find(
+    (d) => evaluaciones[d.id]?.estado === 'OBSERVADO' && !evaluaciones[d.id]?.observacion?.trim()
+  );
+  if (observadoSinMsg) {
+    setErrEval('Todos los documentos observados deben tener una observación.');
+    return;
+  }
+
+  setEnviando(true);
+  try {
+    const payload = docs.map((doc) => ({
+      documentoId:  doc.id,
+      estado:       evaluaciones[doc.id].estado,
+      observacion:  evaluaciones[doc.id].observacion || '',
+    }));
+
+    const res = await api.post(`/revision/${id}/evaluar`, { evaluaciones: payload });
+    setExito(`✔ Pre-solicitud marcada como ${res.data.nuevoEstado}. Se notificó al ciudadano.`);
+    setSolicitud((prev) => ({ ...prev, estado: res.data.nuevoEstado }));
+    
+    // Recargar la página después de 1.5 segundos para mostrar el estado actualizado
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+    
+  } catch (err) {
+    setErrEval(err.response?.data?.mensaje || 'Error al guardar la evaluación.');
+  } finally {
+    setEnviando(false);
+  }
+}
 
   if (cargando) return <Layout><div style={{ textAlign: 'center', padding: '80px', color: 'var(--azul-primary)', fontWeight: 600 }}>Cargando detalle...</div></Layout>;
   if (error)    return <Layout><div style={{ background: '#fff5f5', border: '1px solid var(--rojo-error)', borderRadius: '8px', padding: '20px', color: 'var(--rojo-error)' }}>{error}</div></Layout>;
 
-  const solicitante = solicitud.conyuges?.find((c) => c.tipo === 'SOLICITANTE');
-  const demandado   = solicitud.conyuges?.find((c) => c.tipo === 'DEMANDADO');
-  const yaFinalizada = ['ADMISIBLE', 'IMPROCEDENTE'].includes(solicitud.estado);
+    const solicitante = solicitud.conyuges?.find((c) => c.tipo === 'SOLICITANTE');
+    const demandado   = solicitud.conyuges?.find((c) => c.tipo === 'DEMANDADO');
+    const yaFinalizada = ['ADMISIBLE', 'IMPROCEDENTE', 'OBSERVADA'].includes(solicitud.estado);
 
   return (
     <Layout>
@@ -372,16 +457,25 @@ export default function DetallePage() {
             )}
           </div>
 
+          {/* Estado de la pre-solicitud - Mensaje según el estado */}
           {yaFinalizada && (
             <div style={{
-              background: '#f0fff4', border: '1px solid #9ae6b4',
+              background: solicitud.estado === 'ADMISIBLE' ? '#f0fff4' : 
+                solicitud.estado === 'OBSERVADA' ? '#fffbeb' : '#fff5f5',
+              border: `1px solid ${
+              solicitud.estado === 'ADMISIBLE' ? '#9ae6b4' : 
+                solicitud.estado === 'OBSERVADA' ? '#f6e05e' : '#feb2b2'
+              }`,
               borderRadius: '8px', padding: '12px 16px', marginBottom: '16px',
-              color: 'var(--verde-exito)', fontSize: '0.85rem', fontWeight: 600,
+              color: solicitud.estado === 'ADMISIBLE' ? '#276749' : 
+                      solicitud.estado === 'OBSERVADA' ? '#b7791f' : '#9b2c2c',
+              fontSize: '0.85rem', fontWeight: 600,
             }}>
-              ✔ Esta pre-solicitud ya fue evaluada como <strong>{solicitud.estado}</strong>.
-              {solicitud.estado === 'ADMISIBLE' ? ' Esta lista para continuar.' : ''}
+              {solicitud.estado === 'ADMISIBLE' && 'Esta pre-solicitud fue evaluada como ADMISIBLE. Está lista para continuar.'}
+              {solicitud.estado === 'OBSERVADA' && 'Esta pre-solicitud fue evaluada como OBSERVADA. El ciudadano debe corregir los documentos señalados.'}
+              {solicitud.estado === 'IMPROCEDENTE' && 'Esta pre-solicitud fue declarada IMPROCEDENTE.'}
             </div>
-          )}
+)}
 
           {/* Lista de documentos */}
           {solicitud.documentos?.map((doc) => (
