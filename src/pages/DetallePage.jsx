@@ -250,26 +250,41 @@ export default function DetallePage() {
   const [enviando, setEnviando]         = useState(false);
   const [errEval, setErrEval]           = useState('');
   const [exito, setExito]               = useState('');
+  const [documentosReemplazados, setDocumentosReemplazados] = useState([]);
 
-  useEffect(() => {
-    api.get(`/revision/${id}`)
-      .then((res) => {
-        setSolicitud(res.data.data);
-        // Prellenar evaluaciones con estado previo si existe
-        const evIniciales = {};
-        res.data.data.documentos?.forEach((doc) => {
-          if (doc.estado_evaluacion) {
-            evIniciales[doc.id] = {
-              estado:      doc.estado_evaluacion,
-              observacion: doc.observacion_evaluacion || '',
-            };
-          }
-        });
-        setEvaluaciones(evIniciales);
-      })
-      .catch(() => setError('Error al cargar el detalle.'))
-      .finally(() => setCargando(false));
-  }, [id]);
+useEffect(() => {
+  api.get(`/revision/${id}`)
+    .then((res) => {
+      const data = res.data.data;
+      console.log('🔍 DATOS DE DOCUMENTOS:');
+      
+      const evIniciales = {};
+      const docsReemplazados = [];
+      
+      data.documentos?.forEach((doc) => {
+        console.log(`📄 ${doc.tipo_documento}: fecha_correccion=${doc.fecha_correccion}`);
+        
+        if (doc.estado_evaluacion) {
+          evIniciales[doc.id] = {
+            estado:      doc.estado_evaluacion,
+            observacion: doc.observacion_evaluacion || '',
+          };
+        }
+        
+        if (doc.fecha_correccion) {
+          docsReemplazados.push(doc.id);
+        }
+      });
+      
+      console.log('📋 Documentos reemplazados:', docsReemplazados);
+      
+      setSolicitud(data);
+      setEvaluaciones(evIniciales);
+      setDocumentosReemplazados(docsReemplazados);
+    })
+    .catch(() => setError('Error al cargar el detalle.'))
+    .finally(() => setCargando(false));
+}, [id]);
 
   // ✅ MODIFICADO: Ya NO marca todos los documentos como INADMISIBLE
   function cambiarEstado(docId, nuevoEstado) {
@@ -477,19 +492,36 @@ export default function DetallePage() {
             </div>
 )}
 
-          {/* Lista de documentos */}
-          {solicitud.documentos?.map((doc) => (
-            <FilaDocumento
-              key={doc.id}
-              doc={doc}
-              evaluacion={evaluaciones[doc.id]}
-              onCambiarEstado={(estado) => cambiarEstado(doc.id, estado)}
-              onCambiarObservacion={(texto) => cambiarObservacion(doc.id, texto)}
-              pdfAbierto={pdfAbierto === doc.id}
-              onTogglePdf={togglePdf}
-              bloqueado={yaFinalizada}
-            />
-          ))}
+{/* Lista de documentos */}
+{solicitud.documentos?.map((doc) => {
+  const esReemplazado = documentosReemplazados.includes(doc.id);
+  const nuncaEvaluado = !doc.estado_evaluacion;
+  
+  let puedeEditar = !yaFinalizada;
+  
+  // Si la solicitud está en OBSERVADA o viene de una OBSERVADA (está EN_CALIFICACION pero con documentos reemplazados)
+  if (solicitud.estado === 'OBSERVADA') {
+    // En OBSERVADA, solo se editan los documentos reemplazados o los que nunca fueron evaluados
+    puedeEditar = esReemplazado || nuncaEvaluado;
+  } else if (solicitud.estado === 'EN_CALIFICACION' && documentosReemplazados.length > 0) {
+    // Si está EN_CALIFICACION pero hay documentos reemplazados (viene de OBSERVADA)
+    // Solo se edita el documento reemplazado
+    puedeEditar = esReemplazado;
+  }
+
+  return (
+    <FilaDocumento
+      key={doc.id}
+      doc={doc}
+      evaluacion={evaluaciones[doc.id]}
+      onCambiarEstado={(estado) => cambiarEstado(doc.id, estado)}
+      onCambiarObservacion={(texto) => cambiarObservacion(doc.id, texto)}
+      pdfAbierto={pdfAbierto === doc.id}
+      onTogglePdf={togglePdf}
+      bloqueado={!puedeEditar}
+    />
+  );
+})}
 
           {/* Errores y éxito */}
           {errEval && (
