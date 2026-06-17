@@ -29,28 +29,28 @@ export default function Audiencias() {
     });
 
     const formatFechaHora = (fechaStr) => {
-    if (!fechaStr) return '—';
-    
-    let cadena = fechaStr;
-    if (cadena.endsWith('Z')) {
-        cadena = cadena.slice(0, -1); 
-    }
-    cadena = cadena.replace('T', ' ');
-    const [fechaParte, horaParte] = cadena.split(' ');
-    const [year, month, day] = fechaParte.split('-');
-    const [hour, minute] = horaParte.split(':');
-    
-    const fecha = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
-    
-    return fecha.toLocaleString('es-PE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-};
+        if (!fechaStr) return '—';
+        
+        let cadena = fechaStr;
+        if (cadena.endsWith('Z')) {
+            cadena = cadena.slice(0, -1); 
+        }
+        cadena = cadena.replace('T', ' ');
+        const [fechaParte, horaParte] = cadena.split(' ');
+        const [year, month, day] = fechaParte.split('-');
+        const [hour, minute] = horaParte.split(':');
+        
+        const fecha = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+        
+        return fecha.toLocaleString('es-PE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
 
     const cargar = async () => {
         setCargando(true);
@@ -83,7 +83,9 @@ export default function Audiencias() {
                     console.error(`Error al obtener audiencia del expediente ${exp.id}`, err);
                 }
 
-                const debeIncluir = tieneAudiencia || exp.etapa === 'AUDIENCIA' || exp.etapa === 'DOCUMENTOS_INTERNOS';
+                // ✅ Solo incluir expedientes en etapa 'AUDIENCIA' o que ya tengan audiencia
+                // (así los de DOCUMENTOS_INTERNOS sin audiencia no aparecen)
+                const debeIncluir = tieneAudiencia || exp.etapa === 'AUDIENCIA';
                 if (!debeIncluir) return null;
 
                 if (audienciaActual) {
@@ -100,8 +102,10 @@ export default function Audiencias() {
                         numeroIntento: audienciaActual.numero_intento,
                         audienciaId: audienciaActual.id,
                         tieneAudiencia: true,
+                        etapa: exp.etapa,
                     };
                 } else {
+                    // Caso: está en etapa AUDIENCIA pero no tiene audiencia (por alguna inconsistencia)
                     return {
                         expedienteId: exp.id,
                         numeroExpediente: exp.numero_expediente,
@@ -115,6 +119,7 @@ export default function Audiencias() {
                         numeroIntento: null,
                         audienciaId: null,
                         tieneAudiencia: false,
+                        etapa: exp.etapa,
                     };
                 }
             });
@@ -122,6 +127,7 @@ export default function Audiencias() {
             let resultados = await Promise.all(promesas);
             resultados = resultados.filter(r => r !== null);
 
+            // Aplicar filtros
             let filtrados = resultados;
             if (filtrosAplicados.numeroExpediente) {
                 filtrados = filtrados.filter(a =>
@@ -144,10 +150,11 @@ export default function Audiencias() {
             } else if (filtrosAplicados.estadoAudiencia === 'SIN_PROGRAMAR') {
                 filtrados = filtrados.filter(a => !a.tieneAudiencia);
             }
-            if (filtrosAplicados.fechaDesde && !filtrosAplicados.estadoAudiencia === 'SIN_PROGRAMAR') {
+            // ✅ Corregir condiciones de fecha: solo aplicar si hay fecha y el estado no es SIN_PROGRAMAR
+            if (filtrosAplicados.fechaDesde && filtrosAplicados.estadoAudiencia !== 'SIN_PROGRAMAR') {
                 filtrados = filtrados.filter(a => a.fechaProgramada && new Date(a.fechaProgramada) >= new Date(filtrosAplicados.fechaDesde));
             }
-            if (filtrosAplicados.fechaHasta && !filtrosAplicados.estadoAudiencia === 'SIN_PROGRAMAR') {
+            if (filtrosAplicados.fechaHasta && filtrosAplicados.estadoAudiencia !== 'SIN_PROGRAMAR') {
                 filtrados = filtrados.filter(a => a.fechaProgramada && new Date(a.fechaProgramada) <= new Date(filtrosAplicados.fechaHasta));
             }
 
@@ -317,7 +324,9 @@ export default function Audiencias() {
                                             ) : (
                                                 <span className={`estado-audiencia ${a.estadoAudiencia.toLowerCase()}`}>
                                                     {a.estadoAudiencia === 'PROGRAMADA' ? 'Programada' :
-                                                     a.estadoAudiencia === 'REALIZADA' ? 'Realizada' : 'Reprogramada'}
+                                                     a.estadoAudiencia === 'REALIZADA' ? 'Realizada' :
+                                                     a.estadoAudiencia === 'REPROGRAMADA' ? 'Reprogramada' :
+                                                     a.estadoAudiencia}
                                                 </span>
                                             )}
                                         </td>
@@ -326,16 +335,29 @@ export default function Audiencias() {
                                         </td>
                                         <td>
                                             {!a.tieneAudiencia ? (
+                                                // Sin audiencia → Programar
                                                 <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
                                                     Programar
                                                 </button>
-                                            ) : a.estadoAudiencia !== 'REALIZADA' ? (
+                                            ) : a.estadoAudiencia === 'PROGRAMADA' ? (
+                                                // Ya tiene fecha → Registrar resultado
                                                 <button className="btn-registrar" onClick={() => handleRegistrar(a.expedienteId)}>
                                                     Registrar
                                                 </button>
-                                            ) : (
+                                            ) : a.estadoAudiencia === 'REPROGRAMADA' ? (
+                                                // Necesita reprogramar → Programar nueva fecha
+                                                <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
+                                                    Reprogramar
+                                                </button>
+                                            ) : a.estadoAudiencia === 'REALIZADA' ? (
+                                                // Ya realizada → Ver resultado
                                                 <button className="btn-ver" onClick={() => handleRegistrar(a.expedienteId)}>
                                                     Ver resultado
+                                                </button>
+                                            ) : (
+                                                // Fallback (por si otro estado)
+                                                <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
+                                                    Programar
                                                 </button>
                                             )}
                                         </td>
