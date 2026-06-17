@@ -295,16 +295,16 @@ export default function DetallePage() {
     let mensaje = '';
     
     if (estadoFinal === 'ADMISIBLE') {
-      mensaje = '✅ SU SOLICITUD HA SIDO ADMITIDA\n\n';
+      mensaje = 'SU SOLICITUD HA SIDO ADMITIDA\n\n';
       mensaje += 'Todos los documentos han sido evaluados como correctos.\n\n';
-      mensaje += '📋 PASOS A SEGUIR:\n';
+      mensaje += 'PASOS A SEGUIR:\n';
       mensaje += '1. Acérquese a Mesa de Partes con su DNI\n';
       mensaje += '2. Presente el comprobante de pago de la tasa correspondiente\n';
       mensaje += '3. El personal le indicará los pasos a seguir para continuar con el trámite\n\n';
       mensaje += 'Gracias por confiar en la Municipalidad Distrital de El Porvenir.';
     }
     else if (estadoFinal === 'OBSERVADA') {
-      mensaje = '⚠️ SU SOLICITUD TIENE OBSERVACIONES\n\n';
+      mensaje = 'SU SOLICITUD TIENE OBSERVACIONES\n\n';
       mensaje += 'Los siguientes documentos requieren corrección:\n\n';
       
       const docsObservados = docs.filter(d => evaluacionesActuales[d.id]?.estado === 'OBSERVADO');
@@ -313,16 +313,16 @@ export default function DetallePage() {
         mensaje += `   Observación: ${evaluacionesActuales[doc.id]?.observacion || 'Documento incorrecto o incompleto'}\n\n`;
       });
       
-      mensaje += '🔧 ACCIONES REQUERIDAS:\n';
+      mensaje += 'ACCIONES REQUERIDAS:\n';
       mensaje += '• Corrija los documentos observados según las indicaciones\n';
       mensaje += '• Vuelva a subir los documentos corregidos en el sistema\n';
       mensaje += '• Una vez corregidos, su solicitud será reevaluada\n\n';
       mensaje += 'Plazo para corregir: 5 días hábiles.';
     }
     else if (estadoFinal === 'IMPROCEDENTE') {
-      mensaje = '❌ SU SOLICITUD HA SIDO DECLARADA IMPROCEDENTE\n\n';
+      mensaje = 'SU SOLICITUD HA SIDO DECLARADA IMPROCEDENTE\n\n';
       mensaje += 'No cumple con los requisitos legales establecidos para el trámite de divorcio municipal.\n\n';
-      mensaje += '📄 DOCUMENTOS QUE CAUSAN LA IMPROCEDENCIA:\n\n';
+      mensaje += 'DOCUMENTOS QUE CAUSAN LA IMPROCEDENCIA:\n\n';
       
       const docsInadmisibles = docs.filter(d => evaluacionesActuales[d.id]?.estado === 'INADMISIBLE');
       docsInadmisibles.forEach(doc => {
@@ -330,7 +330,7 @@ export default function DetallePage() {
         mensaje += `   Motivo: ${evaluacionesActuales[doc.id]?.observacion || 'Documento no válido para el trámite'}\n\n`;
       });
       
-      mensaje += '💡 RECOMENDACIÓN:\n';
+      mensaje += 'RECOMENDACIÓN:\n';
       mensaje += '• Revise los requisitos completos del trámite\n';
       mensaje += '• Corrija las observaciones señaladas\n';
       mensaje += '• Puede presentar una NUEVA solicitud corrigiendo los problemas identificados\n\n';
