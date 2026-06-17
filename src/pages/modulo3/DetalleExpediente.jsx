@@ -7,6 +7,234 @@ import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getExpedienteById, getAudiencias, cambiarEstadoExpediente, reemplazarDocumentoCiudadano, getPdfUrl } from '../../services/ProcedimientoService'
 
+// Tamaño máximo permitido para el PDF (10 MB). Ajustar si el backend define otro límite.
+const TAMANIO_MAXIMO_PDF = 10 * 1024 * 1024
+
+// ============================================================
+// COMPONENTE DocumentoItem EXTRAÍDO FUERA DEL COMPONENTE PADRE
+// (evita que se redefina en cada render y se pierda estado interno)
+// ============================================================
+function DocumentoItem({ doc, onReemplazado, bloqueado }) {
+    const [mostrarModal, setMostrarModal] = useState(false)
+    const [archivo, setArchivo] = useState(null)
+    const [cargandoDoc, setCargandoDoc] = useState(false)
+    const [errorDoc, setErrorDoc] = useState('')
+    const [exitoDoc, setExitoDoc] = useState('')
+    const [pdfAbierto, setPdfAbierto] = useState(false)
+
+    const tieneExtensionPdf = (nombreArchivo) => {
+        if (!nombreArchivo) return false
+        return nombreArchivo.toLowerCase().endsWith('.pdf')
+    }
+
+    const handleSeleccionArchivo = (e) => {
+        const archivoSeleccionado = e.target.files[0]
+        setErrorDoc('')
+        setExitoDoc('')
+
+        if (!archivoSeleccionado) {
+            setArchivo(null)
+            return
+        }
+
+        // Validación de tipo MIME + respaldo por extensión (el MIME puede venir vacío/inconsistente)
+        const esPdfPorTipo = archivoSeleccionado.type === 'application/pdf'
+        const esPdfPorExtension = tieneExtensionPdf(archivoSeleccionado.name)
+        if (!esPdfPorTipo && !esPdfPorExtension) {
+            setErrorDoc('Solo se permiten archivos PDF')
+            setArchivo(null)
+            return
+        }
+
+        // Validación de tamaño máximo
+        if (archivoSeleccionado.size > TAMANIO_MAXIMO_PDF) {
+            setErrorDoc(`El archivo supera el tamaño máximo permitido (${TAMANIO_MAXIMO_PDF / (1024 * 1024)} MB)`)
+            setArchivo(null)
+            return
+        }
+
+        setArchivo(archivoSeleccionado)
+    }
+
+    const handleReemplazar = async () => {
+        if (cargandoDoc) return // evita doble disparo por doble click
+
+        if (!archivo) {
+            setErrorDoc('Debe seleccionar un archivo PDF')
+            return
+        }
+
+        const esPdfPorTipo = archivo.type === 'application/pdf'
+        const esPdfPorExtension = tieneExtensionPdf(archivo.name)
+        if (!esPdfPorTipo && !esPdfPorExtension) {
+            setErrorDoc('Solo se permiten archivos PDF')
+            return
+        }
+
+        if (archivo.size > TAMANIO_MAXIMO_PDF) {
+            setErrorDoc(`El archivo supera el tamaño máximo permitido (${TAMANIO_MAXIMO_PDF / (1024 * 1024)} MB)`)
+            return
+        }
+
+        setCargandoDoc(true)
+        setErrorDoc('')
+        setExitoDoc('')
+
+        try {
+            await reemplazarDocumentoCiudadano(doc.id, archivo)
+            setExitoDoc('Documento reemplazado correctamente')
+            setTimeout(() => {
+                setMostrarModal(false)
+                setArchivo(null)
+                setExitoDoc('')
+                onReemplazado()
+            }, 1500)
+        } catch (err) {
+            setErrorDoc(err?.message || 'Error al reemplazar el documento')
+        } finally {
+            setCargandoDoc(false)
+        }
+    }
+
+    const handleTogglePdf = () => {
+        setPdfAbierto(!pdfAbierto)
+    }
+
+    const handleAbrirModal = () => {
+        if (bloqueado) return
+        setErrorDoc('')
+        setExitoDoc('')
+        setArchivo(null)
+        setMostrarModal(true)
+    }
+
+    const handleCerrarModal = () => {
+        if (cargandoDoc) return
+        setMostrarModal(false)
+        setArchivo(null)
+        setErrorDoc('')
+        setExitoDoc('')
+    }
+
+    // Validación explícita de que el documento tiene una ruta de archivo válida,
+    // en vez de depender únicamente del valor mágico '#' devuelto por getPdfUrl
+    const tieneArchivoValido = Boolean(doc?.ruta_archivo)
+    const pdfUrl = tieneArchivoValido ? getPdfUrl(doc.ruta_archivo) : '#'
+    const puedeMostrarVisor = tieneArchivoValido && pdfUrl && pdfUrl !== '#'
+
+    return (
+        <>
+            {/* ===== DOCUMENTO CON ACORDEÓN (igual que en ResolucionDisolucion) ===== */}
+            <div style={{
+                marginBottom: '12px',
+                border: '1.5px solid #9ae6b4',
+                borderRadius: '10px',
+                overflow: 'hidden',
+            }}>
+                {/* Cabecera con botón desplegable estilo ▶ */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '12px 16px',
+                    background: '#f0fff4',
+                }}>
+                    <button
+                        onClick={handleTogglePdf}
+                        style={{
+                            background: '#0f3b6f',
+                            border: 'none', borderRadius: '6px',
+                            width: '30px', height: '30px',
+                            color: 'white', cursor: 'pointer',
+                            fontSize: '0.8rem', fontWeight: 'bold',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transform: pdfAbierto ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s',
+                        }}
+                    >
+                        ▶
+                    </button>
+                    <div style={{ flex: 1 }}>
+                        <p style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#0f3b6f', margin: 0 }}>
+                            {doc.tipo_documento || 'Documento'}
+                        </p>
+                        <p style={{ fontSize: '0.73rem', color: '#4a5568', margin: '2px 0 0' }}>
+                            {doc.nombre_archivo}
+                            {doc.subido_en && ` - Fecha: ${new Date(doc.subido_en).toLocaleDateString('es-PE')}`}
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <span style={{
+                            padding: '4px 12px', borderRadius: '20px',
+                            fontSize: '0.78rem', fontWeight: 700,
+                            background: '#f0fff4', color: '#276749', border: '1px solid #9ae6b4'
+                        }}>
+                            Subido
+                        </span>
+                    </div>
+                </div>
+
+                {/* Visor inline (acordeón) */}
+                {pdfAbierto && puedeMostrarVisor && (
+                    <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
+                        <div style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '8px 16px', background: '#0f3b6f',
+                        }}>
+                            <span style={{ color: '#c7a03a', fontSize: '0.78rem', fontWeight: 600 }}>
+                                {doc.tipo_documento || 'Documento'}
+                            </span>
+                            <a href={pdfUrl} target="_blank" rel="noreferrer" style={{ color: 'white', fontSize: '0.75rem', textDecoration: 'none' }}>
+                                Abrir en nueva pestaña ↗
+                            </a>
+                        </div>
+                        <iframe
+                            src={pdfUrl}
+                            title={doc.nombre_archivo}
+                            style={{ width: '100%', height: '500px', border: 'none', display: 'block' }}
+                        />
+                    </div>
+                )}
+
+                {/* Aviso si el documento no tiene un archivo asociado válido */}
+                {pdfAbierto && !puedeMostrarVisor && (
+                    <div style={{ borderTop: '2px solid #0f3b6f', background: '#fff5f5', padding: '12px 16px' }}>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#c53030' }}>
+                            No se encontró un archivo válido para este documento.
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            {/* Modal para reemplazar documento */}
+            {mostrarModal && !bloqueado && (
+                <div className="modal-overlay" onClick={handleCerrarModal}>
+                    <div className="modal-contenido" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Reemplazar documento</h3>
+                            <button className="modal-cerrar" onClick={handleCerrarModal}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <p><strong>Documento actual:</strong> {doc.nombre_archivo}</p>
+                            <div className="campo">
+                                <label>Seleccione el nuevo archivo PDF:</label>
+                                <input type="file" accept=".pdf,application/pdf" onChange={handleSeleccionArchivo} disabled={cargandoDoc} />
+                            </div>
+                            {errorDoc && <div className="error-mensaje">{errorDoc}</div>}
+                            {exitoDoc && <div className="exito-mensaje">{exitoDoc}</div>}
+                        </div>
+                        <div className="modal-footer">
+                            <button onClick={handleCerrarModal} disabled={cargandoDoc}>Cancelar</button>
+                            <button onClick={handleReemplazar} disabled={!archivo || cargandoDoc}>
+                                {cargandoDoc ? 'Reemplazando...' : 'Reemplazar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    )
+}
+
 export default function DetalleExpediente() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -19,9 +247,8 @@ export default function DetalleExpediente() {
     const [audienciaVigente, setAudienciaVigente] = useState(null)
     const [mensajeGlobal, setMensajeGlobal] = useState(null)
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false)
-
-    const [visorAbierto, setVisorAbierto] = useState(false)
-    const [pdfUrl, setPdfUrl] = useState('')
+    const [confirmandoAvance, setConfirmandoAvance] = useState(false)
+    const [errorAudiencias, setErrorAudiencias] = useState(null)
 
     const getPipelineEtapa = () => {
         const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
@@ -41,33 +268,43 @@ export default function DetalleExpediente() {
             setCargando(false)
             return
         }
-        
+
         setCargando(true)
         setError(null)
-        
+        setErrorAudiencias(null)
+
         try {
             const res = await getExpedienteById(id)
             const data = res?.data || res
             const expedienteData = data?.expediente || data
             const documentosData = data?.documentos_ciudadano || data?.documentos || []
-            
+
             setExpediente(expedienteData)
             setDocumentos(documentosData)
-            
+        } catch (error) {
+            // Si falla la carga del expediente, sí mostramos el error a pantalla completa
+            setError(error?.message || 'Error al cargar el expediente')
+            setCargando(false)
+            return
+        }
+
+        // Carga de audiencias en un try/catch independiente: un fallo aquí no debe
+        // ocultar el expediente que ya se cargó correctamente.
+        try {
             const resAudiencias = await getAudiencias(id)
             const audienciasData = resAudiencias?.data || resAudiencias || []
-            const audienciaVigente = audienciasData.find(a => a.es_actual === true)
-            setAudienciaVigente(audienciaVigente)
-            
-        } catch (error) {
-            setError(error.message)
-        } finally {
-            setCargando(false)
+            const audienciaEncontrada = audienciasData.find(a => a.es_actual === true)
+            setAudienciaVigente(audienciaEncontrada || null)
+        } catch (errorAudiencia) {
+            setAudienciaVigente(null)
+            setErrorAudiencias(errorAudiencia?.message || 'No se pudieron cargar las audiencias')
         }
+
+        setCargando(false)
     }
 
-    useEffect(() => { 
-        if (id) cargar() 
+    useEffect(() => {
+        if (id) cargar()
     }, [id, refresh])
 
     const handleVolver = () => {
@@ -79,23 +316,30 @@ export default function DetalleExpediente() {
     }
 
     const handleConfirmarRevisionAceptar = async () => {
+        if (confirmandoAvance) return // evita doble disparo por doble click
+
         setMostrarConfirmacion(false)
+        setConfirmandoAvance(true)
+
         try {
             const data = await cambiarEstadoExpediente(
                 id,
                 'DOCUMENTOS_INTERNOS',
                 'Revision documentaria confirmada'
             )
-            if (data.ok) {
+            if (data?.ok) {
                 setConfirmado(true)
-                setMensajeGlobal({ tipo: 'success', texto: 'Revision documentaria confirmada' })
-                setTimeout(() => window.location.reload(), 1500)
+                setMensajeGlobal({ tipo: 'success', texto: '' })
+                // Se refresca el estado vía React en lugar de recargar toda la página
+                setTimeout(() => setRefresh(prev => !prev), 1500)
             } else {
-                setMensajeGlobal({ tipo: 'error', texto: data.mensaje || 'Error al confirmar' })
+                setMensajeGlobal({ tipo: 'error', texto: data?.mensaje || 'Error al confirmar' })
             }
         } catch (error) {
             console.error('Error:', error)
             setMensajeGlobal({ tipo: 'error', texto: 'Error al confirmar la revision' })
+        } finally {
+            setConfirmandoAvance(false)
         }
     }
 
@@ -106,124 +350,33 @@ export default function DetalleExpediente() {
 
     const calcularDiasRestantes = () => {
         if (!expediente?.fecha_limite_audiencia) return null;
-        
+
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
         const fechaLimite = new Date(expediente.fecha_limite_audiencia);
-        
+
+        // Validación de fecha inválida: evita que un dato corrupto se traduzca
+        // silenciosamente en "0 días restantes"
+        if (Number.isNaN(fechaLimite.getTime())) {
+            return null;
+        }
+
         let contador = 0;
         let fecha = new Date(hoy);
-        
+
         while (fecha <= fechaLimite) {
             if (esDiaHabil(fecha)) {
                 contador++;
             }
             fecha.setDate(fecha.getDate() + 1);
         }
-        
+
         return contador;
     };
 
-    const DocumentoItem = ({ doc, onReemplazado, bloqueado }) => {
-        const [mostrarModal, setMostrarModal] = useState(false)
-        const [archivo, setArchivo] = useState(null)
-        const [cargandoDoc, setCargandoDoc] = useState(false)
-        const [errorDoc, setErrorDoc] = useState('')
-        const [exitoDoc, setExitoDoc] = useState('')
-
-        const handleReemplazar = async () => {
-            if (!archivo) {
-                setErrorDoc('Debe seleccionar un archivo PDF')
-                return
-            }
-            if (archivo.type !== 'application/pdf') {
-                setErrorDoc('Solo se permiten archivos PDF')
-                return
-            }
-
-            setCargandoDoc(true)
-            setErrorDoc('')
-            setExitoDoc('')
-
-            try {
-                await reemplazarDocumentoCiudadano(doc.id, archivo)
-                setExitoDoc('Documento reemplazado correctamente')
-                setTimeout(() => {
-                    setMostrarModal(false)
-                    setArchivo(null)
-                    setExitoDoc('')
-                    onReemplazado()
-                }, 1500)
-            } catch (err) {
-                setErrorDoc(err.message)
-            } finally {
-                setCargandoDoc(false)
-            }
-        }
-
-        const handleVerPdf = () => {
-            const url = getPdfUrl(doc.ruta_archivo)
-            if (url !== '#') {
-                setPdfUrl(url)
-                setVisorAbierto(true)
-            } else {
-                alert('No se puede abrir el PDF')
-            }
-        }
-
-        return (
-            <>
-                <div className="documento-item">
-                    <div className="documento-info">
-                        <div className="documento-icono">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <div className="documento-nombre">{doc.tipo_documento || 'Documento'}</div>
-                            <div className="documento-archivo">{doc.nombre_archivo}</div>
-                            <div className="documento-fecha">
-                                Subido: {doc.subido_en ? new Date(doc.subido_en).toLocaleDateString('es-PE') : '—'}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="documento-acciones">
-                        <button className="btn-ver" onClick={handleVerPdf}>
-                            Ver PDF
-                        </button>
-                        
-                    </div>
-                </div>
-
-                {mostrarModal && !bloqueado && (
-                    <div className="modal-overlay" onClick={() => !cargandoDoc && setMostrarModal(false)}>
-                        <div className="modal-contenido" onClick={e => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>Reemplazar documento</h3>
-                                <button className="modal-cerrar" onClick={() => !cargandoDoc && setMostrarModal(false)}>×</button>
-                            </div>
-                            <div className="modal-body">
-                                <p><strong>Documento actual:</strong> {doc.nombre_archivo}</p>
-                                <div className="campo">
-                                    <label>Seleccione el nuevo archivo PDF:</label>
-                                    <input type="file" accept=".pdf" onChange={(e) => setArchivo(e.target.files[0])} />
-                                </div>
-                                {errorDoc && <div className="error-mensaje">{errorDoc}</div>}
-                                {exitoDoc && <div className="exito-mensaje">{exitoDoc}</div>}
-                            </div>
-                            <div className="modal-footer">
-                                <button onClick={() => setMostrarModal(false)}>Cancelar</button>
-                                <button onClick={handleReemplazar} disabled={!archivo}>{cargandoDoc ? 'Reemplazando...' : 'Reemplazar'}</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </>
-        )
-    }
-
+    // ============================================================
+    // RENDER PRINCIPAL
+    // ============================================================
     if (cargando) {
         return (
             <>
@@ -277,7 +430,15 @@ export default function DetalleExpediente() {
 
     const formatFecha = (fecha) => {
         if (!fecha) return '—'
-        return fecha.split('T')[0].split('-').reverse().join('/')
+
+        const partes = fecha.split('T')[0].split('-')
+        // Validación de formato: se espera exactamente YYYY-MM-DD (3 partes numéricas)
+        const formatoValido = partes.length === 3 && partes.every(p => /^\d+$/.test(p))
+        if (!formatoValido) {
+            return '—'
+        }
+
+        return partes.reverse().join('/')
     }
 
     return (
@@ -290,6 +451,11 @@ export default function DetalleExpediente() {
                             {mensajeGlobal.texto}
                         </div>
                     )}
+                    {errorAudiencias && (
+                        <div className="mensaje error" style={{ marginBottom: 16 }}>
+                            {errorAudiencias}
+                        </div>
+                    )}
                     <button className="btn-volver" onClick={handleVolver}>← Volver</button>
                     <h1>Expediente {numeroMesaPartes || '—'}</h1>
                     <span className={`estado-badge estado-${(estadoActual || 'ACTIVO').toLowerCase()}`}>
@@ -299,7 +465,7 @@ export default function DetalleExpediente() {
 
                 <div className="detalle-grid">
                     <div className="detalle-izquierda">
-                        <PlazoAlerta 
+                        <PlazoAlerta
                             expediente={expediente}
                             audienciaActual={audienciaVigente}
                         />
@@ -405,11 +571,11 @@ export default function DetalleExpediente() {
                             ) : (
                                 <div className="documentos-lista">
                                     {documentos.map((doc, idx) => (
-                                        <DocumentoItem 
-                                            key={doc.id || idx} 
-                                            doc={doc} 
-                                            onReemplazado={() => setRefresh(prev => !prev)} 
-                                            bloqueado={confirmado || etapaActual !== 'EVALUACION'} 
+                                        <DocumentoItem
+                                            key={doc.id || idx}
+                                            doc={doc}
+                                            onReemplazado={() => setRefresh(prev => !prev)}
+                                            bloqueado={confirmado || etapaActual !== 'EVALUACION'}
                                         />
                                     ))}
                                 </div>
@@ -418,8 +584,12 @@ export default function DetalleExpediente() {
 
                         {!confirmado && etapaActual === 'EVALUACION' && (
                             <div className="seccion acciones">
-                                <button className="btn-continuar" onClick={handleConfirmarRevision}>
-                                    Continuar
+                                <button
+                                    className="btn-continuar"
+                                    onClick={handleConfirmarRevision}
+                                    disabled={confirmandoAvance}
+                                >
+                                    {confirmandoAvance ? 'Procesando...' : 'Continuar'}
                                 </button>
                             </div>
                         )}
@@ -428,7 +598,6 @@ export default function DetalleExpediente() {
                     <div className="detalle-derecha">
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
                         <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />
-
                     </div>
                 </div>
 
@@ -444,29 +613,10 @@ export default function DetalleExpediente() {
                                 <p>¿Está seguro de que quiere avanzar?</p>
                             </div>
                             <div className="modal-footer">
-                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)}>Cancelar</button>
-                                <button className="btn-confirmar" onClick={handleConfirmarRevisionAceptar}>Confirmar</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {visorAbierto && (
-                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
-                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>Visualizador de PDF</h3>
-                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
-                            </div>
-                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
-                                <iframe
-                                    src={pdfUrl}
-                                    title="Visor PDF"
-                                    style={{ width: '100%', height: '100%', border: 'none' }}
-                                />
-                            </div>
-                            <div className="modal-footer">
-                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
+                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)} disabled={confirmandoAvance}>Cancelar</button>
+                                <button className="btn-confirmar" onClick={handleConfirmarRevisionAceptar} disabled={confirmandoAvance}>
+                                    {confirmandoAvance ? 'Confirmando...' : 'Confirmar'}
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -41,8 +41,20 @@ export default function RegistrarAudiencia() {
         acta3: null
     })
 
-    const [visorAbierto, setVisorAbierto] = useState(false)
-    const [pdfUrl, setPdfUrl] = useState('')
+    // --- Estado para controlar acordeones de cada acta ---
+    const [visorAcordeon, setVisorAcordeon] = useState({
+        acta1: false,
+        acta2: false,
+        acta3: false
+    })
+
+    // --- Función para alternar acordeón de una acta ---
+    const toggleAcordeon = (actaKey) => {
+        setVisorAcordeon(prev => ({
+            ...prev,
+            [actaKey]: !prev[actaKey]
+        }))
+    }
 
     const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
 
@@ -195,16 +207,6 @@ export default function RegistrarAudiencia() {
         }
         setArchivos(prev => ({ ...prev, [tipo]: file }))
         setMensaje(null)
-    }
-
-    const verPdfEnModal = (ruta) => {
-        const url = getPdfUrl(ruta)
-        if (url !== '#') {
-            setPdfUrl(url)
-            setVisorAbierto(true)
-        } else {
-            alert('No se puede abrir el PDF')
-        }
     }
 
     const ejecutarRegistro = async () => {
@@ -554,35 +556,129 @@ export default function RegistrarAudiencia() {
                         {resultado === 'RATIFICACION' && (
                             <div className="seccion">
                                 <h2>ACTAS DE AUDIENCIA</h2>
-                                <div className="actas-upload">
-                                    {['acta1', 'acta2', 'acta3'].map((acta, idx) => {
-                                        const actaData = actasSubidas[acta]
-                                        const num = idx + 1
-                                        return (
-                                            <div key={acta} className="acta-item">
-                                                <label>Acta {num}:</label>
-                                                {actaData ? (
-                                                    <div className="acta-existente">
-                                                        <span className="archivo-ok"> {actaData.nombre_archivo || `Acta ${num}`}</span>
-                                                        <button className="btn-ver-acta" onClick={() => verPdfEnModal(actaData.ruta_archivo)}>Ver PDF</button>
+                                {['acta1', 'acta2', 'acta3'].map((acta, idx) => {
+                                    const actaData = actasSubidas[acta]
+                                    const num = idx + 1
+                                    const actaKey = acta
+                                    const estaAbierto = visorAcordeon[actaKey]
+
+                                    return (
+                                        <div key={acta} style={{ marginBottom: '16px' }}>
+                                            {actaData ? (
+                                                // ===== ACTA YA SUBIDA (con acordeón) =====
+                                                <div style={{
+                                                    border: '1.5px solid #9ae6b4',
+                                                    borderRadius: '10px',
+                                                    overflow: 'hidden',
+                                                }}>
+                                                    {/* Cabecera */}
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '12px',
+                                                        padding: '12px 16px',
+                                                        background: '#f0fff4',
+                                                    }}>
+                                                        <button
+                                                            onClick={() => toggleAcordeon(actaKey)}
+                                                            style={{
+                                                                background: '#0f3b6f',
+                                                                border: 'none',
+                                                                borderRadius: '6px',
+                                                                width: '30px',
+                                                                height: '30px',
+                                                                color: 'white',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 'bold',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                transform: estaAbierto ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                                transition: 'transform 0.2s',
+                                                            }}
+                                                        >
+                                                            ▶
+                                                        </button>
+                                                        <div style={{ flex: 1 }}>
+                                                            <p style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#0f3b6f', margin: 0 }}>
+                                                                Acta {num}
+                                                            </p>
+                                                            <p style={{ fontSize: '0.73rem', color: '#4a5568', margin: '2px 0 0' }}>
+                                                                {actaData.nombre_archivo || `Acta ${num}`}
+                                                                {actaData.subido_en && ` - Fecha: ${new Date(actaData.subido_en).toLocaleDateString('es-PE')}`}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <span style={{
+                                                                padding: '4px 12px',
+                                                                borderRadius: '20px',
+                                                                fontSize: '0.78rem',
+                                                                fontWeight: 700,
+                                                                background: '#f0fff4',
+                                                                color: '#276749',
+                                                                border: '1px solid #9ae6b4'
+                                                            }}>
+                                                                Subido
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                ) : (
-                                                    <div className="acta-upload">
+
+                                                    {/* Visor inline (acordeón) */}
+                                                    {estaAbierto && (
+                                                        <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
+                                                            <div style={{
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                alignItems: 'center',
+                                                                padding: '8px 16px',
+                                                                background: '#0f3b6f',
+                                                            }}>
+                                                                <span style={{ color: '#c7a03a', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                                    Acta {num}
+                                                                </span>
+                                                                <a
+                                                                    href={getPdfUrl(actaData.ruta_archivo)}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    style={{ color: 'white', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                                >
+                                                                    Abrir en nueva pestaña ↗
+                                                                </a>
+                                                            </div>
+                                                            <iframe
+                                                                src={getPdfUrl(actaData.ruta_archivo)}
+                                                                title={`Acta ${num}`}
+                                                                style={{ width: '100%', height: '500px', border: 'none', display: 'block' }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                // ===== ACTA NO SUBIDA =====
+                                                <div style={{
+                                                    border: '1.5px solid #e2e8f0',
+                                                    borderRadius: '10px',
+                                                    padding: '12px 16px',
+                                                    background: '#f7fafc',
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <label style={{ fontWeight: 'bold', minWidth: '80px' }}>Acta {num}:</label>
                                                         {!yaFueRegistrada ? (
                                                             <>
                                                                 <input type="file" accept=".pdf" onChange={(e) => handleArchivoChange(acta, e.target.files[0])} />
-                                                                {archivos[acta] && <span className="archivo-ok"> {archivos[acta].name}</span>}
+                                                                {archivos[acta] && <span className="archivo-ok">  {archivos[acta].name}</span>}
                                                                 {!archivos[acta] && <span className="archivo-pendiente">Seleccione un archivo PDF</span>}
                                                             </>
                                                         ) : (
                                                             <span className="archivo-pendiente">No se encontró acta</span>
                                                         )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
-                                </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
                             </div>
                         )}
 
@@ -673,26 +769,6 @@ export default function RegistrarAudiencia() {
                     </div>
                 )}
 
-                {visorAbierto && (
-                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
-                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>Visualizador de PDF</h3>
-                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
-                            </div>
-                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
-                                <iframe
-                                    src={pdfUrl}
-                                    title="Visor PDF"
-                                    style={{ width: '100%', height: '100%', border: 'none' }}
-                                />
-                            </div>
-                            <div className="modal-footer">
-                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </main>
         </>
     )

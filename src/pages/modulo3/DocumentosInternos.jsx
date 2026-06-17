@@ -6,6 +6,16 @@ import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getExpedienteById, getDocumentosInternos, subirDocumentoInterno, getAudiencias, getPdfUrl, cambiarEstadoExpediente } from '../../services/ProcedimientoService'
 
+// Tamaño máximo permitido para el PDF (10 MB). Ajustar si el backend define otro límite.
+const TAMANIO_MAXIMO_PDF = 10 * 1024 * 1024
+
+const esArchivoPdfValido = (archivo) => {
+    if (!archivo) return false
+    const esPdfPorTipo = archivo.type === 'application/pdf'
+    const esPdfPorExtension = (archivo.name || '').toLowerCase().endsWith('.pdf')
+    return esPdfPorTipo || esPdfPorExtension
+}
+
 export default function DocumentosInternos() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -18,26 +28,26 @@ export default function DocumentosInternos() {
     const [mensaje, setMensaje] = useState(null)
     const [mensajeGlobal, setMensajeGlobal] = useState(null)
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false)
+    const [confirmandoAvance, setConfirmandoAvance] = useState(false)
+    const [errorSecundario, setErrorSecundario] = useState(null)
     const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
-
     const [modalAbierto, setModalAbierto] = useState(false)
     const [tipoDocumento, setTipoDocumento] = useState('')
     const [numeroDocumento, setNumeroDocumento] = useState('')
     const [fechaElaboracion, setFechaElaboracion] = useState('')
     const [archivo, setArchivo] = useState(null)
-
     const [modalReemplazoAbierto, setModalReemplazoAbierto] = useState(false)
     const [tipoDocumentoReemplazo, setTipoDocumentoReemplazo] = useState('')
     const [motivoReemplazo, setMotivoReemplazo] = useState('')
     const [archivoReemplazo, setArchivoReemplazo] = useState(null)
     const [enviandoReemplazo, setEnviandoReemplazo] = useState(false)
     const [mensajeReemplazo, setMensajeReemplazo] = useState(null)
-
-    const [visorAbierto, setVisorAbierto] = useState(false)
-    const [pdfUrl, setPdfUrl] = useState('')
-
+    // --- Control de acordeón por tipo de documento ---
+    const [pdfAbierto, setPdfAbierto] = useState({
+        INFORME_LEGAL: false,
+        RESOLUCION_ADMISIBLE: false
+    })
     const esSoloLectura = expediente?.estado === 'CANCELADO' || expediente?.estado === 'ARCHIVADO'
-
     const getPipelineEtapa = () => {
         switch(etapaActual) {
             case 'EVALUACION': return 'revision'
@@ -48,43 +58,63 @@ export default function DocumentosInternos() {
             default: return 'revision'
         }
     }
-
     const formatFecha = (fecha) => {
         if (!fecha) return '—';
-        return fecha.split('T')[0].split('-').reverse().join('/');
+        const partes = fecha.split('T')[0].split('-')
+        // Validación de formato: se espera exactamente YYYY-MM-DD (3 partes numéricas)
+        const formatoValido = partes.length === 3 && partes.every(p => /^\d+$/.test(p))
+        if (!formatoValido) return '—'
+        return partes.reverse().join('/');
     }
-
     const cargar = async () => {
         if (!id) return
         setCargando(true)
+        setError(null)
+        setErrorSecundario(null)
         try {
             const resExp = await getExpedienteById(id)
             const data = resExp?.data || resExp
             const expedienteData = data?.expediente || data
             setExpediente(expedienteData)
+        } catch (err) {
+            // Si falla la carga del expediente principal, sí bloqueamos toda la pantalla
+            console.error('Error:', err)
+            setError(err?.message || 'Error al cargar el expediente')
+            setCargando(false)
+            return
+        }
 
+        // Documentos internos y audiencias se cargan en un bloque separado: si alguno
+        // falla, no debe ocultar los datos del expediente que ya cargaron correctamente.
+        try {
             const resDocs = await getDocumentosInternos(id)
             const docsData = resDocs?.data || resDocs || []
             setDocumentosInternos(docsData)
+        } catch (err) {
+            console.error('Error:', err)
+            setDocumentosInternos([])
+            setErrorSecundario('No se pudieron cargar los documentos internos')
+        }
 
+        try {
             const resAudiencias = await getAudiencias(id)
             const audienciasData = resAudiencias?.data || resAudiencias || []
             const audienciaVigente = audienciasData.find(a => a.es_actual === true)
             setAudienciaVigente(audienciaVigente)
-
         } catch (err) {
             console.error('Error:', err)
-            setError(err.message)
-        } finally {
-            setCargando(false)
+            setAudienciaVigente(null)
+            setErrorSecundario(prev => prev || 'No se pudieron cargar las audiencias')
         }
-    }
 
+        setCargando(false)
+    }
     useEffect(() => {
         cargar()
     }, [id])
-
     const handleSubirDocumento = async () => {
+        if (subiendo) return // evita doble disparo por doble click
+
         if (!tipoDocumento) {
             setMensaje({ tipo: 'error', texto: 'Tipo de documento no especificado' })
             return
@@ -97,14 +127,16 @@ export default function DocumentosInternos() {
             setMensaje({ tipo: 'error', texto: 'Debe ingresar la fecha de elaboración' })
             return
         }
-        if (archivo.type !== 'application/pdf') {
+        if (!esArchivoPdfValido(archivo)) {
             setMensaje({ tipo: 'error', texto: 'Solo se permiten archivos PDF' })
             return
         }
-
+        if (archivo.size > TAMANIO_MAXIMO_PDF) {
+            setMensaje({ tipo: 'error', texto: `El archivo supera el tamaño máximo permitido (${TAMANIO_MAXIMO_PDF / (1024 * 1024)} MB)` })
+            return
+        }
         setSubiendo(true)
         setMensaje(null)
-
         try {
             await subirDocumentoInterno(id, tipoDocumento, numeroDocumento || '', fechaElaboracion, archivo)
             setMensaje({ tipo: 'success', texto: 'Documento subido correctamente' })
@@ -118,25 +150,32 @@ export default function DocumentosInternos() {
             }, 1500)
         } catch (err) {
             console.error('Error:', err)
-            setMensaje({ tipo: 'error', texto: err.message })
+            setMensaje({ tipo: 'error', texto: err?.message || 'Error al subir el documento' })
         } finally {
             setSubiendo(false)
         }
     }
-
     const handleReemplazarDocumento = async () => {
+        if (enviandoReemplazo) return // evita doble disparo por doble click
+
         if (!archivoReemplazo) {
             setMensajeReemplazo({ tipo: 'error', texto: 'Debe seleccionar un archivo PDF' })
+            return
+        }
+        if (!esArchivoPdfValido(archivoReemplazo)) {
+            setMensajeReemplazo({ tipo: 'error', texto: 'Solo se permiten archivos PDF' })
+            return
+        }
+        if (archivoReemplazo.size > TAMANIO_MAXIMO_PDF) {
+            setMensajeReemplazo({ tipo: 'error', texto: `El archivo supera el tamaño máximo permitido (${TAMANIO_MAXIMO_PDF / (1024 * 1024)} MB)` })
             return
         }
         if (!motivoReemplazo.trim()) {
             setMensajeReemplazo({ tipo: 'error', texto: 'Debe ingresar el motivo del reemplazo' })
             return
         }
-
         setEnviandoReemplazo(true)
         setMensajeReemplazo(null)
-
         try {
             await subirDocumentoInterno(id, tipoDocumentoReemplazo, null, new Date().toISOString().split('T')[0], archivoReemplazo, motivoReemplazo)
             setMensajeReemplazo({ tipo: 'success', texto: 'Documento reemplazado correctamente' })
@@ -149,18 +188,20 @@ export default function DocumentosInternos() {
             }, 1500)
         } catch (err) {
             console.error('Error:', err)
-            setMensajeReemplazo({ tipo: 'error', texto: err.message })
+            setMensajeReemplazo({ tipo: 'error', texto: err?.message || 'Error al reemplazar el documento' })
         } finally {
             setEnviandoReemplazo(false)
         }
     }
-
     const abrirModal = (tipo) => {
         if (esSoloLectura) return
+        setMensaje(null)
+        setArchivo(null)
+        setNumeroDocumento('')
+        setFechaElaboracion('')
         setTipoDocumento(tipo)
         setModalAbierto(true)
     }
-
     const abrirModalReemplazo = (tipo) => {
         if (esSoloLectura) return
         setTipoDocumentoReemplazo(tipo)
@@ -169,34 +210,30 @@ export default function DocumentosInternos() {
         setMensajeReemplazo(null)
         setModalReemplazoAbierto(true)
     }
-
     const getDocumentoEstado = (tipo) => {
         const encontrado = documentosInternos.find(doc => doc.tipo_documento === tipo)
         if (encontrado) {
-            return { 
-                estado: 'subido', 
-                fecha: new Date(encontrado.subido_en).toLocaleDateString('es-PE'),
+            const fechaSubida = encontrado.subido_en ? new Date(encontrado.subido_en) : null
+            const fechaValida = fechaSubida && !Number.isNaN(fechaSubida.getTime())
+            return {
+                estado: 'subido',
+                fecha: fechaValida ? fechaSubida.toLocaleDateString('es-PE') : '—',
                 nombre: encontrado.numero_documento || '—',
-                archivo: encontrado.ruta_archivo
+                archivo: encontrado.ruta_archivo || null
             }
         }
         return { estado: 'pendiente', fecha: null, nombre: null, archivo: null }
     }
-
-    const verPdf = (ruta) => {
-        const url = getPdfUrl(ruta)
-        if (url !== '#') {
-            setPdfUrl(url)
-            setVisorAbierto(true)
-        } else {
-            alert('No se puede abrir el PDF')
-        }
+    // --- Función para alternar el acordeón ---
+    const togglePdf = (tipo) => {
+        setPdfAbierto(prev => ({
+            ...prev,
+            [tipo]: !prev[tipo]
+        }))
     }
-
     const handleVolver = () => {
         navigate(`/modulo3/detalle/${id}`)
     }
-
     const handleContinuar = () => {
         if (esSoloLectura) return
         if (informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido') {
@@ -205,23 +242,27 @@ export default function DocumentosInternos() {
         }
         setMostrarConfirmacion(true)
     }
-
     const handleContinuarAceptar = async () => {
+        if (confirmandoAvance) return // evita doble disparo por doble click
+
         setMostrarConfirmacion(false)
+        setConfirmandoAvance(true)
         try {
             const data = await cambiarEstadoExpediente(id, 'AUDIENCIA', 'Documentos internos completados')
-            if (data.ok) {
+            if (data?.ok) {
                 setMensajeGlobal({ tipo: 'success', texto: 'Etapa cambiada a AUDIENCIA' })
-                setTimeout(() => window.location.reload(), 1500)
+                // Se refresca el estado vía React en lugar de recargar toda la página
+                setTimeout(() => cargar(), 1500)
             } else {
-                setMensajeGlobal({ tipo: 'error', texto: data.mensaje || 'Error al avanzar' })
+                setMensajeGlobal({ tipo: 'error', texto: data?.mensaje || 'Error al avanzar' })
             }
         } catch (error) {
             console.error('Error:', error)
             setMensajeGlobal({ tipo: 'error', texto: 'Error al avanzar la etapa' })
+        } finally {
+            setConfirmandoAvance(false)
         }
     }
-
     if (cargando) {
         return (
             <>
@@ -236,7 +277,6 @@ export default function DocumentosInternos() {
             </>
         )
     }
-
     if (error) {
         return (
             <>
@@ -251,16 +291,17 @@ export default function DocumentosInternos() {
             </>
         )
     }
-
     const informeLegal = getDocumentoEstado('INFORME_LEGAL')
     const resolucionAdmision = getDocumentoEstado('RESOLUCION_ADMISIBLE')
-
     const disabledButtonStyle = {
         cursor: 'not-allowed',
         opacity: 0.6,
         pointerEvents: 'auto'
     }
-
+    const urlInformeLegal = informeLegal.archivo ? getPdfUrl(informeLegal.archivo) : null
+    const puedeVerInformeLegal = Boolean(urlInformeLegal) && urlInformeLegal !== '#'
+    const urlResolucionAdmision = resolucionAdmision.archivo ? getPdfUrl(resolucionAdmision.archivo) : null
+    const puedeVerResolucionAdmision = Boolean(urlResolucionAdmision) && urlResolucionAdmision !== '#'
     return (
         <>
             <Sidebar />
@@ -270,13 +311,16 @@ export default function DocumentosInternos() {
                     <button className="btn-volver" onClick={handleVolver}>← Volver</button>
                     <h1>Documentos Internos</h1>
                 </div>
-
                 {mensajeGlobal && (
                     <div className={`mensaje ${mensajeGlobal.tipo}`} style={{ marginBottom: 16 }}>
                         {mensajeGlobal.texto}
                     </div>
                 )}
-
+                {errorSecundario && (
+                    <div className="mensaje error" style={{ marginBottom: 16 }}>
+                        {errorSecundario}
+                    </div>
+                )}
                 <div style={{ display: 'flex', gap: '24px' }}>
                     <div style={{ flex: 2 }}>
                         <PlazoAlerta 
@@ -295,7 +339,6 @@ export default function DocumentosInternos() {
                                     <div><label>Fecha de pago</label><p>{expediente?.fecha_pago ? formatFecha(expediente.fecha_pago) : '—'}</p></div>
                                 </div>
                             </div>
-
                             <div className="subseccion">
                                 <h3>Solicitante</h3>
                                 <div className="datos-grid">
@@ -306,7 +349,6 @@ export default function DocumentosInternos() {
                                     <div><label>Direccion</label><p>{expediente?.Solicitante_Direccion || '—'}</p></div>
                                 </div>
                             </div>
-
                             <div className="subseccion">
                                 <h3>Demandado</h3>
                                 <div className="datos-grid">
@@ -318,10 +360,10 @@ export default function DocumentosInternos() {
                                 </div>
                             </div>
                         </div>
-
                         <div className="seccion documentos-subida">
                             <h2>Documentos requeridos</h2>
                             <div className="documentos-lista">
+                                {/* ===== INFORME LEGAL ===== */}
                                 <div className="documento-item">
                                     <div className="documento-info">
                                         <div className="documento-icono"></div>
@@ -340,7 +382,29 @@ export default function DocumentosInternos() {
                                     <div className="documento-acciones">
                                         {informeLegal.estado === 'subido' ? (
                                             <>
-                                                <button className="btn-ver" onClick={() => verPdf(informeLegal.archivo)}>Ver PDF</button>
+                                                {/* ===== BOTÓN ▶ CON ESTILO MEJORADO ===== */}
+                                                <button 
+                                                    className="btn-ver" 
+                                                    onClick={() => togglePdf('INFORME_LEGAL')}
+                                                    style={{
+                                                        background: '#0f3b6f',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        width: '30px',
+                                                        height: '30px',
+                                                        color: 'white',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: 'bold',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        transform: pdfAbierto.INFORME_LEGAL ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                        transition: 'transform 0.2s'
+                                                    }}
+                                                >
+                                                    ▶
+                                                </button>
                                                 <button 
                                                     className="btn-reemplazar" 
                                                     onClick={() => abrirModalReemplazo('INFORME_LEGAL')}
@@ -362,7 +426,61 @@ export default function DocumentosInternos() {
                                         )}
                                     </div>
                                 </div>
-
+                                {/* ===== ACORDEÓN INFORME LEGAL (diseño mejorado) ===== */}
+                                {informeLegal.estado === 'subido' && pdfAbierto.INFORME_LEGAL && (
+                                    puedeVerInformeLegal ? (
+                                        <div style={{
+                                            marginTop: '8px',
+                                            marginBottom: '12px',
+                                            border: '1.5px solid #9ae6b4',
+                                            borderRadius: '10px',
+                                            overflow: 'hidden',
+                                        }}>
+                                            {/* Cabecera del visor */}
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '8px 16px',
+                                                background: '#0f3b6f',
+                                            }}>
+                                                <span style={{ color: '#c7a03a', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                    INFORME LEGAL
+                                                </span>
+                                                <a
+                                                    href={urlInformeLegal}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{ color: 'white', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                >
+                                                    Abrir en nueva pestaña ↗
+                                                </a>
+                                            </div>
+                                            {/* Contenedor con fondo oscuro (igual que en DetalleExpediente) */}
+                                            <div style={{ background: '#1a1a2e' }}>
+                                                <iframe
+                                                    src={urlInformeLegal}
+                                                    title="Informe Legal"
+                                                    style={{ width: '100%', height: '500px', border: 'none', display: 'block' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            marginTop: '8px',
+                                            marginBottom: '12px',
+                                            border: '1.5px solid #feb2b2',
+                                            borderRadius: '10px',
+                                            background: '#fff5f5',
+                                            padding: '12px 16px',
+                                        }}>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#c53030' }}>
+                                                No se encontró un archivo válido para este documento.
+                                            </p>
+                                        </div>
+                                    )
+                                )}
+                                {/* ===== RESOLUCION DE ADMISION ===== */}
                                 <div className="documento-item">
                                     <div className="documento-info">
                                         <div className="documento-icono"></div>
@@ -381,7 +499,29 @@ export default function DocumentosInternos() {
                                     <div className="documento-acciones">
                                         {resolucionAdmision.estado === 'subido' ? (
                                             <>
-                                                <button className="btn-ver" onClick={() => verPdf(resolucionAdmision.archivo)}>Ver PDF</button>
+                                                {/* ===== BOTÓN ▶ CON ESTILO MEJORADO ===== */}
+                                                <button 
+                                                    className="btn-ver" 
+                                                    onClick={() => togglePdf('RESOLUCION_ADMISIBLE')}
+                                                    style={{
+                                                        background: '#0f3b6f',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        width: '30px',
+                                                        height: '30px',
+                                                        color: 'white',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: 'bold',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        transform: pdfAbierto.RESOLUCION_ADMISIBLE ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                        transition: 'transform 0.2s'
+                                                    }}
+                                                >
+                                                    ▶
+                                                </button>
                                                 <button 
                                                     className="btn-reemplazar" 
                                                     onClick={() => abrirModalReemplazo('RESOLUCION_ADMISIBLE')}
@@ -403,32 +543,84 @@ export default function DocumentosInternos() {
                                         )}
                                     </div>
                                 </div>
+                                {/* ===== ACORDEÓN RESOLUCION ADMISION (diseño mejorado) ===== */}
+                                {resolucionAdmision.estado === 'subido' && pdfAbierto.RESOLUCION_ADMISIBLE && (
+                                    puedeVerResolucionAdmision ? (
+                                        <div style={{
+                                            marginTop: '8px',
+                                            marginBottom: '12px',
+                                            border: '1.5px solid #9ae6b4',
+                                            borderRadius: '10px',
+                                            overflow: 'hidden',
+                                        }}>
+                                            {/* Cabecera del visor */}
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '8px 16px',
+                                                background: '#0f3b6f',
+                                            }}>
+                                                <span style={{ color: '#c7a03a', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                    RESOLUCIÓN DE ADMISIÓN
+                                                </span>
+                                                <a
+                                                    href={urlResolucionAdmision}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{ color: 'white', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                >
+                                                    Abrir en nueva pestaña ↗
+                                                </a>
+                                            </div>
+                                            {/* Contenedor con fondo oscuro */}
+                                            <div style={{ background: '#1a1a2e' }}>
+                                                <iframe
+                                                    src={urlResolucionAdmision}
+                                                    title="Resolucion de Admision"
+                                                    style={{ width: '100%', height: '500px', border: 'none', display: 'block' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            marginTop: '8px',
+                                            marginBottom: '12px',
+                                            border: '1.5px solid #feb2b2',
+                                            borderRadius: '10px',
+                                            background: '#fff5f5',
+                                            padding: '12px 16px',
+                                        }}>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#c53030' }}>
+                                                No se encontró un archivo válido para este documento.
+                                            </p>
+                                        </div>
+                                    )
+                                )}
                             </div>
                         </div>
-
                         {(etapaActual === 'DOCUMENTOS_INTERNOS' || etapaActual === 'EVALUACION') && (
                             <div className="seccion acciones">
                                 <button 
                                     className="btn-continuar"
                                     onClick={handleContinuar}
-                                    disabled={esSoloLectura || informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido'}
+                                    disabled={esSoloLectura || informeLegal.estado !== 'subido' || resolucionAdmision.estado !== 'subido' || confirmandoAvance}
                                     style={esSoloLectura ? disabledButtonStyle : {}}
                                 >
-                                    Continuar a Programar Audiencia
+                                    {confirmandoAvance ? 'Procesando...' : 'Continuar a Programar Audiencia'}
                                 </button>
                             </div>
                         )}
                     </div>
-
                     <div style={{ flex: 1 }}>
                         <BotonesNavegacion 
                             expedienteId={id} 
                             etapaActual={etapaActual} 
                             documentosInternosCompletados={informeLegal.estado === 'subido' && resolucionAdmision.estado === 'subido'}
                         />
-                    <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />                    </div>
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />
+                    </div>
                 </div>
-
                 {modalAbierto && (
                     <div className="modal-overlay" onClick={() => !subiendo && setModalAbierto(false)}>
                         <div className="modal-contenido" onClick={e => e.stopPropagation()}>
@@ -447,7 +639,7 @@ export default function DocumentosInternos() {
                                 </div>
                                 <div className="campo">
                                     <label>Archivo PDF *</label>
-                                    <input type="file" accept=".pdf" onChange={(e) => setArchivo(e.target.files[0])} disabled={subiendo} />
+                                    <input type="file" accept=".pdf,application/pdf" onChange={(e) => setArchivo(e.target.files[0])} disabled={subiendo} />
                                 </div>
                                 {mensaje && <div className={`mensaje ${mensaje.tipo}`}>{mensaje.texto}</div>}
                             </div>
@@ -460,7 +652,6 @@ export default function DocumentosInternos() {
                         </div>
                     </div>
                 )}
-
                 {modalReemplazoAbierto && (
                     <div className="modal-overlay" onClick={() => !enviandoReemplazo && setModalReemplazoAbierto(false)}>
                         <div className="modal-contenido" onClick={e => e.stopPropagation()}>
@@ -475,7 +666,7 @@ export default function DocumentosInternos() {
                                 </div>
                                 <div className="campo">
                                     <label>Nuevo archivo PDF <span className="required">*</span></label>
-                                    <input type="file" accept=".pdf" onChange={(e) => setArchivoReemplazo(e.target.files[0])} disabled={enviandoReemplazo} />
+                                    <input type="file" accept=".pdf,application/pdf" onChange={(e) => setArchivoReemplazo(e.target.files[0])} disabled={enviandoReemplazo} />
                                     {archivoReemplazo && <span className="archivo-ok">✅ {archivoReemplazo.name}</span>}
                                 </div>
                                 {mensajeReemplazo && <div className={`mensaje ${mensajeReemplazo.tipo}`}>{mensajeReemplazo.texto}</div>}
@@ -489,7 +680,6 @@ export default function DocumentosInternos() {
                         </div>
                     </div>
                 )}
-
                 {mostrarConfirmacion && (
                     <div className="modal-overlay" onClick={() => setMostrarConfirmacion(false)}>
                         <div className="modal-contenido" onClick={e => e.stopPropagation()}>
@@ -502,34 +692,14 @@ export default function DocumentosInternos() {
                                 <p>¿Está seguro de que ambos documentos están correctamente subidos?</p>
                             </div>
                             <div className="modal-footer">
-                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)}>Cancelar</button>
-                                <button className="btn-confirmar" onClick={handleContinuarAceptar}>Confirmar</button>
+                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacion(false)} disabled={confirmandoAvance}>Cancelar</button>
+                                <button className="btn-confirmar" onClick={handleContinuarAceptar} disabled={confirmandoAvance}>
+                                    {confirmandoAvance ? 'Confirmando...' : 'Confirmar'}
+                                </button>
                             </div>
                         </div>
                     </div>
                 )}
-
-                {visorAbierto && (
-                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
-                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>Visualizador de PDF</h3>
-                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
-                            </div>
-                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
-                                <iframe
-                                    src={pdfUrl}
-                                    title="Visor PDF"
-                                    style={{ width: '100%', height: '100%', border: 'none' }}
-                                />
-                            </div>
-                            <div className="modal-footer">
-                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
             </main>
         </>
     )

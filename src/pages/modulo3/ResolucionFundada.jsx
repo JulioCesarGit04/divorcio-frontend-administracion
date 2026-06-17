@@ -35,13 +35,16 @@ export default function ResolucionFundada() {
     const [mensajeReemplazo, setMensajeReemplazo] = useState(null)
 
     const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false)
-
     const [modalCancelacionAbierto, setModalCancelacionAbierto] = useState(false)
     const [motivoCancelacion, setMotivoCancelacion] = useState('')
     const [enviandoCancelacion, setEnviandoCancelacion] = useState(false)
 
-    const [visorAbierto, setVisorAbierto] = useState(false)
-    const [pdfUrl, setPdfUrl] = useState('')
+    // --- Nuevo estado para controlar el acordeón del visor ---
+    const [acordeonAbierto, setAcordeonAbierto] = useState(false)
+
+    const toggleAcordeon = () => {
+        setAcordeonAbierto(!acordeonAbierto)
+    }
 
     const etapaActual = expediente?.etapa
     const estaCancelado = expediente?.estado === 'CANCELADO'
@@ -250,15 +253,7 @@ export default function ResolucionFundada() {
         }
     }
 
-    const verPdfEnModal = (ruta) => {
-        const url = getPdfUrl(ruta)
-        if (url !== '#') {
-            setPdfUrl(url)
-            setVisorAbierto(true)
-        } else {
-            alert('No se puede abrir el PDF')
-        }
-    }
+    // Ya no necesitamos verPdfEnModal ni los estados de visor
 
     if (cargando) return (
         <>
@@ -426,39 +421,115 @@ export default function ResolucionFundada() {
                             <h2>Resolución Fundada</h2>
 
                             {yaTieneResolucion && (
-                                <div className="documento-item" style={{ marginBottom: 20 }}>
-                                    <div className="documento-info">
-                                        <div className="documento-icono">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                                <polyline points="14 2 14 8 20 8"/>
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div className="documento-nombre">
+                                // ===== ACORDEÓN (igual que en DetalleExpediente) =====
+                                <div style={{
+                                    border: '1.5px solid #9ae6b4',
+                                    borderRadius: '10px',
+                                    overflow: 'hidden',
+                                    marginBottom: 20,
+                                }}>
+                                    {/* Cabecera */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '12px 16px',
+                                        background: '#f0fff4',
+                                    }}>
+                                        <button
+                                            onClick={toggleAcordeon}
+                                            style={{
+                                                background: '#0f3b6f',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                width: '30px',
+                                                height: '30px',
+                                                color: 'white',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 'bold',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transform: acordeonAbierto ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                transition: 'transform 0.2s',
+                                            }}
+                                        >
+                                            ▶
+                                        </button>
+                                        <div style={{ flex: 1 }}>
+                                            <p style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#0f3b6f', margin: 0 }}>
                                                 {resolucionFundada.numero_documento
                                                     ? `Res. ${resolucionFundada.numero_documento}`
                                                     : resolucionFundada.nombre_archivo}
-                                            </div>
-                                            <div className="documento-descripcion">
-                                                Fecha de elaboración: {formatFecha(resolucionFundada.fecha_elaboracion)}
-                                            </div>
-                                            <div className="documento-descripcion">
-                                                Subido: {formatFecha(resolucionFundada.subido_en)}
-                                            </div>
+                                            </p>
+                                            <p style={{ fontSize: '0.73rem', color: '#4a5568', margin: '2px 0 0' }}>
+                                                {resolucionFundada.nombre_archivo}
+                                                {resolucionFundada.subido_en && ` - Fecha: ${new Date(resolucionFundada.subido_en).toLocaleDateString('es-PE')}`}
+                                            </p>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            <span style={{
+                                                padding: '4px 12px',
+                                                borderRadius: '20px',
+                                                fontSize: '0.78rem',
+                                                fontWeight: 700,
+                                                background: '#f0fff4',
+                                                color: '#276749',
+                                                border: '1px solid #9ae6b4'
+                                            }}>
+                                                Subido
+                                            </span>
+                                            {!bloqueado && !esSoloLectura && (
+                                                <button
+                                                    className="btn-reemplazar"
+                                                    onClick={abrirModalReemplazo}
+                                                    style={{
+                                                        padding: '6px 12px',
+                                                        borderRadius: '6px',
+                                                        border: '1px solid #0f3b6f',
+                                                        background: 'transparent',
+                                                        color: '#0f3b6f',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                    }}
+                                                >
+                                                    Reemplazar
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="documento-acciones">
-                                        <span className="estado-subido">Subido</span>
-                                        <button className="btn-ver" onClick={() => verPdfEnModal(resolucionFundada.ruta_archivo)}>
-                                            Ver PDF
-                                        </button>
-                                        {!bloqueado && !esSoloLectura && (
-                                            <button className="btn-reemplazar" onClick={abrirModalReemplazo}>
-                                                Reemplazar
-                                            </button>
-                                        )}
-                                    </div>
+
+                                    {/* Visor inline (acordeón) */}
+                                    {acordeonAbierto && (
+                                        <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '8px 16px',
+                                                background: '#0f3b6f',
+                                            }}>
+                                                <span style={{ color: '#c7a03a', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                    Resolución Fundada
+                                                </span>
+                                                <a
+                                                    href={getPdfUrl(resolucionFundada.ruta_archivo)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{ color: 'white', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                >
+                                                    Abrir en nueva pestaña ↗
+                                                </a>
+                                            </div>
+                                            <iframe
+                                                src={getPdfUrl(resolucionFundada.ruta_archivo)}
+                                                title="Resolución Fundada"
+                                                style={{ width: '100%', height: '500px', border: 'none', display: 'block' }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -698,26 +769,7 @@ export default function ResolucionFundada() {
                     </div>
                 )}
 
-                {visorAbierto && (
-                    <div className="modal-overlay" onClick={() => setVisorAbierto(false)}>
-                        <div className="modal-contenido" style={{ width: '80%', maxWidth: '1000px', height: '80vh' }} onClick={e => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>Visualizador de PDF</h3>
-                                <button className="modal-cerrar" onClick={() => setVisorAbierto(false)}>×</button>
-                            </div>
-                            <div className="modal-body" style={{ padding: 0, height: 'calc(100% - 60px)' }}>
-                                <iframe
-                                    src={pdfUrl}
-                                    title="Visor PDF"
-                                    style={{ width: '100%', height: '100%', border: 'none' }}
-                                />
-                            </div>
-                            <div className="modal-footer">
-                                <button onClick={() => setVisorAbierto(false)}>Cerrar</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {/* Eliminamos el modal de visor, ya no es necesario */}
 
             </main>
         </>
