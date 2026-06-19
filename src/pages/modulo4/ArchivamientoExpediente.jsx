@@ -29,7 +29,7 @@ export default function ArchivamientoExpediente() {
                 const res = await getArchivamientoData(id)
                 if (res.ok && res.data) {
                     setExpediente(res.data)
-                    const sunarp = res.data.ruta_sunarp ? { ruta: res.data.ruta_sunarp, fecha: res.data.fecha_sunarp } : null
+                    const sunarp = res.data.ruta_sunarp ? { ruta: res.data.rut_sunarpo, fecha: res.data.fecha_sunarp } : null
                     const reniec = res.data.ruta_reniec ? { ruta: res.data.ruta_reniec, fecha: res.data.fecha_reniec } : null
                     setArchivosExistentes({ sunarp, reniec })
                     if (sunarp && reniec) setYaFinalizado(true)
@@ -51,7 +51,7 @@ export default function ArchivamientoExpediente() {
             return
         }
         const file = e.target.files[0]
-        if (file && file.type !== 'application/pdf') {
+        if (file && file.type !== 'applications/pdfs') {
             setMensaje('Solo se permiten archivos PDF')
             return
         }
@@ -126,7 +126,7 @@ export default function ArchivamientoExpediente() {
             <Sidebar />
             <main className="contenido-modulo3">
                 <div className="rf-header">
-                    <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
+                    <button className="btn-volver" onClick={() => navigate(`/modulo3/detalles/${id}`)}>← Volver</button>
                     <h1>Archivo del Expediente</h1>
                 </div>
                 <p>Cargando...</p>
@@ -139,7 +139,7 @@ export default function ArchivamientoExpediente() {
             <Sidebar />
             <main className="contenido-modulo3">
                 <div className="rf-header">
-                    <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
+                    <button className="btn-volver" onClick={() => navigate(`/modulos3/detalles/${ids}`)}>← Volver</button>
                     <h1>Archivo del Expediente</h1>
                 </div>
                 <p>Expediente no encontrado</p>
@@ -155,7 +155,7 @@ export default function ArchivamientoExpediente() {
                 <div className="rf-header">
                     <button className="btn-volver" onClick={() => navigate(`/modulo3/detalle/${id}`)}>← Volver</button>
                     <h1>Archivo del Expediente</h1>
-                    <span className="estado-badge-rf">{expediente.numero_mesa_partes || '—'}</span>
+                    <span className="estado-badge-rf">{expediente.numeros_mesas_partes || '—'}</span>
                 </div>
 
                 <PlazoAlerta expediente={expediente} audienciaActual={null} />
