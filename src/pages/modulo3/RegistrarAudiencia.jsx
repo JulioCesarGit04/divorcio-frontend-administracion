@@ -7,6 +7,10 @@ import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getExpedienteById, getAudiencias, registrarResultadoAudiencia, subirDocumentoInterno, getDocumentosInternos, getPdfUrl } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/registrar-audiencia.css'
 
+const getFechaPeru = () => {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+}
+
 export default function RegistrarAudiencia() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -41,14 +45,12 @@ export default function RegistrarAudiencia() {
         acta3: null
     })
 
-    // --- Estado para controlar acordeones de cada acta ---
     const [visorAcordeon, setVisorAcordeon] = useState({
         acta1: false,
         acta2: false,
         acta3: false
     })
 
-    // --- Función para alternar acordeón de una acta ---
     const toggleAcordeon = (actaKey) => {
         setVisorAcordeon(prev => ({
             ...prev,
@@ -216,16 +218,19 @@ export default function RegistrarAudiencia() {
             const usuario = getUsuarioLogueado()
 
             if (resultado === 'RATIFICACION') {
+                const fechaElaboracion = getFechaPeru()
+                
                 if (archivos.acta1) {
-                    await subirDocumentoInterno(id, 'ACTA_AUDIENCIA_01', null, new Date().toISOString().split('T')[0], archivos.acta1, usuario)
+                    await subirDocumentoInterno(id, 'ACTA_AUDIENCIA_01', null, fechaElaboracion, archivos.acta1, usuario)
                 }
                 if (archivos.acta2) {
-                    await subirDocumentoInterno(id, 'ACTA_AUDIENCIA_02', null, new Date().toISOString().split('T')[0], archivos.acta2, usuario)
+                    await subirDocumentoInterno(id, 'ACTA_AUDIENCIA_02', null, fechaElaboracion, archivos.acta2, usuario)
                 }
                 if (archivos.acta3) {
-                    await subirDocumentoInterno(id, 'ACTA_AUDIENCIA_03', null, new Date().toISOString().split('T')[0], archivos.acta3, usuario)
+                    await subirDocumentoInterno(id, 'ACTA_AUDIENCIA_03', null, fechaElaboracion, archivos.acta3, usuario)
                 }
             }
+            
             await registrarResultadoAudiencia(
                 audiencia.id,
                 resultado,

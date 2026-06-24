@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { vincularExpediente } from '../../services/ProcedimientoService';
 import '../../styles/modulo3/modales.css';
 
+// Función reutilizable
+const getFechaPeru = () => {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+};
+
 export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) {
     const [nroMesaPartes, setNroMesaPartes] = useState('');
     const [nroMesaPartesConfirm, setNroMesaPartesConfirm] = useState('');
@@ -10,9 +15,11 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
     const [cargando, setCargando] = useState(false);
 
     const validarFechaPago = (fecha) => {
-        const hoy = new Date();
+        // ✅ Usar zona horaria de Perú
+        const hoy = new Date(getFechaPeru());
         hoy.setHours(0, 0, 0, 0);
         const fechaSeleccionada = new Date(fecha);
+        fechaSeleccionada.setHours(0, 0, 0, 0);
         
         if (fechaSeleccionada > hoy) {
             return 'La fecha de pago no puede ser futura';
@@ -90,10 +97,11 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
     const coinciden = nroMesaPartes.trim() && nroMesaPartesConfirm.trim()
         && nroMesaPartes.trim() === nroMesaPartesConfirm.trim();
 
+    const fechaMaxima = getFechaPeru(); // ✅ Fecha actual en Perú
+
     return (
         <div className="modal-overlay" onClick={onCerrar}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
-
                 <div className="modal-header">
                     <div>
                         <h3>Vincular con Mesa de Partes</h3>
@@ -105,7 +113,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                 </div>
 
                 <div className="modal-body">
-
                     <div className="modal-aviso">
                         <div className="modal-aviso-icono">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -170,7 +177,7 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                             value={fechaPago}
                             onChange={e => { setFechaPago(e.target.value); setError(''); }}
                             disabled={cargando}
-                            max={new Date().toISOString().split('T')[0]} 
+                            max={fechaMaxima} // ✅ Fecha actual en Perú
                         />
                         <span className="campo-ayuda">
                             Fecha del voucher de pago (no puede ser futura)
@@ -192,7 +199,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                         {cargando ? 'Vinculando...' : 'Vincular expediente →'}
                     </button>
                 </div>
-
             </div>
         </div>
     );

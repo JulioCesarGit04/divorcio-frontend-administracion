@@ -7,6 +7,10 @@ import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getExpedienteById, getCronograma, programarAudiencia, getAudiencias } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/programar-audiencia.css'
 
+const getFechaPeru = () => {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+}
+
 export default function ProgramarAudiencia() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -446,7 +450,8 @@ export default function ProgramarAudiencia() {
                                                             setHoraSeleccionada('')
                                                             setMensaje(null)
                                                         }}
-                                                        min={new Date().toISOString().split('T')[0]}
+                                                        // ✅ Fecha mínima con zona horaria de Perú
+                                                        min={getFechaPeru()}
                                                     />
                                                 </div>
                                                 <div className="campo">
@@ -510,7 +515,8 @@ export default function ProgramarAudiencia() {
 
                     <div style={{ flex: 1 }}>
                         <BotonesNavegacion expedienteId={id} etapaActual={etapaActual} />
-                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />                    </div>
+                        <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />
+                    </div>
                 </div>
             </main>
         </>

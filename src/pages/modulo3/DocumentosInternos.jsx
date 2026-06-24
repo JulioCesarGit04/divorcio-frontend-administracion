@@ -124,7 +124,7 @@ export default function DocumentosInternos() {
         setCargandoCorrelativo(true)
         setErrorUnicidad('')
         try {
-            const ultimo = await obtenerUltimoCorrelativo(tipo)
+            const ultimo = await obtenerUltimoCorrelativo('RESOLUCION')
             const anio = new Date().getFullYear()
             const numeroFormateado = String(ultimo + 1).padStart(3, '0')
             
@@ -151,7 +151,7 @@ export default function DocumentosInternos() {
         setVistaPreviaUrl(null)
         setPreviaAbierta(false)
         setTipoDocumento(tipo)
-        setFechaElaboracion(new Date().toISOString().split('T')[0])
+        setFechaElaboracion(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }))
         setMostrarConfirmacionSubida(false)
         setModalAbierto(true)
         await obtenerCorrelativoYGenerar(tipo)
