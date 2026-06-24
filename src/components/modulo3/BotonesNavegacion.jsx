@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import '../../styles/modulo3/BotonesNavegacion.css'
 
-
 export default function BotonesNavegacion({ expedienteId, etapaActual, documentosInternosCompletados = false }) {
     const navigate = useNavigate()
 

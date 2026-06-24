@@ -17,6 +17,10 @@ import '../../styles/modulo3/resolucion-fundada.css'
 
 const TAMANIO_MAXIMO_PDF = 10 * 1024 * 1024
 
+const getFechaPeru = () => {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+}
+
 const esArchivoPdfValido = (archivo) => {
     if (!archivo) return false
     const esPdfPorTipo = archivo.type === 'application/pdf'
@@ -35,29 +39,25 @@ export default function ResolucionFundada() {
     const [resolucionFundada, setResolucionFundada] = useState(null)
     const [archivo, setArchivo] = useState(null)
     const [vistaPreviaUrl, setVistaPreviaUrl] = useState(null)
-    const [previaAbierta, setPreviaAbierta] = useState(false) // ← Controla el acordeón de vista previa
-    const [numeroDocumento, setNumeroDocumento] = useState('') // solo 3 dígitos
-    const [sufijoDocumento, setSufijoDocumento] = useState('') // ej: '-2026-MDEP'
-    const [fechaElaboracion, setFechaElaboracion] = useState(new Date().toISOString().split('T')[0])
+    const [previaAbierta, setPreviaAbierta] = useState(false)
+    const [numeroDocumento, setNumeroDocumento] = useState('')
+    const [sufijoDocumento, setSufijoDocumento] = useState('')
+    const [fechaElaboracion, setFechaElaboracion] = useState(getFechaPeru())
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [puedeAvanzar, setPuedeAvanzar] = useState(false)
     const [cargandoCorrelativo, setCargandoCorrelativo] = useState(false)
     const [errorUnicidad, setErrorUnicidad] = useState('')
     const [mostrarConfirmacionSubida, setMostrarConfirmacionSubida] = useState(false)
-
     const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false)
     const [modalCancelacionAbierto, setModalCancelacionAbierto] = useState(false)
     const [motivoCancelacion, setMotivoCancelacion] = useState('')
     const [enviandoCancelacion, setEnviandoCancelacion] = useState(false)
-
-    // --- Control del acordeón del visor (documento ya subido) ---
     const [acordeonAbierto, setAcordeonAbierto] = useState(false)
 
     const toggleAcordeon = () => {
         setAcordeonAbierto(!acordeonAbierto)
     }
 
-    // --- Control del acordeón de vista previa (antes de subir) ---
     const togglePrevia = () => {
         setPreviaAbierta(!previaAbierta)
     }
@@ -89,12 +89,11 @@ export default function ResolucionFundada() {
         return fechaStr.split('T')[0].split('-').reverse().join('/')
     }
 
-    // === Generar número correlativo ===
     const generarCorrelativo = async () => {
         setCargandoCorrelativo(true)
         setErrorUnicidad('')
         try {
-            const ultimo = await obtenerUltimoCorrelativo('RESOLUCION_FUNDADA')
+            const ultimo = await obtenerUltimoCorrelativo('RESOLUCION')
             const anio = new Date().getFullYear()
             const numero = String(ultimo + 1).padStart(3, '0')
             setNumeroDocumento(numero)
@@ -151,7 +150,7 @@ export default function ResolucionFundada() {
                     }
                 } else {
                     await generarCorrelativo()
-                    setFechaElaboracion(new Date().toISOString().split('T')[0])
+                    setFechaElaboracion(getFechaPeru())
                 }
             } catch (err) {
                 setError(err.message)
@@ -162,7 +161,6 @@ export default function ResolucionFundada() {
         cargar()
     }, [id])
 
-    // === Manejar selección de archivo ===
     const handleArchivoChange = (file) => {
         setMensaje(null)
         setErrorUnicidad('')
@@ -193,10 +191,9 @@ export default function ResolucionFundada() {
         const url = URL.createObjectURL(file)
         setVistaPreviaUrl(url)
         setArchivo(file)
-        setPreviaAbierta(true) // ← Abrir el acordeón automáticamente al seleccionar archivo
+        setPreviaAbierta(true)
     }
 
-    // === Verificar unicidad y mostrar confirmación ===
     const handleSubirResolucion = async () => {
         if (!archivo) {
             setMensaje({ tipo: 'error', texto: 'Debe seleccionar un archivo PDF' })
@@ -224,7 +221,6 @@ export default function ResolucionFundada() {
         setMostrarConfirmacionSubida(true)
     }
 
-    // === Confirmar y subir ===
     const confirmarSubida = async () => {
         setMostrarConfirmacionSubida(false)
         setEnviando(true)
@@ -475,7 +471,6 @@ export default function ResolucionFundada() {
                             <h2>Resolución Fundada</h2>
 
                             {yaTieneResolucion && (
-                                // ===== ACORDEÓN DEL DOCUMENTO YA SUBIDO =====
                                 <div style={{
                                     border: '1.5px solid #9ae6b4',
                                     borderRadius: '10px',
@@ -637,7 +632,6 @@ export default function ResolucionFundada() {
                                         </div>
                                     </div>
 
-                                    {/* ===== ACORDEÓN DE VISTA PREVIA ===== */}
                                     {vistaPreviaUrl && (
                                         <div className="campo" style={{ marginTop: '12px' }}>
                                             <label>Vista previa del documento</label>
@@ -805,7 +799,6 @@ export default function ResolucionFundada() {
                     </div>
                 </div>
 
-                {/* ===== MODAL DE CONFIRMACIÓN ANTES DE SUBIR ===== */}
                 {mostrarConfirmacionSubida && (
                     <div className="modal-overlay" onClick={() => setMostrarConfirmacionSubida(false)}>
                         <div className="modal-contenido" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
