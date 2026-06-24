@@ -121,27 +121,39 @@ export default function DocumentosInternos() {
     }, [id])
 
     const obtenerCorrelativoYGenerar = async (tipo) => {
-        setCargandoCorrelativo(true)
-        setErrorUnicidad('')
-        try {
-            const ultimo = await obtenerUltimoCorrelativo('RESOLUCION')
-            const anio = new Date().getFullYear()
-            const numeroFormateado = String(ultimo + 1).padStart(3, '0')
-            
-            setNumeroDocumento(numeroFormateado)
-            
-            if (tipo === 'INFORME_LEGAL') {
-                setSufijoDocumento(`-${anio}-GAJ/MDEP`)
-            } else if (tipo === 'RESOLUCION_ADMISIBLE') {
-                setSufijoDocumento(`-${anio}-MDEP`)
-            }
-        } catch (err) {
-            setNumeroDocumento('')
-            setSufijoDocumento('')
-        } finally {
-            setCargandoCorrelativo(false)
+    setCargandoCorrelativo(true)
+    setErrorUnicidad('')
+    try {
+        // 👈 LOG: qué tipo se está usando
+        console.log('🔍 tipo recibido en frontend:', tipo);
+        
+        let tipoCorrelativo = tipo;
+        if (tipo === 'RESOLUCION_ADMISIBLE') {
+            tipoCorrelativo = 'RESOLUCION';
         }
+        console.log('🔍 tipoCorrelativo a enviar:', tipoCorrelativo);
+        
+        const ultimo = await obtenerUltimoCorrelativo(tipoCorrelativo);
+        console.log('✅ ultimo correlativo recibido:', ultimo); // 👈 DEBE SER 2
+        
+        const anio = new Date().getFullYear();
+        const numeroFormateado = String(ultimo + 1).padStart(3, '0'); // 2+1=3 → '003'
+        console.log('✅ numeroFormateado generado:', numeroFormateado);
+        
+        if (tipo === 'INFORME_LEGAL') {
+            setSufijoDocumento(`-${anio}-GAJ-SCDU-MDEP`);
+        } else if (tipo === 'RESOLUCION_ADMISIBLE') {
+            setSufijoDocumento(`-${anio}-MDEP`);
+        }
+        setNumeroDocumento(numeroFormateado);
+    } catch (err) {
+        console.error('Error al obtener correlativo:', err);
+        setNumeroDocumento('');
+        setSufijoDocumento('');
+    } finally {
+        setCargandoCorrelativo(false);
     }
+};
 
     const abrirModal = async (tipo) => {
         if (esSoloLectura) return
@@ -720,7 +732,7 @@ export default function DocumentosInternos() {
                                             className={errorUnicidad ? 'input-error' : ''}
                                         />
                                         <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#4a5568' }}>
-                                            {sufijoDocumento || '-2026-GAJ/MDEP'}
+                                            {sufijoDocumento || '-2026-GAJ-SCDU-MDEP'}
                                         </span>
                                         {cargandoCorrelativo && <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Generando...</span>}
                                     </div>

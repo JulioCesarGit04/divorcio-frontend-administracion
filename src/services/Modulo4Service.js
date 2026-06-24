@@ -31,9 +31,11 @@ export const registrarPagoCopias = async (expediente_id, fecha_pago_copias) => {
     return data;
 };
 
-export const subirResolucionDisolucion = async (expediente_id, numero_documento, fecha_elaboracion, archivo) => {
+export const subirResolucionDisolucion = async (expediente_id, fecha_elaboracion, archivo, numero_documento = null) => {
     const formData = new FormData();
-    formData.append('numero_documento', numero_documento);
+    if (numero_documento) {
+        formData.append('numero_documento', numero_documento);
+    }
     formData.append('fecha_elaboracion', fecha_elaboracion);
     formData.append('archivo', archivo);
 
@@ -100,5 +102,21 @@ export const getArchivamientoData = async (expediente_id) => {
     );
     const data = await safeJson(response);
     if (!response.ok) throw new Error(data.mensaje || 'Error al obtener datos de archivamiento');
+    return data;
+};
+
+// NUEVA FUNCIÓN: Obtener el siguiente número de resolución
+export const obtenerSiguienteNumero = async () => {
+    const response = await fetchWithRetry(
+         `${API_URL}/resolucion-disolucion/next-number`,
+        {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        },
+        3,
+        TIMEOUTS.DEFAULT
+    );
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data.mensaje || 'Error al obtener el siguiente número');
     return data;
 };

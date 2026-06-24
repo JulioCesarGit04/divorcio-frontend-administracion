@@ -8,15 +8,14 @@ import {
     getExpedienteById, 
     getDocumentosInternos,
     getPdfUrl,
-    obtenerUltimoCorrelativo,
-    verificarUnicidadNumeroDocumento
 } from '../../services/ProcedimientoService'
 
 import { 
     registrarPagoCopias,
     subirResolucionDisolucion,
     avanzarArchivamiento,
-    registrarSegundoPago
+    registrarSegundoPago,
+    obtenerSiguienteNumero
 } from '../../services/Modulo4Service' 
 
 const esDiaHabil = (fecha) => {
@@ -98,19 +97,33 @@ export default function ResolucionDisolucion() {
         setDiasRestantes(diasHabilesEntre(hoy, fechaFin))
     }
 
-    const generarCorrelativo = async () => {
+    // Obtener el número desde el backend
+    const cargarNumeroSiguiente = async () => {
         setCargandoCorrelativo(true)
-        setErrorUnicidad('')
         try {
-            const ultimo = await obtenerUltimoCorrelativo('RESOLUCION_DISOLUCION')
-            const anio = new Date().getFullYear()
-            const numero = String(ultimo + 1).padStart(3, '0')
-            setNumeroDocumento(numero)
-            setSufijoDocumento(`-${anio}-MDEP`)
+            const response = await obtenerSiguienteNumero()
+            if (response.ok && response.numero) {
+                const numCompleto = response.numero // ej: "003-2026-MDEP"
+                const match = numCompleto.match(/^(\d{3})(-.+)$/)
+                if (match) {
+                    setNumeroDocumento(match[1])
+                    setSufijoDocumento(match[2])
+                } else {
+                    // Si no coincide el formato, lo ponemos completo
+                    setNumeroDocumento(numCompleto)
+                    setSufijoDocumento('')
+                }
+            } else {
+                // Fallback: usar 001 por defecto
+                const year = new Date().getFullYear()
+                setNumeroDocumento('001')
+                setSufijoDocumento(`-${year}-MDEP`)
+            }
         } catch (err) {
-            console.error('Error al generar correlativo:', err)
-            setNumeroDocumento('')
-            setSufijoDocumento('')
+            console.error('Error al obtener siguiente número:', err)
+            const year = new Date().getFullYear()
+            setNumeroDocumento('001')
+            setSufijoDocumento(`-${year}-MDEP`)
         } finally {
             setCargandoCorrelativo(false)
         }
@@ -146,6 +159,7 @@ export default function ResolucionDisolucion() {
 
                 const resolucionExistente = resoluciones[0] || null
                 setResolucionDisolucion(resolucionExistente)
+
                 if (resolucionExistente) {
                     const num = resolucionExistente.numero_documento || ''
                     const match = num.match(/^(\d{3})(-.+)$/)
@@ -160,7 +174,8 @@ export default function ResolucionDisolucion() {
                         setFechaElaboracion(resolucionExistente.fecha_elaboracion.split('T')[0])
                     }
                 } else {
-                    await generarCorrelativo()
+                    // No hay resolución, obtenemos el siguiente número
+                    await cargarNumeroSiguiente()
                     setFechaElaboracion(new Date().toISOString().split('T')[0])
                 }
             } catch (err) {
@@ -202,7 +217,6 @@ export default function ResolucionDisolucion() {
             setEnviando(false)
         }
     }
-
 
     if (!cargando && !error && !expediente?.fecha_pago_disolucion) {
         return (
@@ -293,21 +307,8 @@ export default function ResolucionDisolucion() {
             setMensaje({ tipo: 'error', texto: 'Debe ingresar el número de resolución' })
             return
         }
-
-        const numeroCompleto = `${numeroDocumento}${sufijoDocumento}`
-
-        try {
-            const existe = await verificarUnicidadNumeroDocumento('RESOLUCION_DISOLUCION', numeroCompleto)
-            if (existe) {
-                setErrorUnicidad('Este número de Resolución de Disolución ya existe. Debe ser único.')
-                return
-            }
-            setErrorUnicidad('')
-        } catch (err) {
-            setMensaje({ tipo: 'error', texto: 'Error al verificar unicidad. Intente de nuevo.' })
-            return
-        }
-
+        // Limpiar error de unicidad previo
+        setErrorUnicidad('')
         setMostrarConfirmacionSubida(true)
     }
 
@@ -317,11 +318,29 @@ export default function ResolucionDisolucion() {
         setMensaje(null)
         try {
             const numeroCompleto = `${numeroDocumento}${sufijoDocumento}`
-            await subirResolucionDisolucion(id, numeroCompleto, fechaElaboracion, archivo)
-            setMensaje({ tipo: 'success', texto: 'Resolución de Disolución subida correctamente.' })
+            // Llamamos al servicio pasando el número completo
+            const result = await subirResolucionDisolucion(id, fechaElaboracion, archivo, numeroCompleto)
+            
+            // Si el backend devuelve numero_generado, actualizamos
+            if (result.numero_generado) {
+                const num = result.numero_generado
+                const match = num.match(/^(\d{3})(-.+)$/)
+                if (match) {
+                    setNumeroDocumento(match[1])
+                    setSufijoDocumento(match[2])
+                }
+            }
+            
+            setMensaje({ tipo: 'success', texto: `Resolución de Disolución subida correctamente. N°: ${result.numero_generado || numeroCompleto}` })
             setTimeout(() => window.location.reload(), 1500)
         } catch (err) {
-            setMensaje({ tipo: 'error', texto: err.message || 'Error al subir la resolución' })
+            // Si el error es por duplicado, mostramos mensaje específico
+            if (err.message.includes('ya existe') || err.message.includes('duplicado')) {
+                setErrorUnicidad('Este número de Resolución ya existe. Debe ser único.')
+                setMensaje({ tipo: 'error', texto: 'El número de resolución ya está en uso. Por favor, ingrese otro.' })
+            } else {
+                setMensaje({ tipo: 'error', texto: err.message || 'Error al subir la resolución' })
+            }
         } finally {
             setEnviando(false)
         }
