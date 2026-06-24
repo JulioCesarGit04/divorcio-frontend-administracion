@@ -33,7 +33,6 @@ export default function VincularExpedientes() {
             setPreExpedientes(ordenados)
             setPreExpedientesFiltrados(ordenados)
         } catch (error) {
-            console.error('Error cargando pre-expedientes', error)
         } finally {
             setCargando(false)
         }

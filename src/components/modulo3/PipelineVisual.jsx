@@ -10,7 +10,6 @@ export default function PipelineVisual({ etapaActual, estado }) {
         { id: 'archivar', label: 'Archivamiento', descripcion: 'Cargos SUNARP/RENIEC y cierre', icono: '🗄️', numero: 6 }
     ]
 
-    // Si el expediente está archivado, todas las etapas están completadas
     if (estado === 'ARCHIVADO') {
         return (
             <div className="pipeline">
@@ -55,7 +54,6 @@ export default function PipelineVisual({ etapaActual, estado }) {
         )
     }
 
-    // Comportamiento normal (cuando no está archivado)
     const etapaIndex = etapas.findIndex(e => e.id === etapaActual)
     const progreso = ((etapaIndex + 1) / etapas.length) * 100
 

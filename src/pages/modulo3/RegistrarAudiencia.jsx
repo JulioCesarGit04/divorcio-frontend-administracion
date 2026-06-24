@@ -191,7 +191,6 @@ export default function RegistrarAudiencia() {
                 })
 
             } catch (err) {
-                console.error('Error:', err)
                 setError(err.message)
             } finally {
                 setCargando(false)
@@ -227,7 +226,6 @@ export default function RegistrarAudiencia() {
                     await subirDocumentoInterno(id, 'ACTA_AUDIENCIA_03', null, new Date().toISOString().split('T')[0], archivos.acta3, usuario)
                 }
             }
-
             await registrarResultadoAudiencia(
                 audiencia.id,
                 resultado,
@@ -235,7 +233,8 @@ export default function RegistrarAudiencia() {
                 asistioDemandado ? 1 : 0,
                 expediente.Solicitante_Id,
                 expediente.Demandado_Id,
-                usuario
+                usuario,
+                audiencia.fecha_programada
             )
 
             if (resultado === 'RATIFICACION') {
@@ -258,7 +257,6 @@ export default function RegistrarAudiencia() {
             }
 
         } catch (err) {
-            console.error('Error:', err)
             setMensaje({ tipo: 'error', texto: err.message || 'Error al registrar audiencia' })
         } finally {
             setEnviando(false)
@@ -475,7 +473,30 @@ export default function RegistrarAudiencia() {
                                 </div>
                             </div>
                         </div>
-
+                        {historialAudiencias.filter(a => a.id !== audiencia?.id).length > 0 && (
+                            <div className="seccion">
+                                <h2>HISTORIAL DE AUDIENCIAS</h2>
+                                <div className="historial-audiencias">
+                                    {historialAudiencias.filter(a => a.id !== audiencia?.id).map((a, idx) => (
+                                        <div key={a.id} className="historial-item">
+                                            <div className="historial-fecha">{formatFechaLocal(a.fecha_programada)}</div>
+                                            <div className="historial-hora">{formatHoraLocal(a.fecha_programada)}</div>
+                                            <div className="historial-estado">
+                                                {a.estado === 'REPROGRAMADA' && 'Reprogramada'}
+                                                {a.estado === 'REALIZADA' && 'Realizada'}
+                                                {a.estado === 'CANCELADA' && 'Cancelada'}
+                                                {a.estado === 'PROGRAMADA' && a.id !== audiencia?.id && 'Anterior'}
+                                            </div>
+                                            <div className="historial-resultado">
+                                                {a.resultado === 'INASISTENCIA' && 'Inasistencia'}
+                                                {a.resultado === 'DESISTIMIENTO' && 'Desistimiento'}
+                                                {a.resultado === 'RATIFICACION' && 'Ratificacion'}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <div className="seccion">
                             <h2>ASISTENCIA</h2>
                             <div className="asistencia-opciones">
@@ -502,30 +523,7 @@ export default function RegistrarAudiencia() {
                             </div>
                         </div>
 
-                        {historialAudiencias.filter(a => a.id !== audiencia?.id).length > 0 && (
-                            <div className="seccion">
-                                <h2>HISTORIAL DE AUDIENCIAS</h2>
-                                <div className="historial-audiencias">
-                                    {historialAudiencias.filter(a => a.id !== audiencia?.id).map((a, idx) => (
-                                        <div key={a.id} className="historial-item">
-                                            <div className="historial-fecha">{formatFechaLocal(a.fecha_programada)}</div>
-                                            <div className="historial-hora">{formatHoraLocal(a.fecha_programada)}</div>
-                                            <div className="historial-estado">
-                                                {a.estado === 'REPROGRAMADA' && 'Reprogramada'}
-                                                {a.estado === 'REALIZADA' && 'Realizada'}
-                                                {a.estado === 'CANCELADA' && 'Cancelada'}
-                                                {a.estado === 'PROGRAMADA' && a.id !== audiencia?.id && 'Anterior'}
-                                            </div>
-                                            <div className="historial-resultado">
-                                                {a.resultado === 'INASISTENCIA' && 'Inasistencia'}
-                                                {a.resultado === 'DESISTIMIENTO' && 'Desistimiento'}
-                                                {a.resultado === 'RATIFICACION' && 'Ratificacion'}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        
 
                         <div className="seccion">
                             <h2>RESULTADO DE LA AUDIENCIA</h2>
@@ -565,7 +563,6 @@ export default function RegistrarAudiencia() {
                                     return (
                                         <div key={acta} style={{ marginBottom: '16px' }}>
                                             {actaData ? (
-                                                // ===== ACTA YA SUBIDA (con acordeón) =====
                                                 <div style={{
                                                     border: '1.5px solid #9ae6b4',
                                                     borderRadius: '10px',
@@ -624,7 +621,6 @@ export default function RegistrarAudiencia() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Visor inline (acordeón) */}
                                                     {estaAbierto && (
                                                         <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
                                                             <div style={{
@@ -655,7 +651,6 @@ export default function RegistrarAudiencia() {
                                                     )}
                                                 </div>
                                             ) : (
-                                                // ===== ACTA NO SUBIDA =====
                                                 <div style={{
                                                     border: '1.5px solid #e2e8f0',
                                                     borderRadius: '10px',

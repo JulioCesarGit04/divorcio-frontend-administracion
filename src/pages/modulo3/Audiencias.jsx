@@ -1,4 +1,3 @@
-// src/pages/modulo3/Audiencias.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/modulo3/Sidebar';
@@ -80,11 +79,8 @@ export default function Audiencias() {
                     audienciaActual = audienciasData.find(a => a.es_actual === true);
                     tieneAudiencia = audienciaActual !== undefined;
                 } catch (err) {
-                    console.error(`Error al obtener audiencia del expediente ${exp.id}`, err);
                 }
 
-                // ✅ Solo incluir expedientes en etapa 'AUDIENCIA' o que ya tengan audiencia
-                // (así los de DOCUMENTOS_INTERNOS sin audiencia no aparecen)
                 const debeIncluir = tieneAudiencia || exp.etapa === 'AUDIENCIA';
                 if (!debeIncluir) return null;
 
@@ -105,7 +101,6 @@ export default function Audiencias() {
                         etapa: exp.etapa,
                     };
                 } else {
-                    // Caso: está en etapa AUDIENCIA pero no tiene audiencia (por alguna inconsistencia)
                     return {
                         expedienteId: exp.id,
                         numeroExpediente: exp.numero_expediente,
@@ -127,7 +122,6 @@ export default function Audiencias() {
             let resultados = await Promise.all(promesas);
             resultados = resultados.filter(r => r !== null);
 
-            // Aplicar filtros
             let filtrados = resultados;
             if (filtrosAplicados.numeroExpediente) {
                 filtrados = filtrados.filter(a =>
@@ -150,7 +144,6 @@ export default function Audiencias() {
             } else if (filtrosAplicados.estadoAudiencia === 'SIN_PROGRAMAR') {
                 filtrados = filtrados.filter(a => !a.tieneAudiencia);
             }
-            // ✅ Corregir condiciones de fecha: solo aplicar si hay fecha y el estado no es SIN_PROGRAMAR
             if (filtrosAplicados.fechaDesde && filtrosAplicados.estadoAudiencia !== 'SIN_PROGRAMAR') {
                 filtrados = filtrados.filter(a => a.fechaProgramada && new Date(a.fechaProgramada) >= new Date(filtrosAplicados.fechaDesde));
             }
@@ -167,7 +160,6 @@ export default function Audiencias() {
 
             setAudiencias(filtrados);
         } catch (err) {
-            console.error('Error cargando audiencias:', err);
             setError('No se pudieron cargar las audiencias. Intente de nuevo.');
         } finally {
             setCargando(false);
@@ -335,27 +327,22 @@ export default function Audiencias() {
                                         </td>
                                         <td>
                                             {!a.tieneAudiencia ? (
-                                                // Sin audiencia → Programar
                                                 <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
                                                     Programar
                                                 </button>
                                             ) : a.estadoAudiencia === 'PROGRAMADA' ? (
-                                                // Ya tiene fecha → Registrar resultado
                                                 <button className="btn-registrar" onClick={() => handleRegistrar(a.expedienteId)}>
                                                     Registrar
                                                 </button>
                                             ) : a.estadoAudiencia === 'REPROGRAMADA' ? (
-                                                // Necesita reprogramar → Programar nueva fecha
                                                 <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
                                                     Reprogramar
                                                 </button>
                                             ) : a.estadoAudiencia === 'REALIZADA' ? (
-                                                // Ya realizada → Ver resultado
                                                 <button className="btn-ver" onClick={() => handleRegistrar(a.expedienteId)}>
                                                     Ver resultado
                                                 </button>
                                             ) : (
-                                                // Fallback (por si otro estado)
                                                 <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
                                                     Programar
                                                 </button>

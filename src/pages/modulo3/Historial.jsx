@@ -405,7 +405,6 @@ export default function Historial() {
                 setFiltrados(agrupados);
             })
             .catch(err => {
-                console.error(err);
                 setError('No se pudo cargar el historial. Inténtelo de nuevo.');
             })
             .finally(() => setCargando(false));
