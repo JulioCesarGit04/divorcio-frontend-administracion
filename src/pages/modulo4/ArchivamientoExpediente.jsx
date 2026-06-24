@@ -5,6 +5,7 @@ import BotonesNavegacion from '../../components/modulo3/BotonesNavegacion'
 import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getArchivamientoData, subirCargosExternos } from '../../services/Modulo4Service'
+import { getPdfUrl } from '../../services/ProcedimientoService'  
 import '../../styles/modulo3/resolucion-fundada.css'
 
 export default function ArchivamientoExpediente() {
@@ -19,7 +20,7 @@ export default function ArchivamientoExpediente() {
     const [archivosExistentes, setArchivosExistentes] = useState({ sunarp: null, reniec: null })
     const [yaFinalizado, setYaFinalizado] = useState(false)
 
-    // Estados para acordeón (solo cuando ya existen)
+
     const [pdfAbiertoSunarp, setPdfAbiertoSunarp] = useState(false)
     const [pdfAbiertoReniec, setPdfAbiertoReniec] = useState(false)
 
@@ -34,7 +35,7 @@ export default function ArchivamientoExpediente() {
                     setArchivosExistentes({ sunarp, reniec })
                     if (sunarp && reniec) setYaFinalizado(true)
                 } else {
-                    setMensaje('No se pudo cargar la información del expediente')
+                    setMensaje('No se pudo cargar la informacion del expediente')
                 }
             } catch (err) {
                 setMensaje('Error al cargar: ' + err.message)
@@ -61,11 +62,10 @@ export default function ArchivamientoExpediente() {
 
     const handleFinalizar = async () => {
         if (yaFinalizado) {
-            setMensaje('El expediente ya está finalizado')
+            setMensaje('El expediente ya esta finalizado')
             return
         }
 
-        // Verificar si hay archivos nuevos o ya existentes
         const tieneSunarp = archivos.sunarp || archivosExistentes.sunarp
         const tieneReniec = archivos.reniec || archivosExistentes.reniec
         if (!tieneSunarp || !tieneReniec) {
@@ -76,20 +76,19 @@ export default function ArchivamientoExpediente() {
         setEnviando(true)
         setMensaje('')
         try {
-            // Enviar los archivos nuevos (si existen) o null si ya estaban
             const sunarpFile = archivos.sunarp || null
             const reniecFile = archivos.reniec || null
             const result = await subirCargosExternos(id, sunarpFile, reniecFile)
             if (result.ok) {
-                setMensaje('✅ Expediente finalizado correctamente. Redirigiendo...')
+                setMensaje('Expediente finalizado correctamente. Redirigiendo...')
                 setYaFinalizado(true)
                 setTimeout(() => navigate('/modulo3/expedientes'), 2000)
             } else {
-                setMensaje('❌ Error: ' + (result.mensaje || 'No se pudo finalizar'))
+                setMensaje('Error: ' + (result.mensaje || 'No se pudo finalizar'))
             }
         } catch (err) {
             console.error('Error en handleFinalizar:', err)
-            setMensaje('❌ Error de conexión: ' + (err.response?.data?.mensaje || err.message))
+            setMensaje('Error de conexion: ' + (err.response?.data?.mensaje || err.message))
         } finally {
             setEnviando(false)
         }
@@ -106,12 +105,6 @@ export default function ArchivamientoExpediente() {
         return partes[partes.length - 1]
     }
 
-    const getPdfUrl = (ruta) => {
-        if (!ruta) return '#'
-        if (ruta.startsWith('http')) return ruta
-        if (ruta.startsWith('/uploads')) return `http://localhost:3000${ruta}`
-        return `http://localhost:3000/uploads/${ruta}`
-    }
 
     const formatearFechaSubida = (fecha) => {
         if (!fecha) return ''
@@ -162,7 +155,6 @@ export default function ArchivamientoExpediente() {
 
                 <div className="rf-layout">
                     <div className="rf-main">
-                        {/* Datos del expediente */}
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
                             <div className="datos-grid">
@@ -170,22 +162,19 @@ export default function ArchivamientoExpediente() {
                                 <div><label>N° Mesa de Partes</label><p>{expediente.numero_mesa_partes || '—'}</p></div>
                                 <div><label>Solicitante</label><p>{expediente.solicitante_nombre} (DNI: {expediente.solicitante_dni})</p></div>
                                 <div><label>Demandado</label><p>{expediente.demandado_nombre} (DNI: {expediente.demandado_dni})</p></div>
-                                <div><label>Resolución de Disolución</label><p>{expediente.num_resolucion || '—'} - Fecha: {formatFecha(expediente.fecha_elaboracion_resolucion)}</p></div>
+                                <div><label>Resolucion de Disolucion</label><p>{expediente.num_resolucion || '—'} - Fecha: {formatFecha(expediente.fecha_elaboracion_resolucion)}</p></div>
                             </div>
                         </div>
 
-                        {/* Cargos SUNARP y RENIEC */}
                         <div className="seccion">
                             <h2>Cargos SUNARP y RENIEC</h2>
                             {yaFinalizado && (
                                 <div className="mensaje success" style={{ marginBottom: '1rem' }}>
-                                    Ambos cargos registrados. El expediente está finalizado.
+                                    Ambos cargos registrados. El expediente esta finalizado.
                                 </div>
                             )}
 
-                            {/* SUNARP */}
                             {archivosExistentes.sunarp ? (
-                                // ✅ YA SUBIDO: Acordeón
                                 <div style={{ marginBottom: '24px', border: '1.5px solid #9ae6b4', borderRadius: '12px', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f0fff4' }}>
                                         <button
@@ -234,7 +223,6 @@ export default function ArchivamientoExpediente() {
                                     )}
                                 </div>
                             ) : (
-                                // ❌ NO SUBIDO: Selector de archivo
                                 <div style={{ marginBottom: '24px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                     <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Constancia SUNARP (PDF):</label>
                                     <input
@@ -244,13 +232,11 @@ export default function ArchivamientoExpediente() {
                                         disabled={enviando || yaFinalizado}
                                         style={{ display: 'block', marginBottom: '8px' }}
                                     />
-                                    {archivos.sunarp && <span className="archivo-ok">✅ {archivos.sunarp.name}</span>}
+                                    {archivos.sunarp && <span className="archivo-ok"> {archivos.sunarp.name}</span>}
                                 </div>
                             )}
 
-                            {/* RENIEC */}
                             {archivosExistentes.reniec ? (
-                                // ✅ YA SUBIDO: Acordeón
                                 <div style={{ marginBottom: '24px', border: '1.5px solid #9ae6b4', borderRadius: '12px', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f0fff4' }}>
                                         <button
@@ -299,7 +285,6 @@ export default function ArchivamientoExpediente() {
                                     )}
                                 </div>
                             ) : (
-                                // ❌ NO SUBIDO: Selector
                                 <div style={{ marginBottom: '24px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                     <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Constancia RENIEC (PDF):</label>
                                     <input
@@ -309,7 +294,7 @@ export default function ArchivamientoExpediente() {
                                         disabled={enviando || yaFinalizado}
                                         style={{ display: 'block', marginBottom: '8px' }}
                                     />
-                                    {archivos.reniec && <span className="archivo-ok">✅ {archivos.reniec.name}</span>}
+                                    {archivos.reniec && <span className="archivo-ok"> {archivos.reniec.name}</span>}
                                 </div>
                             )}
 
@@ -322,7 +307,7 @@ export default function ArchivamientoExpediente() {
                                     {enviando ? 'Finalizando...' : 'Finalizar Expediente'}
                                 </button>
                             )}
-                            {mensaje && <div className={`mensaje ${mensaje.includes('✅') ? 'success' : 'error'}`} style={{ marginTop: '1rem' }}>{mensaje}</div>}
+                            {mensaje && <div className={`mensaje ${mensaje.includes('Expediente finalizado') ? 'success' : 'error'}`} style={{ marginTop: '1rem' }}>{mensaje}</div>}
                         </div>
                     </div>
 
