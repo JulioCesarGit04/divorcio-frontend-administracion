@@ -6,7 +6,10 @@ import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { 
     getExpedienteById, 
-    getDocumentosInternos
+    getDocumentosInternos,
+    getPdfUrl,
+    obtenerUltimoCorrelativo,
+    verificarUnicidadNumeroDocumento
 } from '../../services/ProcedimientoService'
 
 import { 
@@ -52,7 +55,11 @@ export default function ResolucionDisolucion() {
     const [resolucionDisolucion, setResolucionDisolucion] = useState(null)
     const [archivo, setArchivo] = useState(null)
     const [numeroDocumento, setNumeroDocumento] = useState('')
+    const [sufijoDocumento, setSufijoDocumento] = useState('')
     const [fechaElaboracion, setFechaElaboracion] = useState(new Date().toISOString().split('T')[0])
+    const [cargandoCorrelativo, setCargandoCorrelativo] = useState(false)
+    const [errorUnicidad, setErrorUnicidad] = useState('')
+    const [mostrarConfirmacionSubida, setMostrarConfirmacionSubida] = useState(false)
     
     const [fechaPagoCopias, setFechaPagoCopias] = useState('')
     const [mensajeCopias, setMensajeCopias] = useState(null)
@@ -61,7 +68,6 @@ export default function ResolucionDisolucion() {
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [puedeAvanzar, setPuedeAvanzar] = useState(false)
 
-    // Estado para el acordeón
     const [pdfAbierto, setPdfAbierto] = useState(false)
 
     const etapaActual = expediente?.etapa
@@ -78,13 +84,6 @@ export default function ResolucionDisolucion() {
         }
     }
 
-    const getPdfUrl = (ruta) => {
-        if (!ruta) return '#'
-        if (ruta.startsWith('http')) return ruta
-        if (ruta.startsWith('/uploads')) return `http://localhost:3000${ruta}`
-        return `http://localhost:3000/uploads/${ruta}`
-    }
-
     const formatFecha = (fechaStr) => {
         if (!fechaStr) return '—'
         return fechaStr.split('T')[0].split('-').reverse().join('/')
@@ -97,6 +96,24 @@ export default function ResolucionDisolucion() {
         const hoy = new Date()
         hoy.setHours(0, 0, 0, 0)
         setDiasRestantes(diasHabilesEntre(hoy, fechaFin))
+    }
+
+    const generarCorrelativo = async () => {
+        setCargandoCorrelativo(true)
+        setErrorUnicidad('')
+        try {
+            const ultimo = await obtenerUltimoCorrelativo('RESOLUCION_DISOLUCION')
+            const anio = new Date().getFullYear()
+            const numero = String(ultimo + 1).padStart(3, '0')
+            setNumeroDocumento(numero)
+            setSufijoDocumento(`-${anio}-MDEP`)
+        } catch (err) {
+            console.error('Error al generar correlativo:', err)
+            setNumeroDocumento('')
+            setSufijoDocumento('')
+        } finally {
+            setCargandoCorrelativo(false)
+        }
     }
 
     useEffect(() => {
@@ -130,10 +147,21 @@ export default function ResolucionDisolucion() {
                 const resolucionExistente = resoluciones[0] || null
                 setResolucionDisolucion(resolucionExistente)
                 if (resolucionExistente) {
-                    setNumeroDocumento(resolucionExistente.numero_documento || '')
+                    const num = resolucionExistente.numero_documento || ''
+                    const match = num.match(/^(\d{3})(-.+)$/)
+                    if (match) {
+                        setNumeroDocumento(match[1])
+                        setSufijoDocumento(match[2])
+                    } else {
+                        setNumeroDocumento(num)
+                        setSufijoDocumento('')
+                    }
                     if (resolucionExistente.fecha_elaboracion) {
                         setFechaElaboracion(resolucionExistente.fecha_elaboracion.split('T')[0])
                     }
+                } else {
+                    await generarCorrelativo()
+                    setFechaElaboracion(new Date().toISOString().split('T')[0])
                 }
             } catch (err) {
                 setError(err.message)
@@ -175,9 +203,7 @@ export default function ResolucionDisolucion() {
         }
     }
 
-    // ============================================================
-    // FORMULARIO DE REGISTRO DE SEGUNDO PAGO (con diseño mejorado)
-    // ============================================================
+
     if (!cargando && !error && !expediente?.fecha_pago_disolucion) {
         return (
             <>
@@ -263,15 +289,36 @@ export default function ResolucionDisolucion() {
             setMensaje({ tipo: 'error', texto: 'Debe seleccionar un archivo PDF' })
             return
         }
-        if (!numeroDocumento) {
+        if (!numeroDocumento.trim()) {
             setMensaje({ tipo: 'error', texto: 'Debe ingresar el número de resolución' })
             return
         }
+
+        const numeroCompleto = `${numeroDocumento}${sufijoDocumento}`
+
+        try {
+            const existe = await verificarUnicidadNumeroDocumento('RESOLUCION_DISOLUCION', numeroCompleto)
+            if (existe) {
+                setErrorUnicidad('Este número de Resolución de Disolución ya existe. Debe ser único.')
+                return
+            }
+            setErrorUnicidad('')
+        } catch (err) {
+            setMensaje({ tipo: 'error', texto: 'Error al verificar unicidad. Intente de nuevo.' })
+            return
+        }
+
+        setMostrarConfirmacionSubida(true)
+    }
+
+    const confirmarSubida = async () => {
+        setMostrarConfirmacionSubida(false)
         setEnviando(true)
         setMensaje(null)
         try {
-            await subirResolucionDisolucion(id, numeroDocumento, fechaElaboracion, archivo)
-            setMensaje({ tipo: 'success', texto: 'Resolución de Disolución subida correctamente. Queda bloqueada permanentemente.' })
+            const numeroCompleto = `${numeroDocumento}${sufijoDocumento}`
+            await subirResolucionDisolucion(id, numeroCompleto, fechaElaboracion, archivo)
+            setMensaje({ tipo: 'success', texto: 'Resolución de Disolución subida correctamente.' })
             setTimeout(() => window.location.reload(), 1500)
         } catch (err) {
             setMensaje({ tipo: 'error', texto: err.message || 'Error al subir la resolución' })
@@ -291,7 +338,7 @@ export default function ResolucionDisolucion() {
         try {
             await registrarPagoCopias(id, fechaPagoCopias)
             setPagoCopiasRegistrado(true)
-            setMensajeCopias({ tipo: 'success', texto: ` Pago de copias registrado con fecha ${formatFecha(fechaPagoCopias)}` })
+            setMensajeCopias({ tipo: 'success', texto: `Pago de copias registrado con fecha ${formatFecha(fechaPagoCopias)}` })
             setExpediente(prev => ({
                 ...prev,
                 fecha_pago_copias_certificadas: fechaPagoCopias
@@ -345,7 +392,7 @@ export default function ResolucionDisolucion() {
                         <h1>Resolución de Disolución</h1>
                     </div>
                     <div className="seccion estado-container">
-                        <div className="estado-icono">❌</div>
+                        <div className="estado-icono"></div>
                         <h2>Expediente Cancelado</h2>
                         <p>Este expediente ha sido cancelado.</p>
                         <button className="btn-continuar" style={{ marginTop: 20, width: 'auto', padding: '10px 28px' }} onClick={() => navigate(`/modulo3/detalle/${id}`)}>
@@ -429,7 +476,7 @@ export default function ResolucionDisolucion() {
                                     <label>Días Restantes</label>
                                     <p className={diasRestantes > 0 ? 'dias-pendiente' : 'dias-cumplido'}>
                                         {diasRestantes !== null
-                                            ? (diasRestantes > 0 ? `${diasRestantes} días hábiles` : '✓ Cumplido')
+                                            ? (diasRestantes > 0 ? `${diasRestantes} días hábiles` : 'Cumplido')
                                             : '—'}
                                     </p>
                                 </div>
@@ -473,7 +520,6 @@ export default function ResolucionDisolucion() {
                                     borderRadius: '10px',
                                     overflow: 'hidden',
                                 }}>
-                                    {/* Cabecera con botón desplegable */}
                                     <div style={{
                                         display: 'flex', alignItems: 'center', gap: '12px',
                                         padding: '12px 16px',
@@ -516,7 +562,6 @@ export default function ResolucionDisolucion() {
                                         </div>
                                     </div>
 
-                                    {/* Visor inline */}
                                     {pdfAbierto && (
                                         <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
                                             <div style={{
@@ -546,12 +591,39 @@ export default function ResolucionDisolucion() {
                                             <div className="rf-campos-fila">
                                                 <div className="rf-campo">
                                                     <label>N° de Resolución <span className="required">*</span></label>
-                                                    <input
-                                                        type="text"
-                                                        value={numeroDocumento}
-                                                        onChange={(e) => setNumeroDocumento(e.target.value)}
-                                                        placeholder="Ej: RES-DISOL-2026-001"
-                                                    />
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                                        <input
+                                                            type="text"
+                                                            value={numeroDocumento}
+                                                            onChange={(e) => {
+                                                                const valor = e.target.value.replace(/\D/g, '').slice(0, 3)
+                                                                setNumeroDocumento(valor)
+                                                                setErrorUnicidad('')
+                                                            }}
+                                                            placeholder="002"
+                                                            disabled={enviando || cargandoCorrelativo || yaTieneResolucion}
+                                                            style={{
+                                                                width: '80px',
+                                                                textAlign: 'center',
+                                                                fontSize: '1rem',
+                                                                padding: '8px 4px'
+                                                            }}
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
+                                                        />
+                                                        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#4a5568' }}>
+                                                            {sufijoDocumento || '-2026-GAJ/MDEP'}
+                                                        </span>
+                                                        {cargandoCorrelativo && <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Generando...</span>}
+                                                    </div>
+                                                    {errorUnicidad && (
+                                                        <span className="campo-ayuda--error" style={{ color: '#dc2626', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>
+                                                            {errorUnicidad}
+                                                        </span>
+                                                    )}
+                                                    <span className="campo-ayuda" style={{ display: 'block', marginTop: '4px' }}>
+                                                        Ingrese solo los 3 dígitos (ej: 003). El año y sufijo se generan automáticamente.
+                                                    </span>
                                                 </div>
                                                 <div className="rf-campo">
                                                     <label>Fecha de elaboración <span className="required">*</span></label>
@@ -559,6 +631,7 @@ export default function ResolucionDisolucion() {
                                                         type="date"
                                                         value={fechaElaboracion}
                                                         onChange={(e) => setFechaElaboracion(e.target.value)}
+                                                        disabled={yaTieneResolucion}
                                                     />
                                                 </div>
                                             </div>
@@ -580,18 +653,18 @@ export default function ResolucionDisolucion() {
                                                 </div>
                                             </div>
                                             {mensaje && <div className={`mensaje ${mensaje.tipo}`} style={{ marginTop: '16px' }}>{mensaje.texto}</div>}
-                                            <button className="btn-subir" onClick={handleSubirResolucion} disabled={enviando}>
+                                            <button className="btn-subir" onClick={handleSubirResolucion} disabled={enviando || cargandoCorrelativo}>
                                                 {enviando ? 'Subiendo...' : 'Subir Resolución'}
                                             </button>
                                         </div>
-                                    ) : null /* ❌ Mensaje eliminado: "Resolución ya subida..." */}
+                                    ) : null}
                                 </>
                             )}
                         </div>
 
                         {/* SECCIÓN 2: PAGO DE COPIAS CERTIFICADAS */}
                         <div className="seccion" style={{ borderLeft: '4px solid #eab308', backgroundColor: '#fefce8' }}>
-                            <h2> Comprobante de Pago de Copias Certificadas</h2>
+                            <h2>Comprobante de Pago de Copias Certificadas</h2>
                             <div className="rf-campos-fila">
                                 <div className="rf-campo">
                                     <label>Número de Mesa de Partes</label>
@@ -606,7 +679,7 @@ export default function ResolucionDisolucion() {
                                     <label>Fecha de pago</label>
                                     {pagoCopiasRegistrado ? (
                                         <div style={{ padding: '0.7rem 0.9rem', backgroundColor: '#e6f7e6', borderRadius: '0.7rem', border: '1px solid #c0e0c0' }}>
-                                             {formatearFechaLegible(fechaPagoCopias)}
+                                            {formatearFechaLegible(fechaPagoCopias)}
                                         </div>
                                     ) : (
                                         <input
@@ -630,7 +703,7 @@ export default function ResolucionDisolucion() {
                                 </button>
                             ) : pagoCopiasRegistrado ? (
                                 <div style={{ marginTop: 12, color: '#2b6e2b', fontWeight: 'bold', padding: '0.5rem', backgroundColor: '#e0f5e0', borderRadius: '0.5rem' }}>
-                                     Pago registrado el {formatearFechaLegible(fechaPagoCopias)}
+                                    Pago registrado el {formatearFechaLegible(fechaPagoCopias)}
                                 </div>
                             ) : null}
                             {mensajeCopias && (
@@ -649,6 +722,39 @@ export default function ResolucionDisolucion() {
                         <PipelineVisual etapaActual={getPipelineEtapa()} estado={expediente?.estado} />
                     </div>
                 </div>
+
+                {/* Modal de confirmación de subida */}
+                {mostrarConfirmacionSubida && (
+                    <div className="modal-overlay" onClick={() => setMostrarConfirmacionSubida(false)}>
+                        <div className="modal-contenido" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>Confirmar subida</h3>
+                                <button className="modal-cerrar" onClick={() => setMostrarConfirmacionSubida(false)}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                <p style={{ marginBottom: '8px' }}>
+                                    ¿Está seguro de subir la siguiente Resolución de Disolución?
+                                </p>
+                                <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+                                    <p><strong>N° de Resolución:</strong> {numeroDocumento}{sufijoDocumento}</p>
+                                    <p><strong>Archivo:</strong> {archivo?.name}</p>
+                                    <p><strong>Fecha:</strong> {fechaElaboracion}</p>
+                                </div>
+                                <p style={{ marginTop: '12px', color: '#dc2626', fontSize: '0.9rem' }}>
+                                    Esta acción no se puede deshacer.
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacionSubida(false)}>
+                                    Cancelar
+                                </button>
+                                <button className="btn-confirmar" onClick={confirmarSubida} disabled={enviando}>
+                                    {enviando ? 'Subiendo...' : 'Confirmar subida'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </>
     )
