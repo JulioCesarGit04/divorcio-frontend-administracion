@@ -90,22 +90,22 @@ export default function ResolucionFundada() {
     }
 
     const generarCorrelativo = async () => {
-        setCargandoCorrelativo(true)
-        setErrorUnicidad('')
-        try {
-            const ultimo = await obtenerUltimoCorrelativo('RESOLUCION')
-            const anio = new Date().getFullYear()
-            const numero = String(ultimo + 1).padStart(3, '0')
-            setNumeroDocumento(numero)
-            setSufijoDocumento(`-${anio}-MDEP`)
-        } catch (err) {
-            console.error('Error al generar correlativo:', err)
-            setNumeroDocumento('')
-            setSufijoDocumento('')
-        } finally {
-            setCargandoCorrelativo(false)
-        }
+    setCargandoCorrelativo(true)
+    setErrorUnicidad('')
+    try {
+        const ultimo = await obtenerUltimoCorrelativo('RESOLUCION');
+        const anio = new Date().getFullYear();
+        const numero = String(ultimo + 1).padStart(3, '0');
+        setNumeroDocumento(numero);
+        setSufijoDocumento(`-${anio}-MDEP`);
+    } catch (err) {
+        console.error('Error al generar correlativo:', err);
+        setNumeroDocumento('');
+        setSufijoDocumento('');
+    } finally {
+        setCargandoCorrelativo(false);
     }
+};
 
     useEffect(() => {
         const cargar = async () => {
