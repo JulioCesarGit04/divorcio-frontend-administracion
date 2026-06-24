@@ -20,9 +20,30 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
         return null;
     };
 
+    const limpiarNumero = (valor) => {
+        return valor.replace(/\D/g, ''); 
+    };
+
+    const handleNroMesaPartesChange = (e) => {
+        const soloNumeros = limpiarNumero(e.target.value);
+        setNroMesaPartes(soloNumeros);
+        setError('');
+    };
+
+    const handleNroMesaPartesConfirmChange = (e) => {
+        const soloNumeros = limpiarNumero(e.target.value);
+        setNroMesaPartesConfirm(soloNumeros);
+        setError('');
+    };
+
     const handleConfirmar = async () => {
         if (!nroMesaPartes.trim()) {
             setError('El número de Mesa de Partes es requerido.');
+            return;
+        }
+        
+        if (!/^\d+$/.test(nroMesaPartes)) {
+            setError('El número de Mesa de Partes solo debe contener dígitos.');
             return;
         }
         
@@ -103,13 +124,16 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                         <label>Número de Mesa de Partes <span className="campo-requerido">*</span></label>
                         <input
                             type="text"
-                            placeholder="Ej: MESA-001"
+                            placeholder="Ej: 1234"
                             value={nroMesaPartes}
-                            onChange={e => { setNroMesaPartes(e.target.value); setError(''); }}
+                            onChange={handleNroMesaPartesChange}
                             autoFocus
                             disabled={cargando}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            title="Solo números (sin espacios ni letras)"
                         />
-                        <span className="campo-ayuda">Escríbalo exactamente como aparece en el correo</span>
+                        <span className="campo-ayuda">Solo dígitos (ej: 1234)</span>
                     </div>
 
                     <div className="campo">
@@ -118,8 +142,11 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                             type="text"
                             placeholder="Repita el número para confirmar"
                             value={nroMesaPartesConfirm}
-                            onChange={e => { setNroMesaPartesConfirm(e.target.value); setError(''); }}
+                            onChange={handleNroMesaPartesConfirmChange}
                             disabled={cargando}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            title="Solo números (sin espacios ni letras)"
                             className={
                                 nroMesaPartesConfirm
                                     ? coinciden ? 'input-valido' : 'input-invalido'

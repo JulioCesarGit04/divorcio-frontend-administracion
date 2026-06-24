@@ -189,10 +189,31 @@ export const programarAudiencia = async (expediente_id, fecha_hora) => {
     return data;
 };
 
-export const registrarResultadoAudiencia = async (audiencia_id, resultado, asistio_c1, asistio_c2, conyuge1_id, conyuge2_id) => {
+export const registrarResultadoAudiencia = async (
+    audiencia_id,
+    resultado,
+    asistio_c1,
+    asistio_c2,
+    conyuge1_id,
+    conyuge2_id,
+    registrado_por,
+    fecha_programada
+) => {
     const response = await fetchWithRetry(
         `${API_URL}/audiencias/${audiencia_id}/resultado`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resultado, asistio_c1, asistio_c2, conyuge1_id, conyuge2_id }) },
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                resultado,
+                asistio_c1,
+                asistio_c2,
+                conyuge1_id,
+                conyuge2_id,
+                registrado_por,
+                fecha_programada
+            })
+        },
         3,
         TIMEOUTS.MUTATION
     );
@@ -345,4 +366,38 @@ export const getReportes = async () => {
     const data = await safeJson(response);
     if (!response.ok) throw new Error(data.mensaje || 'Error al obtener reportes');
     return data;
+};
+
+
+
+export const obtenerUltimoCorrelativo = async (tipoDocumento) => {
+    const response = await fetchWithRetry(
+        `${API_URL}/documentos/ultimo-correlativo?tipo=${encodeURIComponent(tipoDocumento)}`,
+        { headers: { 'Content-Type': 'application/json' } },
+        3,
+        TIMEOUTS.DEFAULT
+    );
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data.mensaje || 'Error al obtener el último correlativo');
+    return data.correlativo || 0;
+};
+
+
+export const verificarUnicidadNumeroDocumento = async (tipoDocumento, numeroDocumento) => {
+    const response = await fetchWithRetry(
+        `${API_URL}/documentos/verificar-unicidad`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                tipo: tipoDocumento, 
+                numero: numeroDocumento 
+            })
+        },
+        3,
+        TIMEOUTS.DEFAULT
+    );
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data.mensaje || 'Error al verificar unicidad del número');
+    return data.existe === true;
 };

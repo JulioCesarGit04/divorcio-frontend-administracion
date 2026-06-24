@@ -7,13 +7,8 @@ import PipelineVisual from '../../components/modulo3/PipelineVisual'
 import PlazoAlerta from '../../components/modulo3/PlazoAlerta'
 import { getExpedienteById, getAudiencias, cambiarEstadoExpediente, reemplazarDocumentoCiudadano, getPdfUrl } from '../../services/ProcedimientoService'
 
-// Tamaño máximo permitido para el PDF (10 MB). Ajustar si el backend define otro límite.
 const TAMANIO_MAXIMO_PDF = 10 * 1024 * 1024
 
-// ============================================================
-// COMPONENTE DocumentoItem EXTRAÍDO FUERA DEL COMPONENTE PADRE
-// (evita que se redefina en cada render y se pierda estado interno)
-// ============================================================
 function DocumentoItem({ doc, onReemplazado, bloqueado }) {
     const [mostrarModal, setMostrarModal] = useState(false)
     const [archivo, setArchivo] = useState(null)
@@ -37,7 +32,6 @@ function DocumentoItem({ doc, onReemplazado, bloqueado }) {
             return
         }
 
-        // Validación de tipo MIME + respaldo por extensión (el MIME puede venir vacío/inconsistente)
         const esPdfPorTipo = archivoSeleccionado.type === 'application/pdf'
         const esPdfPorExtension = tieneExtensionPdf(archivoSeleccionado.name)
         if (!esPdfPorTipo && !esPdfPorExtension) {
@@ -46,7 +40,6 @@ function DocumentoItem({ doc, onReemplazado, bloqueado }) {
             return
         }
 
-        // Validación de tamaño máximo
         if (archivoSeleccionado.size > TAMANIO_MAXIMO_PDF) {
             setErrorDoc(`El archivo supera el tamaño máximo permitido (${TAMANIO_MAXIMO_PDF / (1024 * 1024)} MB)`)
             setArchivo(null)
@@ -57,7 +50,7 @@ function DocumentoItem({ doc, onReemplazado, bloqueado }) {
     }
 
     const handleReemplazar = async () => {
-        if (cargandoDoc) return // evita doble disparo por doble click
+        if (cargandoDoc) return
 
         if (!archivo) {
             setErrorDoc('Debe seleccionar un archivo PDF')
@@ -116,22 +109,18 @@ function DocumentoItem({ doc, onReemplazado, bloqueado }) {
         setExitoDoc('')
     }
 
-    // Validación explícita de que el documento tiene una ruta de archivo válida,
-    // en vez de depender únicamente del valor mágico '#' devuelto por getPdfUrl
     const tieneArchivoValido = Boolean(doc?.ruta_archivo)
     const pdfUrl = tieneArchivoValido ? getPdfUrl(doc.ruta_archivo) : '#'
     const puedeMostrarVisor = tieneArchivoValido && pdfUrl && pdfUrl !== '#'
 
     return (
         <>
-            {/* ===== DOCUMENTO CON ACORDEÓN (igual que en ResolucionDisolucion) ===== */}
             <div style={{
                 marginBottom: '12px',
                 border: '1.5px solid #9ae6b4',
                 borderRadius: '10px',
                 overflow: 'hidden',
             }}>
-                {/* Cabecera con botón desplegable estilo ▶ */}
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '12px 16px',
@@ -173,7 +162,6 @@ function DocumentoItem({ doc, onReemplazado, bloqueado }) {
                     </div>
                 </div>
 
-                {/* Visor inline (acordeón) */}
                 {pdfAbierto && puedeMostrarVisor && (
                     <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
                         <div style={{
@@ -195,7 +183,6 @@ function DocumentoItem({ doc, onReemplazado, bloqueado }) {
                     </div>
                 )}
 
-                {/* Aviso si el documento no tiene un archivo asociado válido */}
                 {pdfAbierto && !puedeMostrarVisor && (
                     <div style={{ borderTop: '2px solid #0f3b6f', background: '#fff5f5', padding: '12px 16px' }}>
                         <p style={{ margin: 0, fontSize: '0.8rem', color: '#c53030' }}>
@@ -205,7 +192,6 @@ function DocumentoItem({ doc, onReemplazado, bloqueado }) {
                 )}
             </div>
 
-            {/* Modal para reemplazar documento */}
             {mostrarModal && !bloqueado && (
                 <div className="modal-overlay" onClick={handleCerrarModal}>
                     <div className="modal-contenido" onClick={e => e.stopPropagation()}>
@@ -282,14 +268,11 @@ export default function DetalleExpediente() {
             setExpediente(expedienteData)
             setDocumentos(documentosData)
         } catch (error) {
-            // Si falla la carga del expediente, sí mostramos el error a pantalla completa
             setError(error?.message || 'Error al cargar el expediente')
             setCargando(false)
             return
         }
 
-        // Carga de audiencias en un try/catch independiente: un fallo aquí no debe
-        // ocultar el expediente que ya se cargó correctamente.
         try {
             const resAudiencias = await getAudiencias(id)
             const audienciasData = resAudiencias?.data || resAudiencias || []
@@ -316,7 +299,7 @@ export default function DetalleExpediente() {
     }
 
     const handleConfirmarRevisionAceptar = async () => {
-        if (confirmandoAvance) return // evita doble disparo por doble click
+        if (confirmandoAvance) return 
 
         setMostrarConfirmacion(false)
         setConfirmandoAvance(true)
@@ -330,13 +313,11 @@ export default function DetalleExpediente() {
             if (data?.ok) {
                 setConfirmado(true)
                 setMensajeGlobal({ tipo: 'success', texto: '' })
-                // Se refresca el estado vía React en lugar de recargar toda la página
                 setTimeout(() => setRefresh(prev => !prev), 1500)
             } else {
                 setMensajeGlobal({ tipo: 'error', texto: data?.mensaje || 'Error al confirmar' })
             }
         } catch (error) {
-            console.error('Error:', error)
             setMensajeGlobal({ tipo: 'error', texto: 'Error al confirmar la revision' })
         } finally {
             setConfirmandoAvance(false)
@@ -355,8 +336,6 @@ export default function DetalleExpediente() {
         hoy.setHours(0, 0, 0, 0);
         const fechaLimite = new Date(expediente.fecha_limite_audiencia);
 
-        // Validación de fecha inválida: evita que un dato corrupto se traduzca
-        // silenciosamente en "0 días restantes"
         if (Number.isNaN(fechaLimite.getTime())) {
             return null;
         }
@@ -374,9 +353,6 @@ export default function DetalleExpediente() {
         return contador;
     };
 
-    // ============================================================
-    // RENDER PRINCIPAL
-    // ============================================================
     if (cargando) {
         return (
             <>
@@ -432,7 +408,6 @@ export default function DetalleExpediente() {
         if (!fecha) return '—'
 
         const partes = fecha.split('T')[0].split('-')
-        // Validación de formato: se espera exactamente YYYY-MM-DD (3 partes numéricas)
         const formatoValido = partes.length === 3 && partes.every(p => /^\d+$/.test(p))
         if (!formatoValido) {
             return '—'

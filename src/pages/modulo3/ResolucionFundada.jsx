@@ -9,9 +9,20 @@ import {
     getDocumentosInternos, 
     subirDocumentoInterno,
     getPdfUrl,
-    cambiarEstadoExpediente
+    cambiarEstadoExpediente,
+    obtenerUltimoCorrelativo,
+    verificarUnicidadNumeroDocumento
 } from '../../services/ProcedimientoService'
 import '../../styles/modulo3/resolucion-fundada.css'
+
+const TAMANIO_MAXIMO_PDF = 10 * 1024 * 1024
+
+const esArchivoPdfValido = (archivo) => {
+    if (!archivo) return false
+    const esPdfPorTipo = archivo.type === 'application/pdf'
+    const esPdfPorExtension = (archivo.name || '').toLowerCase().endsWith('.pdf')
+    return esPdfPorTipo || esPdfPorExtension
+}
 
 export default function ResolucionFundada() {
     const { id } = useParams()
@@ -23,27 +34,32 @@ export default function ResolucionFundada() {
     const [mensaje, setMensaje] = useState(null)
     const [resolucionFundada, setResolucionFundada] = useState(null)
     const [archivo, setArchivo] = useState(null)
-    const [numeroDocumento, setNumeroDocumento] = useState('')
+    const [vistaPreviaUrl, setVistaPreviaUrl] = useState(null)
+    const [previaAbierta, setPreviaAbierta] = useState(false) // ← Controla el acordeón de vista previa
+    const [numeroDocumento, setNumeroDocumento] = useState('') // solo 3 dígitos
+    const [sufijoDocumento, setSufijoDocumento] = useState('') // ej: '-2026-MDEP'
     const [fechaElaboracion, setFechaElaboracion] = useState(new Date().toISOString().split('T')[0])
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [puedeAvanzar, setPuedeAvanzar] = useState(false)
-
-    const [modalReemplazoAbierto, setModalReemplazoAbierto] = useState(false)
-    const [motivoReemplazo, setMotivoReemplazo] = useState('')
-    const [archivoReemplazo, setArchivoReemplazo] = useState(null)
-    const [enviandoReemplazo, setEnviandoReemplazo] = useState(false)
-    const [mensajeReemplazo, setMensajeReemplazo] = useState(null)
+    const [cargandoCorrelativo, setCargandoCorrelativo] = useState(false)
+    const [errorUnicidad, setErrorUnicidad] = useState('')
+    const [mostrarConfirmacionSubida, setMostrarConfirmacionSubida] = useState(false)
 
     const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false)
     const [modalCancelacionAbierto, setModalCancelacionAbierto] = useState(false)
     const [motivoCancelacion, setMotivoCancelacion] = useState('')
     const [enviandoCancelacion, setEnviandoCancelacion] = useState(false)
 
-    // --- Nuevo estado para controlar el acordeón del visor ---
+    // --- Control del acordeón del visor (documento ya subido) ---
     const [acordeonAbierto, setAcordeonAbierto] = useState(false)
 
     const toggleAcordeon = () => {
         setAcordeonAbierto(!acordeonAbierto)
+    }
+
+    // --- Control del acordeón de vista previa (antes de subir) ---
+    const togglePrevia = () => {
+        setPreviaAbierta(!previaAbierta)
     }
 
     const etapaActual = expediente?.etapa
@@ -73,6 +89,25 @@ export default function ResolucionFundada() {
         return fechaStr.split('T')[0].split('-').reverse().join('/')
     }
 
+    // === Generar número correlativo ===
+    const generarCorrelativo = async () => {
+        setCargandoCorrelativo(true)
+        setErrorUnicidad('')
+        try {
+            const ultimo = await obtenerUltimoCorrelativo('RESOLUCION_FUNDADA')
+            const anio = new Date().getFullYear()
+            const numero = String(ultimo + 1).padStart(3, '0')
+            setNumeroDocumento(numero)
+            setSufijoDocumento(`-${anio}-MDEP`)
+        } catch (err) {
+            console.error('Error al generar correlativo:', err)
+            setNumeroDocumento('')
+            setSufijoDocumento('')
+        } finally {
+            setCargandoCorrelativo(false)
+        }
+    }
+
     useEffect(() => {
         const cargar = async () => {
             if (!id) return
@@ -81,8 +116,6 @@ export default function ResolucionFundada() {
                 const resExp = await getExpedienteById(id)
                 const data = resExp?.data || resExp
                 const expedienteData = data?.expediente || data
-                console.log('Datos del expediente desde la API:', expedienteData);
-
                 setExpediente(expedienteData)
 
                 if (expedienteData?.fecha_fin_espera) {
@@ -100,12 +133,25 @@ export default function ResolucionFundada() {
                     .filter(d => d.tipo_documento === 'RESOLUCION_FUNDADA')
                     .sort((a, b) => new Date(b.subido_en) - new Date(a.subido_en))
 
-                setResolucionFundada(resoluciones[0] || null)
-                if (resoluciones[0]) {
-                    setNumeroDocumento(resoluciones[0].numero_documento || '')
-                    if (resoluciones[0].fecha_elaboracion) {
-                        setFechaElaboracion(resoluciones[0].fecha_elaboracion.split('T')[0])
+                const resolucion = resoluciones[0] || null
+                setResolucionFundada(resolucion)
+
+                if (resolucion) {
+                    const num = resolucion.numero_documento || ''
+                    const match = num.match(/^(\d{3})(-.+)$/)
+                    if (match) {
+                        setNumeroDocumento(match[1])
+                        setSufijoDocumento(match[2])
+                    } else {
+                        setNumeroDocumento(num)
+                        setSufijoDocumento('')
                     }
+                    if (resolucion.fecha_elaboracion) {
+                        setFechaElaboracion(resolucion.fecha_elaboracion.split('T')[0])
+                    }
+                } else {
+                    await generarCorrelativo()
+                    setFechaElaboracion(new Date().toISOString().split('T')[0])
                 }
             } catch (err) {
                 setError(err.message)
@@ -116,73 +162,83 @@ export default function ResolucionFundada() {
         cargar()
     }, [id])
 
+    // === Manejar selección de archivo ===
     const handleArchivoChange = (file) => {
-        if (file && file.type !== 'application/pdf') {
-            setMensaje({ tipo: 'error', texto: 'Solo se permiten archivos PDF' })
+        setMensaje(null)
+        setErrorUnicidad('')
+        if (!file) {
+            setArchivo(null)
+            if (vistaPreviaUrl) {
+                URL.revokeObjectURL(vistaPreviaUrl)
+                setVistaPreviaUrl(null)
+                setPreviaAbierta(false)
+            }
             return
         }
+        if (!esArchivoPdfValido(file)) {
+            setMensaje({ tipo: 'error', texto: 'Solo se permiten archivos PDF' })
+            setArchivo(null)
+            setPreviaAbierta(false)
+            return
+        }
+        if (file.size > TAMANIO_MAXIMO_PDF) {
+            setMensaje({ tipo: 'error', texto: `El archivo supera el tamaño máximo permitido (${TAMANIO_MAXIMO_PDF / (1024 * 1024)} MB)` })
+            setArchivo(null)
+            setPreviaAbierta(false)
+            return
+        }
+        if (vistaPreviaUrl) {
+            URL.revokeObjectURL(vistaPreviaUrl)
+        }
+        const url = URL.createObjectURL(file)
+        setVistaPreviaUrl(url)
         setArchivo(file)
-        setMensaje(null)
+        setPreviaAbierta(true) // ← Abrir el acordeón automáticamente al seleccionar archivo
     }
 
+    // === Verificar unicidad y mostrar confirmación ===
     const handleSubirResolucion = async () => {
         if (!archivo) {
             setMensaje({ tipo: 'error', texto: 'Debe seleccionar un archivo PDF' })
             return
         }
-        if (!numeroDocumento) {
+        if (!numeroDocumento.trim()) {
             setMensaje({ tipo: 'error', texto: 'Debe ingresar el número de resolución' })
             return
         }
+
+        const numeroCompleto = `${numeroDocumento}${sufijoDocumento}`
+
+        try {
+            const existe = await verificarUnicidadNumeroDocumento('RESOLUCION_FUNDADA', numeroCompleto)
+            if (existe) {
+                setErrorUnicidad('Este número de Resolución Fundada ya existe. Debe ser único.')
+                return
+            }
+            setErrorUnicidad('')
+        } catch (err) {
+            setMensaje({ tipo: 'error', texto: 'Error al verificar unicidad. Intente de nuevo.' })
+            return
+        }
+
+        setMostrarConfirmacionSubida(true)
+    }
+
+    // === Confirmar y subir ===
+    const confirmarSubida = async () => {
+        setMostrarConfirmacionSubida(false)
         setEnviando(true)
         setMensaje(null)
+
         try {
-            await subirDocumentoInterno(id, 'RESOLUCION_FUNDADA', numeroDocumento, fechaElaboracion, archivo, getUsuarioLogueado())
+            const numeroCompleto = `${numeroDocumento}${sufijoDocumento}`
+            await subirDocumentoInterno(id, 'RESOLUCION_FUNDADA', numeroCompleto, fechaElaboracion, archivo, getUsuarioLogueado())
             setMensaje({ tipo: 'success', texto: 'Resolución Fundada subida correctamente' })
             setTimeout(() => window.location.reload(), 1500)
         } catch (err) {
             setMensaje({ tipo: 'error', texto: err.message || 'Error al subir la resolución' })
         } finally {
             setEnviando(false)
-        }
-    }
-
-    const abrirModalReemplazo = () => {
-        if (esSoloLectura) return
-        setMotivoReemplazo('')
-        setArchivoReemplazo(null)
-        setMensajeReemplazo(null)
-        setModalReemplazoAbierto(true)
-    }
-
-    const handleReemplazarResolucion = async () => {
-        if (!archivoReemplazo) {
-            setMensajeReemplazo({ tipo: 'error', texto: 'Debe seleccionar un archivo PDF' })
-            return
-        }
-        if (!motivoReemplazo.trim()) {
-            setMensajeReemplazo({ tipo: 'error', texto: 'Debe ingresar el motivo del reemplazo' })
-            return
-        }
-
-        setEnviandoReemplazo(true)
-        setMensajeReemplazo(null)
-
-        try {
-            await subirDocumentoInterno(id, 'RESOLUCION_FUNDADA', null, fechaElaboracion, archivoReemplazo, motivoReemplazo)
-            setMensajeReemplazo({ tipo: 'success', texto: 'Resolución Fundada reemplazada correctamente' })
-            setTimeout(() => {
-                setModalReemplazoAbierto(false)
-                setArchivoReemplazo(null)
-                setMotivoReemplazo('')
-                setMensajeReemplazo(null)
-                window.location.reload()
-            }, 1500)
-        } catch (err) {
-            console.error('Error:', err)
-            setMensajeReemplazo({ tipo: 'error', texto: err.message })
-        } finally {
-            setEnviandoReemplazo(false)
         }
     }
 
@@ -252,8 +308,6 @@ export default function ResolucionFundada() {
             setEnviandoCancelacion(false)
         }
     }
-
-    // Ya no necesitamos verPdfEnModal ni los estados de visor
 
     if (cargando) return (
         <>
@@ -421,14 +475,13 @@ export default function ResolucionFundada() {
                             <h2>Resolución Fundada</h2>
 
                             {yaTieneResolucion && (
-                                // ===== ACORDEÓN (igual que en DetalleExpediente) =====
+                                // ===== ACORDEÓN DEL DOCUMENTO YA SUBIDO =====
                                 <div style={{
                                     border: '1.5px solid #9ae6b4',
                                     borderRadius: '10px',
                                     overflow: 'hidden',
                                     marginBottom: 20,
                                 }}>
-                                    {/* Cabecera */}
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -468,7 +521,7 @@ export default function ResolucionFundada() {
                                                 {resolucionFundada.subido_en && ` - Fecha: ${new Date(resolucionFundada.subido_en).toLocaleDateString('es-PE')}`}
                                             </p>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <div>
                                             <span style={{
                                                 padding: '4px 12px',
                                                 borderRadius: '20px',
@@ -480,28 +533,9 @@ export default function ResolucionFundada() {
                                             }}>
                                                 Subido
                                             </span>
-                                            {!bloqueado && !esSoloLectura && (
-                                                <button
-                                                    className="btn-reemplazar"
-                                                    onClick={abrirModalReemplazo}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        borderRadius: '6px',
-                                                        border: '1px solid #0f3b6f',
-                                                        background: 'transparent',
-                                                        color: '#0f3b6f',
-                                                        cursor: 'pointer',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600,
-                                                    }}
-                                                >
-                                                    Reemplazar
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Visor inline (acordeón) */}
                                     {acordeonAbierto && (
                                         <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
                                             <div style={{
@@ -537,12 +571,39 @@ export default function ResolucionFundada() {
                                 <div className="rf-form">
                                     <div className="campo">
                                         <label>N° de Resolución <span className="required">*</span></label>
-                                        <input
-                                            type="text"
-                                            value={numeroDocumento}
-                                            onChange={(e) => setNumeroDocumento(e.target.value)}
-                                            placeholder="Ej: RES-2026-001"
-                                        />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                            <input
+                                                type="text"
+                                                value={numeroDocumento}
+                                                onChange={(e) => {
+                                                    const valor = e.target.value.replace(/\D/g, '').slice(0, 3)
+                                                    setNumeroDocumento(valor)
+                                                    setErrorUnicidad('')
+                                                }}
+                                                placeholder="003"
+                                                disabled={enviando || cargandoCorrelativo}
+                                                style={{ 
+                                                    width: '80px', 
+                                                    textAlign: 'center', 
+                                                    fontSize: '1rem',
+                                                    padding: '8px 4px'
+                                                }}
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                            />
+                                            <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#4a5568' }}>
+                                                {sufijoDocumento || '-2026-MDEP'}
+                                            </span>
+                                            {cargandoCorrelativo && <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Generando...</span>}
+                                        </div>
+                                        {errorUnicidad && (
+                                            <span className="campo-ayuda--error" style={{ color: '#dc2626', fontSize: '0.8rem', display: 'block', marginTop: '4px' }}>
+                                                {errorUnicidad}
+                                            </span>
+                                        )}
+                                        <span className="campo-ayuda" style={{ display: 'block', marginTop: '4px' }}>
+                                            Ingrese solo los 3 dígitos (ej: 003). El año y sufijo se generan automáticamente.
+                                        </span>
                                     </div>
 
                                     <div className="campo">
@@ -550,8 +611,10 @@ export default function ResolucionFundada() {
                                         <input
                                             type="date"
                                             value={fechaElaboracion}
-                                            onChange={(e) => setFechaElaboracion(e.target.value)}
+                                            disabled
+                                            style={{ background: '#f3f4f6', cursor: 'not-allowed' }}
                                         />
+                                        <span className="campo-ayuda">La fecha se fija automáticamente al día de hoy.</span>
                                     </div>
 
                                     <div className="campo">
@@ -574,11 +637,103 @@ export default function ResolucionFundada() {
                                         </div>
                                     </div>
 
+                                    {/* ===== ACORDEÓN DE VISTA PREVIA ===== */}
+                                    {vistaPreviaUrl && (
+                                        <div className="campo" style={{ marginTop: '12px' }}>
+                                            <label>Vista previa del documento</label>
+                                            <div style={{
+                                                border: '1.5px solid #9ae6b4',
+                                                borderRadius: '10px',
+                                                overflow: 'hidden',
+                                            }}>
+                                                <div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px',
+                                                    padding: '12px 16px',
+                                                    background: '#f0fff4',
+                                                }}>
+                                                    <button
+                                                        onClick={togglePrevia}
+                                                        style={{
+                                                            background: '#0f3b6f',
+                                                            border: 'none',
+                                                            borderRadius: '6px',
+                                                            width: '30px',
+                                                            height: '30px',
+                                                            color: 'white',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: 'bold',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            transform: previaAbierta ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                            transition: 'transform 0.2s',
+                                                        }}
+                                                    >
+                                                        ▶
+                                                    </button>
+                                                    <div style={{ flex: 1 }}>
+                                                        <p style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#0f3b6f', margin: 0 }}>
+                                                            Resolución Fundada
+                                                        </p>
+                                                        <p style={{ fontSize: '0.73rem', color: '#4a5568', margin: '2px 0 0' }}>
+                                                            {archivo?.name}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{
+                                                            padding: '4px 12px',
+                                                            borderRadius: '20px',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 700,
+                                                            background: '#fef3c7',
+                                                            color: '#92400e',
+                                                            border: '1px solid #f6ad55'
+                                                        }}>
+                                                            Previsualizando
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {previaAbierta && (
+                                                    <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            padding: '8px 16px',
+                                                            background: '#0f3b6f',
+                                                        }}>
+                                                            <span style={{ color: '#c7a03a', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                                Resolución Fundada (previsualización)
+                                                            </span>
+                                                            <a
+                                                                href={vistaPreviaUrl}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                style={{ color: 'white', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                            >
+                                                                Abrir en nueva pestaña ↗
+                                                            </a>
+                                                        </div>
+                                                        <iframe
+                                                            src={vistaPreviaUrl}
+                                                            title="Vista previa"
+                                                            style={{ width: '100%', height: '400px', border: 'none', display: 'block' }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {mensaje && (
                                         <div className={`mensaje ${mensaje.tipo}`}>{mensaje.texto}</div>
                                     )}
 
-                                    <button className="btn-subir" onClick={handleSubirResolucion} disabled={enviando}>
+                                    <button className="btn-subir" onClick={handleSubirResolucion} disabled={enviando || cargandoCorrelativo}>
                                         {enviando ? 'Subiendo...' : 'Subir Resolución Fundada'}
                                     </button>
                                 </div>
@@ -592,7 +747,7 @@ export default function ResolucionFundada() {
 
                             {yaTieneResolucion && etapaActual === 'ESPERA_LEGAL' && !bloqueado && !esSoloLectura && (
                                 <div className="alerta-info" style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '12px', borderRadius: '8px', marginTop: 16 }}>
-                                     La Resolución Fundada ya ha sido subida. Puedes avanzar a DISOLUCIÓN cuando se cumpla el plazo o reemplazarla si es necesario.
+                                     La Resolución Fundada ya ha sido subida. Puedes avanzar a DISOLUCIÓN cuando se cumpla el plazo.
                                 </div>
                             )}
 
@@ -650,50 +805,33 @@ export default function ResolucionFundada() {
                     </div>
                 </div>
 
-                {modalReemplazoAbierto && (
-                    <div className="modal-overlay" onClick={() => !enviandoReemplazo && setModalReemplazoAbierto(false)}>
-                        <div className="modal-contenido" onClick={e => e.stopPropagation()}>
+                {/* ===== MODAL DE CONFIRMACIÓN ANTES DE SUBIR ===== */}
+                {mostrarConfirmacionSubida && (
+                    <div className="modal-overlay" onClick={() => setMostrarConfirmacionSubida(false)}>
+                        <div className="modal-contenido" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
                             <div className="modal-header">
-                                <h3>Reemplazar Resolución Fundada</h3>
-                                <button className="modal-cerrar" onClick={() => !enviandoReemplazo && setModalReemplazoAbierto(false)} disabled={enviandoReemplazo}>×</button>
+                                <h3>Confirmar subida</h3>
+                                <button className="modal-cerrar" onClick={() => setMostrarConfirmacionSubida(false)}>×</button>
                             </div>
                             <div className="modal-body">
-                                <div className="campo">
-                                    <label>Motivo del reemplazo <span className="required">*</span></label>
-                                    <textarea
-                                        value={motivoReemplazo}
-                                        onChange={(e) => setMotivoReemplazo(e.target.value)}
-                                        placeholder="Ej: Error en la resolución, versión actualizada, etc."
-                                        rows="3"
-                                        disabled={enviandoReemplazo}
-                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical' }}
-                                    />
+                                <p style={{ marginBottom: '8px' }}>
+                                    ¿Está seguro de subir la siguiente Resolución Fundada?
+                                </p>
+                                <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px' }}>
+                                    <p><strong>N° de Resolución:</strong> {numeroDocumento}{sufijoDocumento}</p>
+                                    <p><strong>Archivo:</strong> {archivo?.name}</p>
+                                    <p><strong>Fecha:</strong> {fechaElaboracion}</p>
                                 </div>
-                                <div className="campo">
-                                    <label>Nuevo archivo PDF <span className="required">*</span></label>
-                                    <input
-                                        type="file"
-                                        accept=".pdf"
-                                        onChange={(e) => setArchivoReemplazo(e.target.files[0])}
-                                        disabled={enviandoReemplazo}
-                                        style={{ width: '100%', padding: '8px' }}
-                                    />
-                                    {archivoReemplazo && (
-                                        <span className="archivo-ok" style={{ display: 'inline-block', marginTop: '8px', fontSize: '12px', color: '#22c55e' }}>
-                                             {archivoReemplazo.name}
-                                        </span>
-                                    )}
-                                </div>
-                                {mensajeReemplazo && (
-                                    <div className={`mensaje ${mensajeReemplazo.tipo}`} style={{ marginTop: '16px' }}>
-                                        {mensajeReemplazo.texto}
-                                    </div>
-                                )}
+                                <p style={{ marginTop: '12px', color: '#dc2626', fontSize: '0.9rem' }}>
+                                    Esta acción no se puede deshacer.
+                                </p>
                             </div>
                             <div className="modal-footer">
-                                <button className="btn-cancelar" onClick={() => setModalReemplazoAbierto(false)} disabled={enviandoReemplazo}>Cancelar</button>
-                                <button className="btn-confirmar" onClick={handleReemplazarResolucion} disabled={enviandoReemplazo || !archivoReemplazo || !motivoReemplazo.trim()}>
-                                    {enviandoReemplazo ? 'Reemplazando...' : 'Reemplazar'}
+                                <button className="btn-cancelar" onClick={() => setMostrarConfirmacionSubida(false)}>
+                                    Cancelar
+                                </button>
+                                <button className="btn-confirmar" onClick={confirmarSubida} disabled={enviando}>
+                                    {enviando ? 'Subiendo...' : 'Confirmar subida'}
                                 </button>
                             </div>
                         </div>
@@ -768,8 +906,6 @@ export default function ResolucionFundada() {
                         </div>
                     </div>
                 )}
-
-                {/* Eliminamos el modal de visor, ya no es necesario */}
 
             </main>
         </>

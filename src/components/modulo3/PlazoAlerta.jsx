@@ -3,11 +3,7 @@ import { useEffect, useState } from 'react'
 import '../../styles/modulo3/PlazoAlerta.css'
 
 export default function PlazoAlerta({ expediente, audienciaActual }) {
-    console.log('========== PLAZO ALERTA DEBUG ==========')
-    console.log('audienciaActual:', audienciaActual)
-    console.log('audienciaActual?.estado:', audienciaActual?.estado)
-    console.log('expediente?.etapa:', expediente?.etapa)
-    console.log('=========================================')
+    
     
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [color, setColor] = useState('#64748b')

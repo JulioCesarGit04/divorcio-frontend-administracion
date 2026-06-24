@@ -52,7 +52,7 @@ export default function ExpedientesActivos() {
         setExpedientes(ordenados)
         setExpedientesFiltrados(ordenados)
     } catch (error) {
-        console.error('Error cargando expedientes:', error)
+        
     } finally {
         setCargando(false)
     }

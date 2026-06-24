@@ -117,7 +117,6 @@ export default function ProgramarAudiencia() {
                 setAudienciaReprogramada(reprogramada)
 
             } catch (err) {
-                console.error('Error en carga:', err)
                 setError(err.message)
             } finally {
                 setCargando(false)
@@ -201,7 +200,6 @@ export default function ProgramarAudiencia() {
                 window.location.reload()
             }, 1500)
         } catch (err) {
-            console.error('Error:', err)
             setMensaje({ tipo: 'error', texto: err.message || 'Error al programar audiencia' })
         } finally {
             setEnviando(false)
