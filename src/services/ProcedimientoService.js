@@ -401,3 +401,32 @@ export const verificarUnicidadNumeroDocumento = async (tipoDocumento, numeroDocu
     if (!response.ok) throw new Error(data.mensaje || 'Error al verificar unicidad del número');
     return data.existe === true;
 };
+
+
+
+export const getHistorialTarjetas = async (filtros = {}) => {
+    const params = new URLSearchParams(
+        Object.fromEntries(Object.entries(filtros).filter(([, v]) => v !== '' && v != null))
+    ).toString();
+    const response = await fetchWithRetry(
+        `${API_URL}/historial/tarjetas${params ? `?${params}` : ''}`,
+        { headers: { 'Content-Type': 'application/json' } },
+        3,
+        TIMEOUTS.DEFAULT
+    );
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data.mensaje || 'Error al obtener tarjetas de historial');
+    return data;
+};
+
+export const getHistorialDetalle = async (pre_solicitud_id) => {
+    const response = await fetchWithRetry(
+        `${API_URL}/historial?pre_solicitud_id=${pre_solicitud_id}`,
+        { headers: { 'Content-Type': 'application/json' } },
+        3,
+        TIMEOUTS.DEFAULT
+    );
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data.mensaje || 'Error al obtener detalle de historial');
+    return data;
+};
