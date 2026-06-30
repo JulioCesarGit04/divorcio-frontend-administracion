@@ -54,6 +54,7 @@ export default function ResolucionDisolucion() {
     const [resolucionDisolucion, setResolucionDisolucion] = useState(null)
     const [archivo, setArchivo] = useState(null)
     const [archivoPreviewUrl, setArchivoPreviewUrl] = useState(null)
+    const [previaAbierta, setPreviaAbierta] = useState(false)
     const [numeroDocumento, setNumeroDocumento] = useState('')
     const [sufijoDocumento, setSufijoDocumento] = useState('')
     const [fechaElaboracion, setFechaElaboracion] = useState(new Date().toISOString().split('T')[0])
@@ -67,8 +68,11 @@ export default function ResolucionDisolucion() {
     const [fechaSegundoPago, setFechaSegundoPago] = useState('')
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [puedeAvanzar, setPuedeAvanzar] = useState(false)
+    const [errorFechaPago, setErrorFechaPago] = useState('')
 
     const [pdfAbierto, setPdfAbierto] = useState(false)
+
+    const togglePrevia = () => setPreviaAbierta(!previaAbierta)
 
     const etapaActual = expediente?.etapa
 
@@ -194,7 +198,6 @@ export default function ResolucionDisolucion() {
         setPuedeAvanzar(slaCumplido && resolucionSubida && pagoCopiasRegistrado)
     }, [diasRestantes, resolucionDisolucion, pagoCopiasRegistrado])
 
-    // Limpiar URL de preview al desmontar
     useEffect(() => {
         return () => {
             if (archivoPreviewUrl) {
@@ -304,6 +307,7 @@ export default function ResolucionDisolucion() {
         if (file && file.type !== 'application/pdf') {
             setMensaje({ tipo: 'error', texto: 'Solo se permiten archivos PDF' })
             setArchivo(null)
+            setPreviaAbierta(false)
             return
         }
 
@@ -311,8 +315,10 @@ export default function ResolucionDisolucion() {
             const url = URL.createObjectURL(file)
             setArchivoPreviewUrl(url)
             setArchivo(file)
+            setPreviaAbierta(true)
         } else {
             setArchivo(null)
+            setPreviaAbierta(false)
         }
         setMensaje(null)
     }
@@ -351,10 +357,10 @@ export default function ResolucionDisolucion() {
                 }
             }
             
-            // Limpiar preview después de subir
             if (archivoPreviewUrl) {
                 URL.revokeObjectURL(archivoPreviewUrl)
                 setArchivoPreviewUrl(null)
+                setPreviaAbierta(false)
             }
             
             setMensaje({ tipo: 'success', texto: `Resolución de Disolución subida correctamente. N°: ${result.numero_generado || numeroCompleto}` })
@@ -377,6 +383,13 @@ export default function ResolucionDisolucion() {
             setMensajeCopias({ tipo: 'error', texto: 'Ingrese la fecha de pago de copias certificadas' })
             return
         }
+
+        const hoy = getFechaPeru()
+        if (fechaPagoCopias > hoy) {
+            setMensajeCopias({ tipo: 'error', texto: 'No se puede registrar una fecha futura.' })
+            return
+        }
+
         setEnviando(true)
         setMensajeCopias(null)
         try {
@@ -712,6 +725,7 @@ export default function ResolucionDisolucion() {
                                                                     setArchivoPreviewUrl(null)
                                                                 }
                                                                 setArchivo(null)
+                                                                setPreviaAbierta(false)
                                                                 setMensaje(null)
                                                             }}
                                                             style={{
@@ -728,61 +742,88 @@ export default function ResolucionDisolucion() {
                                                         </button>
                                                     )}
                                                 </div>
-                                                {/*  PREVISUALIZACIÓN MEJORADA */}
+
                                                 {archivoPreviewUrl && !yaTieneResolucion && (
-                                                    <div style={{ marginTop: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                                                    <div style={{ marginTop: '16px', border: '1.5px solid #9ae6b4', borderRadius: '10px', overflow: 'hidden' }}>
                                                         <div style={{
-                                                            background: '#1a1a2e',
-                                                            padding: '8px 16px',
                                                             display: 'flex',
-                                                            justifyContent: 'space-between',
-                                                            alignItems: 'center'
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            padding: '12px 16px',
+                                                            background: '#f0fff4',
                                                         }}>
-                                                            <span style={{ color: '#c7a03a', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                                                                VISTA PREVIA DEL DOCUMENTO
-                                                            </span>
-                                                            <span style={{ color: 'white', fontSize: '0.75rem' }}>
-                                                                {archivo?.name}
-                                                            </span>
-                                                        </div>
-                                                        <div style={{
-                                                            background: '#0f3b6f',
-                                                            padding: '6px 16px',
-                                                            display: 'flex',
-                                                            justifyContent: 'space-between',
-                                                            alignItems: 'center'
-                                                        }}>
-                                                            <span style={{ color: 'white', fontSize: '0.8rem' }}>
-                                                                <strong>Informe Legal</strong> (previsualización)
-                                                            </span>
-                                                            <a
-                                                                href={archivoPreviewUrl}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                style={{ color: '#c7a03a', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                            <button
+                                                                onClick={togglePrevia}
+                                                                style={{
+                                                                    background: '#0f3b6f',
+                                                                    border: 'none',
+                                                                    borderRadius: '6px',
+                                                                    width: '30px',
+                                                                    height: '30px',
+                                                                    color: 'white',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '0.8rem',
+                                                                    fontWeight: 'bold',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    transform: previaAbierta ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                                    transition: 'transform 0.2s',
+                                                                }}
                                                             >
-                                                                Abrir en nueva pestaña ↗
-                                                            </a>
+                                                                ▶
+                                                            </button>
+                                                            <div style={{ flex: 1 }}>
+                                                                <p style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#0f3b6f', margin: 0 }}>
+                                                                    Resolución de Disolución
+                                                                </p>
+                                                                <p style={{ fontSize: '0.73rem', color: '#4a5568', margin: '2px 0 0' }}>
+                                                                    {archivo?.name}
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                <span style={{
+                                                                    padding: '4px 12px',
+                                                                    borderRadius: '20px',
+                                                                    fontSize: '0.78rem',
+                                                                    fontWeight: 700,
+                                                                    background: '#fef3c7',
+                                                                    color: '#92400e',
+                                                                    border: '1px solid #f6ad55'
+                                                                }}>
+                                                                    Previsualizando
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <iframe
-                                                            src={archivoPreviewUrl}
-                                                            title="Vista previa del PDF"
-                                                            style={{
-                                                                width: '100%',
-                                                                height: '500px',
-                                                                border: 'none',
-                                                                display: 'block'
-                                                            }}
-                                                        />
-                                                        <div style={{
-                                                            background: '#f1f5f9',
-                                                            padding: '4px 16px',
-                                                            fontSize: '0.75rem',
-                                                            color: '#475569',
-                                                            borderTop: '1px solid #e2e8f0'
-                                                        }}>
-                                                            Previsualizando
-                                                        </div>
+
+                                                        {previaAbierta && (
+                                                            <div style={{ borderTop: '2px solid #0f3b6f', background: '#1a1a2e' }}>
+                                                                <div style={{
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center',
+                                                                    padding: '8px 16px',
+                                                                    background: '#0f3b6f',
+                                                                }}>
+                                                                    <span style={{ color: '#c7a03a', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                                        Resolución de Disolución (previsualización)
+                                                                    </span>
+                                                                    <a
+                                                                        href={archivoPreviewUrl}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        style={{ color: 'white', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                                    >
+                                                                        Abrir en nueva pestaña ↗
+                                                                    </a>
+                                                                </div>
+                                                                <iframe
+                                                                    src={archivoPreviewUrl}
+                                                                    title="Vista previa"
+                                                                    style={{ width: '100%', height: '400px', border: 'none', display: 'block' }}
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -816,13 +857,50 @@ export default function ResolucionDisolucion() {
                                             {formatearFechaLegible(fechaPagoCopias)}
                                         </div>
                                     ) : (
-                                        <input
-                                            type="date"
-                                            value={fechaPagoCopias}
-                                            onChange={(e) => setFechaPagoCopias(e.target.value)}
-                                            disabled={bloqueado}
-                                            max={hoyPeru}
-                                        />
+                                        <>
+                                            <input
+                                                type="date"
+                                                value={fechaPagoCopias}
+                                                onChange={(e) => {
+                                                    const valor = e.target.value
+                                                    setFechaPagoCopias(valor)
+                                                    if (valor) {
+                                                        const hoy = getFechaPeru()
+                                                        if (valor > hoy) {
+                                                            setErrorFechaPago('No se puede seleccionar una fecha futura.')
+                                                        } else {
+                                                            setErrorFechaPago('')
+                                                        }
+                                                    } else {
+                                                        setErrorFechaPago('')
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    if (fechaPagoCopias) {
+                                                        const hoy = getFechaPeru()
+                                                        if (fechaPagoCopias > hoy) {
+                                                            setFechaPagoCopias(hoy)
+                                                            setErrorFechaPago('')
+                                                            setMensajeCopias({ tipo: 'error', texto: 'La fecha fue corregida automáticamente a hoy.' })
+                                                        }
+                                                    }
+                                                }}
+                                                disabled={bloqueado}
+                                                max={hoyPeru}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    borderRadius: '8px',
+                                                    border: errorFechaPago ? '1px solid #dc2626' : '1px solid #cbd5e1',
+                                                    fontSize: '0.9rem'
+                                                }}
+                                            />
+                                            {errorFechaPago && (
+                                                <div style={{ color: '#dc2626', fontSize: '0.85rem', marginTop: '4px' }}>
+                                                     {errorFechaPago}
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -832,14 +910,10 @@ export default function ResolucionDisolucion() {
                                     className="btn-subir" 
                                     style={{ backgroundColor: '#eab308', marginTop: 12 }} 
                                     onClick={handleRegistrarPagoCopias}
-                                    disabled={enviando || !fechaPagoCopias}
+                                    disabled={enviando || !fechaPagoCopias || !!errorFechaPago}
                                 >
                                     {enviando ? 'Registrando...' : 'Registrar pago de copias'}
                                 </button>
-                            ) : pagoCopiasRegistrado ? (
-                                <div style={{ marginTop: 12, color: '#2b6e2b', fontWeight: 'bold', padding: '0.5rem', backgroundColor: '#e0f5e0', borderRadius: '0.5rem' }}>
-                                    Pago registrado el {formatearFechaLegible(fechaPagoCopias)}
-                                </div>
                             ) : null}
                             {mensajeCopias && (
                                 <div className={`mensaje ${mensajeCopias.tipo}`} style={{ marginTop: 12 }}>{mensajeCopias.texto}</div>
@@ -858,7 +932,6 @@ export default function ResolucionDisolucion() {
                     </div>
                 </div>
 
-                {/* Modal de confirmación de subida */}
                 {mostrarConfirmacionSubida && (
                     <div className="modal-overlay" onClick={() => setMostrarConfirmacionSubida(false)}>
                         <div className="modal-contenido" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
