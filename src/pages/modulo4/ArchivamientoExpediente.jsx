@@ -14,12 +14,13 @@ export default function ArchivamientoExpediente() {
     const [expediente, setExpediente] = useState(null)
     const [cargando, setCargando] = useState(true)
     const [archivos, setArchivos] = useState({ sunarp: null, reniec: null })
+    const [sunarpPreviewUrl, setSunarpPreviewUrl] = useState(null)
+    const [reniecPreviewUrl, setReniecPreviewUrl] = useState(null)
     const [mensaje, setMensaje] = useState('')
     const [enviando, setEnviando] = useState(false)
 
     const [archivosExistentes, setArchivosExistentes] = useState({ sunarp: null, reniec: null })
     const [yaFinalizado, setYaFinalizado] = useState(false)
-
 
     const [pdfAbiertoSunarp, setPdfAbiertoSunarp] = useState(false)
     const [pdfAbiertoReniec, setPdfAbiertoReniec] = useState(false)
@@ -46,16 +47,42 @@ export default function ArchivamientoExpediente() {
         cargar()
     }, [id])
 
+    // Limpiar URLs de preview al desmontar
+    useEffect(() => {
+        return () => {
+            if (sunarpPreviewUrl) URL.revokeObjectURL(sunarpPreviewUrl)
+            if (reniecPreviewUrl) URL.revokeObjectURL(reniecPreviewUrl)
+        }
+    }, [sunarpPreviewUrl, reniecPreviewUrl])
+
     const handleFileChange = (e, tipo) => {
         if (yaFinalizado) {
             setMensaje('Expediente ya finalizado, no se pueden cambiar archivos')
             return
         }
+
         const file = e.target.files[0]
         if (file && file.type !== 'application/pdf') {
             setMensaje('Solo se permiten archivos PDF')
             return
         }
+
+        // Limpiar preview anterior del mismo tipo
+        if (tipo === 'sunarp' && sunarpPreviewUrl) {
+            URL.revokeObjectURL(sunarpPreviewUrl)
+            setSunarpPreviewUrl(null)
+        }
+        if (tipo === 'reniec' && reniecPreviewUrl) {
+            URL.revokeObjectURL(reniecPreviewUrl)
+            setReniecPreviewUrl(null)
+        }
+
+        if (file) {
+            const url = URL.createObjectURL(file)
+            if (tipo === 'sunarp') setSunarpPreviewUrl(url)
+            else setReniecPreviewUrl(url)
+        }
+
         setArchivos({ ...archivos, [tipo]: file })
         setMensaje('')
     }
@@ -64,6 +91,13 @@ export default function ArchivamientoExpediente() {
         if (yaFinalizado) {
             setMensaje('El expediente ya esta finalizado')
             return
+        }
+
+        // Validar que existe la Resolución de Disolución
+        const tieneResolucion = expediente?.num_resolucion && expediente?.fecha_elaboracion_resolucion;
+        if (!tieneResolucion) {
+            setMensaje('⚠️ Primero debe subir la Resolución de Disolución en la página correspondiente.');
+            return;
         }
 
         const tieneSunarp = archivos.sunarp || archivosExistentes.sunarp
@@ -80,6 +114,9 @@ export default function ArchivamientoExpediente() {
             const reniecFile = archivos.reniec || null
             const result = await subirCargosExternos(id, sunarpFile, reniecFile)
             if (result.ok) {
+                // Limpiar previews después de subir
+                if (sunarpPreviewUrl) { URL.revokeObjectURL(sunarpPreviewUrl); setSunarpPreviewUrl(null) }
+                if (reniecPreviewUrl) { URL.revokeObjectURL(reniecPreviewUrl); setReniecPreviewUrl(null) }
                 setMensaje('Expediente finalizado correctamente. Redirigiendo...')
                 setYaFinalizado(true)
                 setTimeout(() => navigate('/modulo3/expedientes'), 2000)
@@ -105,7 +142,6 @@ export default function ArchivamientoExpediente() {
         return partes[partes.length - 1]
     }
 
-
     const formatearFechaSubida = (fecha) => {
         if (!fecha) return ''
         return new Date(fecha).toLocaleDateString('es-PE')
@@ -113,6 +149,9 @@ export default function ArchivamientoExpediente() {
 
     const etapaActual = expediente?.etapa || 'ARCHIVADO'
     const getPipelineEtapa = () => 'archivar'
+
+    // Verificar si existe resolución de disolución
+    const tieneResolucion = expediente?.num_resolucion && expediente?.fecha_elaboracion_resolucion;
 
     if (cargando) return (
         <>
@@ -162,18 +201,27 @@ export default function ArchivamientoExpediente() {
                                 <div><label>N° Mesa de Partes</label><p>{expediente.numero_mesa_partes || '—'}</p></div>
                                 <div><label>Solicitante</label><p>{expediente.solicitante_nombre} (DNI: {expediente.solicitante_dni})</p></div>
                                 <div><label>Demandado</label><p>{expediente.demandado_nombre} (DNI: {expediente.demandado_dni})</p></div>
-                                <div><label>Resolucion de Disolucion</label><p>{expediente.num_resolucion || '—'} - Fecha: {formatFecha(expediente.fecha_elaboracion_resolucion)}</p></div>
+                                <div>
+                                    <label>Resolucion de Disolucion</label>
+                                    <p>
+                                        {expediente.num_resolucion || '—'} 
+                                        {expediente.fecha_elaboracion_resolucion && ` - Fecha: ${formatFecha(expediente.fecha_elaboracion_resolucion)}`}
+                                        {!tieneResolucion && <span style={{ color: '#dc2626', fontWeight: 'bold', marginLeft: '8px' }}>(No subida)</span>}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
                         <div className="seccion">
                             <h2>Cargos SUNARP y RENIEC</h2>
+
                             {yaFinalizado && (
                                 <div className="mensaje success" style={{ marginBottom: '1rem' }}>
                                     Ambos cargos registrados. El expediente esta finalizado.
                                 </div>
                             )}
 
+                            {/* SUNARP */}
                             {archivosExistentes.sunarp ? (
                                 <div style={{ marginBottom: '24px', border: '1.5px solid #9ae6b4', borderRadius: '12px', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f0fff4' }}>
@@ -229,13 +277,77 @@ export default function ArchivamientoExpediente() {
                                         type="file"
                                         accept=".pdf"
                                         onChange={(e) => handleFileChange(e, 'sunarp')}
-                                        disabled={enviando || yaFinalizado}
+                                        disabled={enviando || yaFinalizado || !tieneResolucion}
                                         style={{ display: 'block', marginBottom: '8px' }}
                                     />
                                     {archivos.sunarp && <span className="archivo-ok"> {archivos.sunarp.name}</span>}
+                                    {!tieneResolucion && !yaFinalizado && (
+                                        <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px' }}>
+                                             Requiere Resolución de Disolución primero
+                                        </div>
+                                    )}
+
+                                    {/*  PREVISUALIZACIÓN SUNARP */}
+                                    {sunarpPreviewUrl && !yaFinalizado && (
+                                        <div style={{ marginTop: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                                            <div style={{
+                                                background: '#1a1a2e',
+                                                padding: '8px 16px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <span style={{ color: '#c7a03a', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                                    VISTA PREVIA DEL DOCUMENTO
+                                                </span>
+                                                <span style={{ color: 'white', fontSize: '0.75rem' }}>
+                                                    {archivos.sunarp?.name}
+                                                </span>
+                                            </div>
+                                            <div style={{
+                                                background: '#0f3b6f',
+                                                padding: '6px 16px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <span style={{ color: 'white', fontSize: '0.8rem' }}>
+                                                    <strong>Constancia SUNARP</strong> (previsualización)
+                                                </span>
+                                                <a
+                                                    href={sunarpPreviewUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{ color: '#c7a03a', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                >
+                                                    Abrir en nueva pestaña ↗
+                                                </a>
+                                            </div>
+                                            <iframe
+                                                src={sunarpPreviewUrl}
+                                                title="Vista previa SUNARP"
+                                                style={{
+                                                    width: '100%',
+                                                    height: '500px',
+                                                    border: 'none',
+                                                    display: 'block'
+                                                }}
+                                            />
+                                            <div style={{
+                                                background: '#f1f5f9',
+                                                padding: '4px 16px',
+                                                fontSize: '0.75rem',
+                                                color: '#475569',
+                                                borderTop: '1px solid #e2e8f0'
+                                            }}>
+                                                Previsualizando
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
+                            {/* RENIEC */}
                             {archivosExistentes.reniec ? (
                                 <div style={{ marginBottom: '24px', border: '1.5px solid #9ae6b4', borderRadius: '12px', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f0fff4' }}>
@@ -291,10 +403,73 @@ export default function ArchivamientoExpediente() {
                                         type="file"
                                         accept=".pdf"
                                         onChange={(e) => handleFileChange(e, 'reniec')}
-                                        disabled={enviando || yaFinalizado}
+                                        disabled={enviando || yaFinalizado || !tieneResolucion}
                                         style={{ display: 'block', marginBottom: '8px' }}
                                     />
                                     {archivos.reniec && <span className="archivo-ok"> {archivos.reniec.name}</span>}
+                                    {!tieneResolucion && !yaFinalizado && (
+                                        <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px' }}>
+                                             Requiere Resolución de Disolución primero
+                                        </div>
+                                    )}
+
+                                    {/*  PREVISUALIZACIÓN RENIEC */}
+                                    {reniecPreviewUrl && !yaFinalizado && (
+                                        <div style={{ marginTop: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                                            <div style={{
+                                                background: '#1a1a2e',
+                                                padding: '8px 16px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <span style={{ color: '#c7a03a', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                                    VISTA PREVIA DEL DOCUMENTO
+                                                </span>
+                                                <span style={{ color: 'white', fontSize: '0.75rem' }}>
+                                                    {archivos.reniec?.name}
+                                                </span>
+                                            </div>
+                                            <div style={{
+                                                background: '#0f3b6f',
+                                                padding: '6px 16px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <span style={{ color: 'white', fontSize: '0.8rem' }}>
+                                                    <strong>Constancia RENIEC</strong> (previsualización)
+                                                </span>
+                                                <a
+                                                    href={reniecPreviewUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{ color: '#c7a03a', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                >
+                                                    Abrir en nueva pestaña ↗
+                                                </a>
+                                            </div>
+                                            <iframe
+                                                src={reniecPreviewUrl}
+                                                title="Vista previa RENIEC"
+                                                style={{
+                                                    width: '100%',
+                                                    height: '500px',
+                                                    border: 'none',
+                                                    display: 'block'
+                                                }}
+                                            />
+                                            <div style={{
+                                                background: '#f1f5f9',
+                                                padding: '4px 16px',
+                                                fontSize: '0.75rem',
+                                                color: '#475569',
+                                                borderTop: '1px solid #e2e8f0'
+                                            }}>
+                                                Previsualizando
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -302,7 +477,12 @@ export default function ArchivamientoExpediente() {
                                 <button
                                     className="btn-continuar"
                                     onClick={handleFinalizar}
-                                    disabled={enviando || (!archivos.sunarp && !archivosExistentes.sunarp) || (!archivos.reniec && !archivosExistentes.reniec)}
+                                    disabled={
+                                        enviando || 
+                                        (!archivos.sunarp && !archivosExistentes.sunarp) || 
+                                        (!archivos.reniec && !archivosExistentes.reniec) ||
+                                        !tieneResolucion
+                                    }
                                 >
                                     {enviando ? 'Finalizando...' : 'Finalizar Expediente'}
                                 </button>
