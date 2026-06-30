@@ -53,6 +53,7 @@ export default function ResolucionDisolucion() {
     const [mensaje, setMensaje] = useState(null)
     const [resolucionDisolucion, setResolucionDisolucion] = useState(null)
     const [archivo, setArchivo] = useState(null)
+    const [archivoPreviewUrl, setArchivoPreviewUrl] = useState(null)
     const [numeroDocumento, setNumeroDocumento] = useState('')
     const [sufijoDocumento, setSufijoDocumento] = useState('')
     const [fechaElaboracion, setFechaElaboracion] = useState(new Date().toISOString().split('T')[0])
@@ -83,6 +84,10 @@ export default function ResolucionDisolucion() {
         }
     }
 
+    const getFechaPeru = () => {
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+    }
+
     const formatFecha = (fechaStr) => {
         if (!fechaStr) return '—'
         return fechaStr.split('T')[0].split('-').reverse().join('/')
@@ -97,24 +102,21 @@ export default function ResolucionDisolucion() {
         setDiasRestantes(diasHabilesEntre(hoy, fechaFin))
     }
 
-    // Obtener el número desde el backend
     const cargarNumeroSiguiente = async () => {
         setCargandoCorrelativo(true)
         try {
             const response = await obtenerSiguienteNumero()
             if (response.ok && response.numero) {
-                const numCompleto = response.numero // ej: "003-2026-MDEP"
+                const numCompleto = response.numero
                 const match = numCompleto.match(/^(\d{3})(-.+)$/)
                 if (match) {
                     setNumeroDocumento(match[1])
                     setSufijoDocumento(match[2])
                 } else {
-                    // Si no coincide el formato, lo ponemos completo
                     setNumeroDocumento(numCompleto)
                     setSufijoDocumento('')
                 }
             } else {
-                // Fallback: usar 001 por defecto
                 const year = new Date().getFullYear()
                 setNumeroDocumento('001')
                 setSufijoDocumento(`-${year}-MDEP`)
@@ -174,7 +176,6 @@ export default function ResolucionDisolucion() {
                         setFechaElaboracion(resolucionExistente.fecha_elaboracion.split('T')[0])
                     }
                 } else {
-                    // No hay resolución, obtenemos el siguiente número
                     await cargarNumeroSiguiente()
                     setFechaElaboracion(new Date().toISOString().split('T')[0])
                 }
@@ -192,6 +193,15 @@ export default function ResolucionDisolucion() {
         const resolucionSubida = resolucionDisolucion !== null
         setPuedeAvanzar(slaCumplido && resolucionSubida && pagoCopiasRegistrado)
     }, [diasRestantes, resolucionDisolucion, pagoCopiasRegistrado])
+
+    // Limpiar URL de preview al desmontar
+    useEffect(() => {
+        return () => {
+            if (archivoPreviewUrl) {
+                URL.revokeObjectURL(archivoPreviewUrl)
+            }
+        }
+    }, [archivoPreviewUrl])
 
     const handleRegistrarSegundoPago = async (e) => {
         e.preventDefault()
@@ -244,7 +254,7 @@ export default function ResolucionDisolucion() {
                                     type="date"
                                     value={fechaSegundoPago}
                                     onChange={(e) => setFechaSegundoPago(e.target.value)}
-                                    max={new Date().toISOString().split('T')[0]}
+                                    max={getFechaPeru()}
                                     style={{
                                         width: '100%',
                                         padding: '10px 12px',
@@ -286,11 +296,24 @@ export default function ResolucionDisolucion() {
     }
 
     const handleArchivoChange = (file) => {
+        if (archivoPreviewUrl) {
+            URL.revokeObjectURL(archivoPreviewUrl)
+            setArchivoPreviewUrl(null)
+        }
+
         if (file && file.type !== 'application/pdf') {
             setMensaje({ tipo: 'error', texto: 'Solo se permiten archivos PDF' })
+            setArchivo(null)
             return
         }
-        setArchivo(file)
+
+        if (file) {
+            const url = URL.createObjectURL(file)
+            setArchivoPreviewUrl(url)
+            setArchivo(file)
+        } else {
+            setArchivo(null)
+        }
         setMensaje(null)
     }
 
@@ -307,7 +330,6 @@ export default function ResolucionDisolucion() {
             setMensaje({ tipo: 'error', texto: 'Debe ingresar el número de resolución' })
             return
         }
-        // Limpiar error de unicidad previo
         setErrorUnicidad('')
         setMostrarConfirmacionSubida(true)
     }
@@ -318,10 +340,8 @@ export default function ResolucionDisolucion() {
         setMensaje(null)
         try {
             const numeroCompleto = `${numeroDocumento}${sufijoDocumento}`
-            // Llamamos al servicio pasando el número completo
             const result = await subirResolucionDisolucion(id, fechaElaboracion, archivo, numeroCompleto)
             
-            // Si el backend devuelve numero_generado, actualizamos
             if (result.numero_generado) {
                 const num = result.numero_generado
                 const match = num.match(/^(\d{3})(-.+)$/)
@@ -331,10 +351,15 @@ export default function ResolucionDisolucion() {
                 }
             }
             
+            // Limpiar preview después de subir
+            if (archivoPreviewUrl) {
+                URL.revokeObjectURL(archivoPreviewUrl)
+                setArchivoPreviewUrl(null)
+            }
+            
             setMensaje({ tipo: 'success', texto: `Resolución de Disolución subida correctamente. N°: ${result.numero_generado || numeroCompleto}` })
             setTimeout(() => window.location.reload(), 1500)
         } catch (err) {
-            // Si el error es por duplicado, mostramos mensaje específico
             if (err.message.includes('ya existe') || err.message.includes('duplicado')) {
                 setErrorUnicidad('Este número de Resolución ya existe. Debe ser único.')
                 setMensaje({ tipo: 'error', texto: 'El número de resolución ya está en uso. Por favor, ingrese otro.' })
@@ -452,6 +477,7 @@ export default function ResolucionDisolucion() {
     const yaTieneResolucion = resolucionDisolucion !== null
     const bloqueado = expediente?.estado === 'ARCHIVADO'
     const fechaPagoInicio = expediente?.fecha_pago_disolucion
+    const hoyPeru = getFechaPeru()
     
     let fechaPagoFin = null
     if (fechaPagoInicio) {
@@ -647,10 +673,18 @@ export default function ResolucionDisolucion() {
                                                 <div className="rf-campo">
                                                     <label>Fecha de elaboración <span className="required">*</span></label>
                                                     <input
-                                                        type="date"
-                                                        value={fechaElaboracion}
-                                                        onChange={(e) => setFechaElaboracion(e.target.value)}
-                                                        disabled={yaTieneResolucion}
+                                                        type="text"
+                                                        value={fechaElaboracion ? formatFecha(fechaElaboracion) : ''}
+                                                        readOnly
+                                                        style={{
+                                                            backgroundColor: '#f1f5f9',
+                                                            cursor: 'default',
+                                                            width: '100%',
+                                                            padding: '8px 12px',
+                                                            borderRadius: '8px',
+                                                            border: '1px solid #cbd5e1',
+                                                            fontSize: '0.9rem'
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
@@ -669,7 +703,88 @@ export default function ResolucionDisolucion() {
                                                     </label>
                                                     {archivo && <span className="archivo-ok" style={{ marginLeft: '10px' }}>{archivo.name}</span>}
                                                     {!archivo && <span className="archivo-pendiente" style={{ marginLeft: '10px' }}>(Ningún archivo seleccionado)</span>}
+                                                    {archivo && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (archivoPreviewUrl) {
+                                                                    URL.revokeObjectURL(archivoPreviewUrl)
+                                                                    setArchivoPreviewUrl(null)
+                                                                }
+                                                                setArchivo(null)
+                                                                setMensaje(null)
+                                                            }}
+                                                            style={{
+                                                                marginLeft: '10px',
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                color: '#dc2626',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.8rem',
+                                                                textDecoration: 'underline'
+                                                            }}
+                                                        >
+                                                            Quitar archivo
+                                                        </button>
+                                                    )}
                                                 </div>
+                                                {/*  PREVISUALIZACIÓN MEJORADA */}
+                                                {archivoPreviewUrl && !yaTieneResolucion && (
+                                                    <div style={{ marginTop: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                                                        <div style={{
+                                                            background: '#1a1a2e',
+                                                            padding: '8px 16px',
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center'
+                                                        }}>
+                                                            <span style={{ color: '#c7a03a', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                                                VISTA PREVIA DEL DOCUMENTO
+                                                            </span>
+                                                            <span style={{ color: 'white', fontSize: '0.75rem' }}>
+                                                                {archivo?.name}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{
+                                                            background: '#0f3b6f',
+                                                            padding: '6px 16px',
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center'
+                                                        }}>
+                                                            <span style={{ color: 'white', fontSize: '0.8rem' }}>
+                                                                <strong>Informe Legal</strong> (previsualización)
+                                                            </span>
+                                                            <a
+                                                                href={archivoPreviewUrl}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                style={{ color: '#c7a03a', fontSize: '0.75rem', textDecoration: 'none' }}
+                                                            >
+                                                                Abrir en nueva pestaña ↗
+                                                            </a>
+                                                        </div>
+                                                        <iframe
+                                                            src={archivoPreviewUrl}
+                                                            title="Vista previa del PDF"
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '500px',
+                                                                border: 'none',
+                                                                display: 'block'
+                                                            }}
+                                                        />
+                                                        <div style={{
+                                                            background: '#f1f5f9',
+                                                            padding: '4px 16px',
+                                                            fontSize: '0.75rem',
+                                                            color: '#475569',
+                                                            borderTop: '1px solid #e2e8f0'
+                                                        }}>
+                                                            Previsualizando
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                             {mensaje && <div className={`mensaje ${mensaje.tipo}`} style={{ marginTop: '16px' }}>{mensaje.texto}</div>}
                                             <button className="btn-subir" onClick={handleSubirResolucion} disabled={enviando || cargandoCorrelativo}>
@@ -706,6 +821,7 @@ export default function ResolucionDisolucion() {
                                             value={fechaPagoCopias}
                                             onChange={(e) => setFechaPagoCopias(e.target.value)}
                                             disabled={bloqueado}
+                                            max={hoyPeru}
                                         />
                                     )}
                                 </div>
