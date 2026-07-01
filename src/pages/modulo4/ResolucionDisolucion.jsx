@@ -206,10 +206,19 @@ export default function ResolucionDisolucion() {
         }
     }, [archivoPreviewUrl])
 
+    // ============================================================
+    //  HANDLE REGISTRAR SEGUNDO PAGO (con validación de fecha futura)
+    // ============================================================
     const handleRegistrarSegundoPago = async (e) => {
         e.preventDefault()
         if (!fechaSegundoPago) {
             setMensaje({ tipo: 'error', texto: 'Seleccione la fecha del segundo pago' })
+            return
+        }
+        // ✅ Validación de fecha futura
+        const hoy = getFechaPeru()
+        if (fechaSegundoPago > hoy) {
+            setMensaje({ tipo: 'error', texto: 'No se puede registrar una fecha futura.' })
             return
         }
         setEnviando(true)
@@ -231,6 +240,9 @@ export default function ResolucionDisolucion() {
         }
     }
 
+    // ============================================================
+    //  RENDERIZADO CONDICIONAL PARA REGISTRAR SEGUNDO PAGO
+    // ============================================================
     if (!cargando && !error && !expediente?.fecha_pago_disolucion) {
         return (
             <>
@@ -257,6 +269,15 @@ export default function ResolucionDisolucion() {
                                     type="date"
                                     value={fechaSegundoPago}
                                     onChange={(e) => setFechaSegundoPago(e.target.value)}
+                                    onBlur={() => {
+                                        if (fechaSegundoPago) {
+                                            const hoy = getFechaPeru()
+                                            if (fechaSegundoPago > hoy) {
+                                                setFechaSegundoPago(hoy)
+                                                setMensaje({ tipo: 'error', texto: 'La fecha fue corregida automáticamente a hoy.' })
+                                            }
+                                        }
+                                    }}
                                     max={getFechaPeru()}
                                     style={{
                                         width: '100%',
@@ -271,7 +292,7 @@ export default function ResolucionDisolucion() {
                         <button
                             className="btn-subir"
                             onClick={handleRegistrarSegundoPago}
-                            disabled={enviando || !fechaSegundoPago}
+                            disabled={enviando || !fechaSegundoPago || fechaSegundoPago > getFechaPeru()}
                             style={{
                                 width: '100%',
                                 padding: '12px',
@@ -298,6 +319,9 @@ export default function ResolucionDisolucion() {
         )
     }
 
+    // ============================================================
+    //  RESTO DE FUNCIONES Y RENDERIZADO PRINCIPAL
+    // ============================================================
     const handleArchivoChange = (file) => {
         if (archivoPreviewUrl) {
             URL.revokeObjectURL(archivoPreviewUrl)
