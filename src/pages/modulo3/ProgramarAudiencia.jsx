@@ -30,6 +30,14 @@ export default function ProgramarAudiencia() {
     const [modoReprogramacion, setModoReprogramacion] = useState(false)
     const [horasDisponibles, setHorasDisponibles] = useState(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'])
 
+    // 🔹 NUEVO: estado para el modal de advertencia
+    const [modalAdvertencia, setModalAdvertencia] = useState({
+        visible: false,
+        mensaje: '',
+        diasExcedidos: 0,
+        onConfirm: null
+    })
+
     const horasDisponiblesBase = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
 
     const etapaActual = expediente?.etapa || expediente?.expedientes_estado_actual
@@ -141,57 +149,60 @@ export default function ProgramarAudiencia() {
     }
 
     const validarFecha = () => {
-        if (!fechaSeleccionada) {
-            setMensaje({ tipo: 'error', texto: 'Debe seleccionar una fecha' })
-            return false
-        }
-        if (!horaSeleccionada) {
-            setMensaje({ tipo: 'error', texto: 'Debe seleccionar una hora' })
-            return false
-        }
-
-        const fechaObj = new Date(`${fechaSeleccionada}T${horaSeleccionada}:00`)
-        const hoy = new Date()
-        hoy.setHours(0, 0, 0, 0)
-
-        if (fechaObj < hoy) {
-            setMensaje({ tipo: 'error', texto: 'No puede seleccionar una fecha pasada' })
-            return false
-        }
-
-        if (fechaLimite) {
-            const fechaLimiteDate = new Date(fechaLimite)
-            if (fechaObj > fechaLimiteDate) {
-                const diasExcedidos = Math.ceil((fechaObj - fechaLimiteDate) / (1000 * 60 * 60 * 24))
-                const confirmar = window.confirm(
-                    `ADVERTENCIA\n\nLa fecha seleccionada excede el plazo legal en ${diasExcedidos} dia(s).\n\nDesea programar la audiencia fuera de plazo?`
-                )
-                if (!confirmar) return false
-            }
-        }
-
-        if (isSlotOcupado(fechaSeleccionada, horaSeleccionada)) {
-            setMensaje({ tipo: 'error', texto: 'El horario ya esta ocupado por otra audiencia' })
-            return false
-        }
-
-        return true
+    if (!fechaSeleccionada) {
+        setMensaje({ tipo: 'error', texto: 'Debe seleccionar una fecha' })
+        return false
+    }
+    if (!horaSeleccionada) {
+        setMensaje({ tipo: 'error', texto: 'Debe seleccionar una hora' })
+        return false
     }
 
-    const puedeReprogramar = () => {
-        if (!audienciaProgramada) return true
-        const intentoActual = audienciaProgramada.numero_intento || 1
-        return intentoActual < 2
+    const fechaObj = new Date(`${fechaSeleccionada}T${horaSeleccionada}:00`)
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+
+    if (fechaObj < hoy) {
+        setMensaje({ tipo: 'error', texto: 'No puede seleccionar una fecha pasada' })
+        return false
     }
 
-    const handleProgramar = async () => {
-        if (!validarFecha()) return
+    if (fechaLimite) {
+        const fechaLimiteStr = fechaLimite.split('T')[0]
+        const fechaSelStr = fechaSeleccionada
 
-        if (modoReprogramacion && !puedeReprogramar()) {
-            setMensaje({ tipo: 'error', texto: 'No se puede reprogramar. Se ha alcanzado el maximo de intentos.' })
-            return
+        const [limiteY, limiteM, limiteD] = fechaLimiteStr.split('-').map(Number)
+        const [selY, selM, selD] = fechaSelStr.split('-').map(Number)
+
+        const fechaLimiteUTC = Date.UTC(limiteY, limiteM - 1, limiteD)
+        const fechaSelUTC = Date.UTC(selY, selM - 1, selD)
+
+        const diffTime = fechaSelUTC - fechaLimiteUTC
+        const diasExcedidos = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+        if (diasExcedidos > 0) {
+            setModalAdvertencia({
+                visible: true,
+                mensaje: `La fecha seleccionada excede el plazo legal en ${diasExcedidos} día(s).`,
+                diasExcedidos,
+                onConfirm: () => {
+                    setModalAdvertencia({ visible: false, mensaje: '', diasExcedidos: 0, onConfirm: null })
+                    handleProgramarConfirmado()
+                }
+            })
+            return false
         }
+    }
 
+    if (isSlotOcupado(fechaSeleccionada, horaSeleccionada)) {
+        setMensaje({ tipo: 'error', texto: 'El horario ya esta ocupado por otra audiencia' })
+        return false
+    }
+
+    return true
+}
+
+    const handleProgramarConfirmado = async () => {
         setEnviando(true)
         setMensaje(null)
 
@@ -208,6 +219,19 @@ export default function ProgramarAudiencia() {
         } finally {
             setEnviando(false)
         }
+    }
+
+    const handleProgramar = async () => {
+        const esValido = validarFecha()
+        if (!esValido) return
+
+        await handleProgramarConfirmado()
+    }
+
+    const puedeReprogramar = () => {
+        if (!audienciaProgramada) return true
+        const intentoActual = audienciaProgramada.numero_intento || 1
+        return intentoActual < 2
     }
 
     if (cargando) {
@@ -450,7 +474,6 @@ export default function ProgramarAudiencia() {
                                                             setHoraSeleccionada('')
                                                             setMensaje(null)
                                                         }}
-                                                        // ✅ Fecha mínima con zona horaria de Perú
                                                         min={getFechaPeru()}
                                                     />
                                                 </div>
@@ -519,6 +542,31 @@ export default function ProgramarAudiencia() {
                     </div>
                 </div>
             </main>
+
+            {modalAdvertencia.visible && (
+                <div className="modal-overlay" onClick={() => setModalAdvertencia({ ...modalAdvertencia, visible: false })}>
+                    <div className="modal-contenido" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+                        <div className="modal-header">
+                            <h3> Advertencia de plazo</h3>
+                            <button className="modal-cerrar" onClick={() => setModalAdvertencia({ ...modalAdvertencia, visible: false })}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <p>{modalAdvertencia.mensaje}</p>
+                            <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                                ¿Desea programar la audiencia fuera de plazo?
+                            </p>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn-cancelar" onClick={() => setModalAdvertencia({ ...modalAdvertencia, visible: false })}>
+                                Cancelar
+                            </button>
+                            <button className="btn-confirmar" onClick={modalAdvertencia.onConfirm}>
+                                Aceptar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     )
 }

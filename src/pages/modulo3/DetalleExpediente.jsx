@@ -421,11 +421,7 @@ export default function DetalleExpediente() {
             <Sidebar />
             <main className="contenido-modulo3">
                 <div className="detalle-header">
-                    {mensajeGlobal && (
-                        <div className={`mensaje ${mensajeGlobal.tipo}`} style={{ marginBottom: 16 }}>
-                            {mensajeGlobal.texto}
-                        </div>
-                    )}
+                    
                     {errorAudiencias && (
                         <div className="mensaje error" style={{ marginBottom: 16 }}>
                             {errorAudiencias}
@@ -440,10 +436,11 @@ export default function DetalleExpediente() {
 
                 <div className="detalle-grid">
                     <div className="detalle-izquierda">
-                        <PlazoAlerta
-                            expediente={expediente}
-                            audienciaActual={audienciaVigente}
-                        />
+                        <PlazoAlerta 
+    expediente={expediente} 
+    audienciaActual={audienciaVigente} 
+    debug={false} 
+/>
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
                             <div className="datos-grid">

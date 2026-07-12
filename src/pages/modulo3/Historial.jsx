@@ -1,10 +1,8 @@
-// src/pages/modulo3/Historial.jsx
 import { useEffect, useState, useCallback } from 'react';
 import Sidebar from '../../components/modulo3/Sidebar';
 import { getHistorialTarjetas, getHistorialDetalle } from '../../services/ProcedimientoService';
 import '../../styles/modulo3/historial.css';
 
-// ─── Helpers de formato ───────────────────────────────────────────────────────
 const formatFechaHora = (fechaStr) => {
     if (!fechaStr) return '—';
     let cadena = fechaStr.replace('T', ' ');
@@ -24,7 +22,6 @@ const formatFecha = (fechaStr) => {
     return `${day}/${month}/${year}`;
 };
 
-// ─── Mapas de texto ───────────────────────────────────────────────────────────
 const etapaTexto = {
     EVALUACION: 'Revisión documentaria',
     DOCUMENTOS_INTERNOS: 'Documentos internos',
@@ -72,7 +69,6 @@ const ETAPA_POR_PAGO = {
     PAGO_COPIAS_CERTIFICADAS: 'DISOLUCION'
 };
 
-// ─── Lógica de agrupación (sin cambios) ──────────────────────────────────────
 function resolverEtapaDestino(item) {
     const { tipo_evento, accion, documento_tipo } = item;
     if (tipo_evento === 'PRE_SOLICITUD') return '__PRE__';
@@ -196,9 +192,7 @@ function agruparPorPreSolicitud(items) {
     return Object.values(grupos);
 }
 
-// ─── PreSolicitudAgrupada: versión definitiva, genérica y robusta ───────────
 function PreSolicitudAgrupada({ eventos }) {
-    // ── 1. Documentos subidos ──
     const subidas = eventos.filter(e => e.tipo_evento === 'DOCUMENTO_CIUDADANO' && e.accion === 'SUBIDA');
     const documentosSubidosMap = new Map();
     subidas.forEach(ev => {
@@ -213,7 +207,6 @@ function PreSolicitudAgrupada({ eventos }) {
     });
     const documentosSubidos = Array.from(documentosSubidosMap.values());
 
-    // ── 2. Extraer nombre limpio de evaluación ──
     function extraerNombreDocumento(texto) {
         const match = texto.match(/(?:APROBADO|OBSERVADO):\s*([^.—]+)/);
         if (match) return match[1].trim();
@@ -221,7 +214,6 @@ function PreSolicitudAgrupada({ eventos }) {
         return fallback.split(/ — |\. Motivo/)[0].trim();
     }
 
-    // ── 3. Agrupar evaluaciones ──
     const evaluaciones = eventos.filter(e => e.tipo_evento === 'EVALUACION_DOCUMENTO');
     const evaluacionesPorDoc = new Map();
     evaluaciones.forEach(ev => {
@@ -806,10 +798,7 @@ function PreSolicitudCard({ tarjeta, detalle, cargandoDetalle, expandido, onTogg
                         {estado_expediente === 'ARCHIVADO' && <span className="hg-etapa-pill hg-etapa-archivado">Archivado</span>}
                     </div>
                     <span className="hg-stat">
-                        {detalle
-                            ? `${etapas.length} etapas · ${totalSubEventos} eventos`
-                            : `~${total_eventos_aprox} eventos`
-                        }
+                        
                     </span>
                     <span className="hg-stat-fecha">Últ. movimiento: {formatFecha(ultimo_movimiento)}</span>
                 </div>

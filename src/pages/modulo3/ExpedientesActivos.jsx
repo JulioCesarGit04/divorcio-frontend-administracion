@@ -23,6 +23,10 @@ export default function ExpedientesActivos() {
     const [expedientesFiltrados, setExpedientesFiltrados] = useState([])
     const [cargando, setCargando] = useState(true)
 
+    // --- Paginación ---
+    const [paginaActual, setPaginaActual] = useState(1)
+    const [tamanoPagina] = useState(10) // Ajusta según prefieras
+
     const [filtros, setFiltros] = useState({
         estado: '',
         etapa: '',
@@ -33,30 +37,31 @@ export default function ExpedientesActivos() {
     })
 
     const cargar = async (filtrosActuales) => {
-    setCargando(true)
-    try {
-        const f = filtrosActuales || filtros
-        const filtrosLimpios = {}
-        if (f.estado)             filtrosLimpios.estado = f.estado
-        if (f.etapa)              filtrosLimpios.etapa = f.etapa
-        if (f.numero_mesa_partes) filtrosLimpios.numero_mesa_partes = f.numero_mesa_partes
-        if (f.dni)                filtrosLimpios.dni = f.dni
+        setCargando(true)
+        try {
+            const f = filtrosActuales || filtros
+            const filtrosLimpios = {}
+            if (f.estado)             filtrosLimpios.estado = f.estado
+            if (f.etapa)              filtrosLimpios.etapa = f.etapa
+            if (f.numero_mesa_partes) filtrosLimpios.numero_mesa_partes = f.numero_mesa_partes
+            if (f.dni)                filtrosLimpios.dni = f.dni
 
-        const response = await getExpedientes(filtrosLimpios)
-        const data = response.data || []
+            const response = await getExpedientes(filtrosLimpios)
+            const data = response.data || []
 
-        const ordenados = [...data].sort((a, b) =>
-            new Date(a.fecha_recepcion) - new Date(b.fecha_recepcion)
-        )
+            const ordenados = [...data].sort((a, b) =>
+                new Date(a.fecha_recepcion) - new Date(b.fecha_recepcion)
+            )
 
-        setExpedientes(ordenados)
-        setExpedientesFiltrados(ordenados)
-    } catch (error) {
-        
-    } finally {
-        setCargando(false)
+            setExpedientes(ordenados)
+            setExpedientesFiltrados(ordenados)
+            setPaginaActual(1) // Reiniciar página al cargar
+        } catch (error) {
+            // Manejo de error
+        } finally {
+            setCargando(false)
+        }
     }
-}
 
     useEffect(() => { cargar() }, [])
 
@@ -76,6 +81,7 @@ export default function ExpedientesActivos() {
         }
 
         setExpedientesFiltrados(filtrados)
+        setPaginaActual(1) // Reiniciar página al cambiar fechas
     }, [filtros.fechaDesde, filtros.fechaHasta, expedientes])
 
     const handleFiltroChange = (campo, valor) => {
@@ -99,6 +105,46 @@ export default function ExpedientesActivos() {
 
     const handleVerExpediente = (id) => navigate(`/modulo3/detalle/${id}`)
 
+    // --- Paginación: cálculo de elementos a mostrar ---
+    const indiceInicio = (paginaActual - 1) * tamanoPagina
+    const indiceFin = indiceInicio + tamanoPagina
+    const elementosPagina = expedientesFiltrados.slice(indiceInicio, indiceFin)
+    const totalPaginas = Math.ceil(expedientesFiltrados.length / tamanoPagina)
+
+    const irPagina = (pagina) => {
+        if (pagina < 1 || pagina > totalPaginas) return
+        setPaginaActual(pagina)
+    }
+
+    // --- Función para generar números de página con elipsis ---
+    const obtenerRangoPaginas = () => {
+        const paginas = []
+        const total = totalPaginas
+        const actual = paginaActual
+        const delta = 2 // cuántas páginas mostrar a cada lado
+
+        if (total <= 7) {
+            for (let i = 1; i <= total; i++) paginas.push(i)
+        } else {
+            // Siempre mostrar primera y última
+            paginas.push(1)
+            let rangoInicio = Math.max(2, actual - delta)
+            let rangoFin = Math.min(total - 1, actual + delta)
+
+            if (actual - delta > 2) {
+                paginas.push('...')
+            }
+            for (let i = rangoInicio; i <= rangoFin; i++) {
+                paginas.push(i)
+            }
+            if (actual + delta < total - 1) {
+                paginas.push('...')
+            }
+            paginas.push(total)
+        }
+        return paginas
+    }
+
     return (
         <>
             <Sidebar />
@@ -111,7 +157,7 @@ export default function ExpedientesActivos() {
 
                 <div className="filtros-panel">
                     <div className="filtros-grid filtros-grid--expedientes">
-
+                        {/* Filtros (sin cambios) */}
                         <div className="filtro-grupo">
                             <label>Estado</label>
                             <div className="select-wrapper">
@@ -184,15 +230,19 @@ export default function ExpedientesActivos() {
                         </div>
 
                         <div className="acciones-filtros">
-                            <button onClick={aplicarFiltros} className="btn-buscar">🔍 Buscar</button>
-                            <button onClick={limpiarFiltros} className="btn-limpiar">🗑️ Limpiar</button>
+                            <button onClick={aplicarFiltros} className="btn-buscar">Buscar</button>
+                            <button onClick={limpiarFiltros} className="btn-limpiar"> Limpiar</button>
                         </div>
-
                     </div>
                 </div>
 
                 <div className="resultados-info">
                     Mostrando {expedientesFiltrados.length} de {expedientes.length} expediente{expedientes.length !== 1 ? 's' : ''}
+                    {totalPaginas > 1 && (
+                        <span style={{ marginLeft: '1rem', fontSize: '0.9rem', color: '#6b7280' }}>
+                            (Página {paginaActual} de {totalPaginas})
+                        </span>
+                    )}
                 </div>
 
                 {cargando ? (
@@ -202,58 +252,128 @@ export default function ExpedientesActivos() {
                         <p>No se encontraron expedientes con los filtros aplicados.</p>
                     </div>
                 ) : (
-                    <div className="tabla-container">
-                        <table className="tabla">
-                            <thead>
-                                <tr>
-                                    <th>N° Expediente</th>
-                                    <th>N° Mesa Partes</th>
-                                    <th>Solicitante</th>
-                                    <th>DNI</th>
-                                    <th>Demandado</th>
-                                    <th>DNI Demandado</th>
-                                    <th>Estado</th>
-                                    <th>Etapa</th>
-                                    <th>Fecha Pago</th>
-                                    <th>Fecha Recepción</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {expedientesFiltrados.map((e) => (
-                                    <tr key={e.id}>
-                                        <td>{e.numero_expediente || '—'}</td>
-                                        <td>{e.numero_mesa_partes || '—'}</td>
-                                        <td className="nombre-solicitante">{e.Solicitante_Nombres || ''} {e.Solicitante_Apellidos || ''}</td>
-                                        <td className="dni-cell">{e.Solicitante_Dni || '—'}</td>
-                                        <td className="nombre-demandado">{e.Demandado_Nombres || ''} {e.Demandado_Apellidos || ''}</td>
-                                        <td className="dni-cell">{e.Demandado_Dni || '—'}</td>
-                                        <td>
-                                            <span className={`badge badge-${e.estado?.toLowerCase()}`}>
-                                                {etiquetaEstado[e.estado] || e.estado}
-                                            </span>
-                                        </td>
-                                        <td>{etiquetaEtapa[e.etapa] || e.etapa}</td>
-                                        <td className="fecha-cell">
-                                            {e.fecha_pago
-                                                ? e.fecha_pago.split('T')[0].split('-').reverse().join('/')
-                                                : '—'}
-                                        </td>
-                                        <td className="fecha-cell">
-                                            {e.fecha_recepcion
-                                                ? e.fecha_recepcion.split('T')[0].split('-').reverse().join('/')
-                                                : '—'}
-                                        </td>
-                                        <td>
-                                            <button className="btn-ver" onClick={() => handleVerExpediente(e.id)}>
-                                                Ver
-                                            </button>
-                                        </td>
+                    <>
+                        <div className="tabla-container">
+                            <table className="tabla tabla-expedientes">
+                                <thead>
+                                    <tr>
+                                        <th style={{ minWidth: '110px' }}>N° Expediente</th>
+                                        <th style={{ minWidth: '110px' }}>N° Mesa Partes</th>
+                                        <th style={{ minWidth: '130px' }}>Solicitante</th>
+                                        <th style={{ minWidth: '80px' }}>DNI</th>
+                                        <th style={{ minWidth: '130px' }}>Demandado</th>
+                                        <th style={{ minWidth: '80px' }}>DNI</th>
+                                        <th style={{ minWidth: '80px' }}>Estado</th>
+                                        <th style={{ minWidth: '100px' }}>Etapa</th>
+                                        <th style={{ minWidth: '90px' }}>Fecha Pago</th>
+                                        <th style={{ minWidth: '90px' }}>Fecha Recepción</th>
+                                        <th style={{ minWidth: '70px' }}>Acciones</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {elementosPagina.map((e) => (
+                                        <tr key={e.id}>
+                                            <td>{e.numero_expediente || '—'}</td>
+                                            <td>{e.numero_mesa_partes || '—'}</td>
+                                            <td className="nombre-solicitante">{e.Solicitante_Nombres || ''} {e.Solicitante_Apellidos || ''}</td>
+                                            <td className="dni-cell">{e.Solicitante_Dni || '—'}</td>
+                                            <td className="nombre-demandado">{e.Demandado_Nombres || ''} {e.Demandado_Apellidos || ''}</td>
+                                            <td className="dni-cell">{e.Demandado_Dni || '—'}</td>
+                                            <td>
+                                                <span className={`badge badge-${e.estado?.toLowerCase()}`}>
+                                                    {etiquetaEstado[e.estado] || e.estado}
+                                                </span>
+                                            </td>
+                                            <td>{etiquetaEtapa[e.etapa] || e.etapa}</td>
+                                            <td className="fecha-cell">
+                                                {e.fecha_pago
+                                                    ? e.fecha_pago.split('T')[0].split('-').reverse().join('/')
+                                                    : '—'}
+                                            </td>
+                                            <td className="fecha-cell">
+                                                {e.fecha_recepcion
+                                                    ? e.fecha_recepcion.split('T')[0].split('-').reverse().join('/')
+                                                    : '—'}
+                                            </td>
+                                            <td>
+                                                <button className="btn-ver" onClick={() => handleVerExpediente(e.id)}>
+                                                    Ver
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Controles de paginación */}
+                        {totalPaginas > 1 && (
+                            <div className="paginacion-container" style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                marginTop: '1.5rem',
+                                flexWrap: 'wrap'
+                            }}>
+                                <button
+                                    className="btn-paginacion"
+                                    onClick={() => irPagina(paginaActual - 1)}
+                                    disabled={paginaActual === 1}
+                                    style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #d1d5db',
+                                        background: '#fff',
+                                        cursor: paginaActual === 1 ? 'default' : 'pointer',
+                                        opacity: paginaActual === 1 ? 0.5 : 1,
+                                    }}
+                                >
+                                    Anterior
+                                </button>
+
+                                {obtenerRangoPaginas().map((p, idx) => {
+                                    if (p === '...') {
+                                        return <span key={`ellipsis-${idx}`} style={{ padding: '0 4px', color: '#6b7280' }}>…</span>
+                                    }
+                                    return (
+                                        <button
+                                            key={p}
+                                            className={`btn-paginacion ${p === paginaActual ? 'activo' : ''}`}
+                                            onClick={() => irPagina(p)}
+                                            style={{
+                                                padding: '6px 14px',
+                                                borderRadius: '6px',
+                                                border: p === paginaActual ? '2px solid #0f3b6f' : '1px solid #d1d5db',
+                                                background: p === paginaActual ? '#0f3b6f' : '#fff',
+                                                color: p === paginaActual ? '#fff' : '#1f2937',
+                                                fontWeight: p === paginaActual ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            {p}
+                                        </button>
+                                    )
+                                })}
+
+                                <button
+                                    className="btn-paginacion"
+                                    onClick={() => irPagina(paginaActual + 1)}
+                                    disabled={paginaActual === totalPaginas}
+                                    style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #d1d5db',
+                                        background: '#fff',
+                                        cursor: paginaActual === totalPaginas ? 'default' : 'pointer',
+                                        opacity: paginaActual === totalPaginas ? 0.5 : 1,
+                                    }}
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
 
             </main>

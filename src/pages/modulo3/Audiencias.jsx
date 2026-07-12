@@ -269,8 +269,8 @@ export default function Audiencias() {
                             />
                         </div>
                         <div className="acciones-filtros">
-                            <button onClick={aplicarFiltros} className="btn-buscar">🔍 Buscar</button>
-                            <button onClick={limpiarFiltros} className="btn-limpiar">🗑️ Limpiar</button>
+                            <button onClick={aplicarFiltros} className="btn-buscar"> Buscar</button>
+                            <button onClick={limpiarFiltros} className="btn-limpiar"> Limpiar</button>
                         </div>
                     </div>
                 </div>
