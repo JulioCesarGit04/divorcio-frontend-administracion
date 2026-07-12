@@ -430,3 +430,26 @@ export const getHistorialDetalle = async (pre_solicitud_id) => {
     if (!response.ok) throw new Error(data.mensaje || 'Error al obtener detalle de historial');
     return data;
 };
+export const getDiasHabilesEntre = async (inicio, fin) => {
+    const response = await fetchWithRetry(
+        `${API_URL}/dias-habiles-entre?inicio=${inicio}&fin=${fin}`,
+        { headers: { 'Content-Type': 'application/json' } },
+        3,
+        TIMEOUTS.DEFAULT
+    );
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data.mensaje || data.error || 'Error al obtener días hábiles');
+    return data;
+};
+
+export const sumarDiasHabiles = async (inicio, dias) => {
+    const response = await fetchWithRetry(
+        `${API_URL}/sumar-dias-habiles?inicio=${inicio}&dias=${dias}`,
+        { headers: { 'Content-Type': 'application/json' } },
+        3,
+        TIMEOUTS.DEFAULT
+    );
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data.mensaje || data.error || 'Error al sumar días hábiles');
+    return data;
+};
