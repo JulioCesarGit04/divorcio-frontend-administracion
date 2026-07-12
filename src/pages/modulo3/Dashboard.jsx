@@ -1,773 +1,882 @@
 // src/pages/modulo3/Dashboard.jsx
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getDashboardResumen } from '../../services/dashboardService';
-import Sidebar from '../../components/modulo3/Sidebar';
+import React, { useState, useEffect, useMemo } from 'react';
+import { getDashboardCompleto } from '../../services/dashboardService';
+import { traducirMes } from '../../utils/meses';
 import '../../styles/modulo3/dashboard.css';
+import {
+    Box,
+    Paper,
+    Typography,
+    Card,
+    CardContent,
+    useTheme,
+    LinearProgress,
+    Chip,
+    IconButton,
+    Tooltip,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Button,
+    Stack,
+    Alert,
+    AlertTitle,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Divider
+} from '@mui/material';
+import {
+    TrendingUpIcon,
+    TrendingDownIcon,
+    RefreshIcon,
+    DownloadIcon,
+    CalendarTodayIcon,
+    AccessTimeIcon,
+    SpeedIcon,
+    BarChartIcon,
+    PieChartIcon,
+    ErrorOutlineIcon,
+    InfoIcon,
+    GavelIcon,
+    AssignmentIcon,
+    DescriptionIcon,
+    CheckCircleIcon,
+    CancelIcon
+} from '../../components/icons/DashboardIcons';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    Title,
+    Tooltip as ChartTooltip,
+    Legend,
+    Filler,
+    ArcElement
+} from 'chart.js';
+import { Line, Bar, Doughnut, Pie } from 'react-chartjs-2';
+import IndicadorKPI from '../../components/dashboard/IndicadorKPI';
 
-/* ============================================================
-   DICCIONARIOS DE INTERPRETACIÓN
-   ============================================================ */
-const ETAPAS_PIPELINE = [
-  { key: 'RECIBIDO', label: 'Recibido', color: '#94A3B8' },
-  { key: 'EVALUACION', label: 'En evaluación', color: '#D97706' },
-  { key: 'DOCUMENTOS_INTERNOS', label: 'Documentos internos', color: '#7C3AED' },
-  { key: 'AUDIENCIA', label: 'Audiencia', color: '#2563EB' },
-  { key: 'ESPERA_LEGAL', label: 'Espera legal', color: '#0D9488' },
-  { key: 'DISOLUCION', label: 'Disolución', color: '#16A34A' },
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    Title,
+    ChartTooltip,
+    Legend,
+    Filler,
+    ArcElement
+);
+
+// Paleta para gráficos circulares
+const PALETA_CIRCULAR = [
+    '#2563eb', '#7c3aed', '#db2777', '#ea580c',
+    '#16a34a', '#0891b2', '#ca8a04', '#dc2626',
+    '#4f46e5', '#0d9488', '#c026d3', '#65a30d'
 ];
 
-const MAX_INTENTOS_AUDIENCIA = 3; // CHECK (numero_intento BETWEEN 1 AND 3)
+const DashboardKPI = () => {
+    const theme = useTheme();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [data, setData] = useState(null);
+    const [viewType, setViewType] = useState('line');
+    const [timeRange, setTimeRange] = useState('mensual');
+    const [detalleOpen, setDetalleOpen] = useState(false);
+    const [filtros, setFiltros] = useState({
+        fecha_desde: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+        fecha_hasta: new Date().toISOString().split('T')[0]
+    });
 
-/* ============================================================
-   HELPERS DE FORMATO
-   ============================================================ */
-const formatearFechaCorta = (valor) => {
-  if (!valor) return '—';
-  const d = new Date(valor);
-  if (Number.isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: 'short' }).format(d);
-};
+    useEffect(() => {
+        fetchData();
+    }, [filtros]);
 
-const formatearMes = (mesStr) => {
-  if (!mesStr) return '—';
-  const [anio, mes] = mesStr.split('-').map(Number);
-  if (!anio || !mes) return mesStr;
-  const d = new Date(anio, mes - 1, 1);
-  const etiqueta = new Intl.DateTimeFormat('es-PE', { month: 'short', year: 'numeric' }).format(d);
-  return etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1);
-};
+    const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await getDashboardCompleto(filtros);
+            if (response.ok && response.data) {
+                const normalizado = {
+                    tiempoPromedioEnvio: response.data.tiempoPromedioEnvio?.map(item => ({
+                        ...item,
+                        mes: traducirMes(item.mes)
+                    })) || [],
+                    audienciasPlazo: response.data.audienciasPlazo || [],
+                    disolucionPlazo: response.data.disolucionPlazo || [],
+                    expedientesObservaciones: response.data.expedientesObservaciones || [],
+                    documentosSubsanados: response.data.documentosSubsanados || []
+                };
+                setData(normalizado);
+            } else {
+                setError('No se pudieron cargar los datos');
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            setError('Error al cargar los datos');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-const nombreOSinRegistrar = (nombre) => (nombre && nombre.trim() ? nombre : 'Sin registrar');
+    const filteredData = useMemo(() => {
+        if (!data?.tiempoPromedioEnvio?.length) return [];
 
-const severidadPorDias = (dias, umbralCritico) => {
-  const umbralAtencion = Math.round(umbralCritico / 2);
-  if (dias > umbralCritico) return 'critico';
-  if (dias > umbralAtencion) return 'atencion';
-  return 'normal';
-};
+        if (timeRange === 'anual') {
+            const porAnio = {};
+            data.tiempoPromedioEnvio.forEach(item => {
+                const anio = item.anio;
+                if (!porAnio[anio]) {
+                    porAnio[anio] = { anio, mes: '', tiempos: [], total_solicitudes: 0 };
+                }
+                porAnio[anio].tiempos.push(parseFloat(item.tiempo_promedio_minutos));
+                porAnio[anio].total_solicitudes += item.total_solicitudes;
+            });
+            return Object.values(porAnio)
+                .sort((a, b) => a.anio - b.anio)
+                .map(g => ({
+                    mes: '',
+                    anio: g.anio,
+                    total_solicitudes: g.total_solicitudes,
+                    tiempo_promedio_minutos: (
+                        g.tiempos.reduce((a, b) => a + b, 0) / g.tiempos.length
+                    ).toFixed(2)
+                }));
+        }
 
-/* ============================================================
-   ICONOS — SVG propios, sin dependencias ni emojis.
-   ============================================================ */
-function Icono({ nombre, className }) {
-  const props = { className, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
-  switch (nombre) {
-    case 'expediente': return <svg {...props}><path d="M6 3h9l3 3v15H6z" /><path d="M15 3v3h3" /><path d="M9 12h6M9 16h6" /></svg>;
-    case 'lupa': return <svg {...props}><circle cx="10.5" cy="10.5" r="6.5" /><path d="M20 20l-4.5-4.5" /></svg>;
-    case 'reloj': return <svg {...props}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></svg>;
-    case 'alerta': return <svg {...props}><path d="M12 3l10 18H2z" /><path d="M12 10v4M12 17.5v.01" /></svg>;
-    case 'candado-abierto': return <svg {...props}><rect x="4" y="10" width="16" height="10" rx="1.5" /><path d="M7 10V7a5 5 0 0 1 9-3" /></svg>;
-    case 'archivo': return <svg {...props}><path d="M3 7h6l2 2h10v10H3z" /></svg>;
-    case 'usuarios': return <svg {...props}><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17" cy="9" r="2.3" /><path d="M15.5 14a5 5 0 0 1 5.5 5" /></svg>;
-    case 'refrescar': return <svg {...props}><path d="M4 4v5h5" /><path d="M20 20v-5h-5" /><path d="M5.5 9A7 7 0 0 1 19 10M18.5 15A7 7 0 0 1 5 14" /></svg>;
-    case 'check': return <svg {...props}><path d="M5 12.5l4.5 4.5L19 7" /></svg>;
-    case 'filtro': return <svg {...props}><path d="M4 5h16M7 12h10M10 19h4" /></svg>;
-    default: return null;
-  }
-}
+        if (timeRange === 'semanal') {
+            return data.tiempoPromedioEnvio.slice(-4);
+        }
 
-/* ============================================================
-   Control de filtro reutilizable para cada tarjeta de gráfico
-   ============================================================ */
-function FiltroMini({ opciones, valor, onChange, ariaLabel }) {
-  return (
-    <select className="filtro-mini" value={valor} onChange={(e) => onChange(e.target.value)} aria-label={ariaLabel}>
-      {opciones.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
-    </select>
-  );
-}
+        return data.tiempoPromedioEnvio.slice(-12);
+    }, [data, timeRange]);
 
-/* ============================================================
-   GRÁFICO 1 — Gauge de cumplimiento de plazos
-   ============================================================ */
-function GaugeCumplimiento({ porcentaje }) {
-  const cx = 110; const cy = 118; const r = 90;
-  const circunferencia = Math.PI * r;
-  const fraccion = Math.min(Math.max(porcentaje, 0), 100) / 100;
-  const dashoffset = circunferencia * (1 - fraccion);
-  const color = porcentaje >= 90 ? 'var(--success)' : porcentaje >= 70 ? 'var(--warning)' : 'var(--danger)';
-  const pathD = `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy}`;
-  return (
-    <svg viewBox="0 0 220 140" className="gauge-svg" role="img" aria-label={`Cumplimiento de plazos: ${porcentaje}%`}>
-      <path d={pathD} className="gauge-fondo" />
-      <path d={pathD} style={{ stroke: color, strokeDasharray: circunferencia, strokeDashoffset: dashoffset }} className="gauge-relleno" />
-      <text x={cx} y={cy - 30} textAnchor="middle" className="gauge-valor">{porcentaje}%</text>
-      <text x={cx} y={cy - 10} textAnchor="middle" className="gauge-etiqueta">dentro de plazo</text>
-      <text x={cx - r} y={cy + 16} textAnchor="start" className="gauge-escala">0%</text>
-      <text x={cx + r} y={cy + 16} textAnchor="end" className="gauge-escala">100%</text>
-    </svg>
-  );
-}
+    const stats = useMemo(() => {
+        if (!filteredData.length) return null;
 
-/* ============================================================
-   GRÁFICO 2 — Donut genérico (composición)
-   ============================================================ */
-function Donut({ segmentos, total, mostrarPorcentaje }) {
-  const size = 172; const radio = 64; const grosor = 24; const centro = size / 2;
-  const circunferencia = 2 * Math.PI * radio;
-  let acumulado = 0;
-  return (
-    <div className="donut-layout">
-      <svg viewBox={`0 0 ${size} ${size}`} className="donut-svg" role="img" aria-label="Composición de expedientes activos">
-        <circle cx={centro} cy={centro} r={radio} fill="none" stroke="var(--neutral-soft)" strokeWidth={grosor} />
-        {total > 0 && segmentos.map((seg) => {
-          if (!seg.valor) return null;
-          const largo = (seg.valor / total) * circunferencia;
-          const dashoffset = -acumulado;
-          acumulado += largo;
-          return (
-            <circle key={seg.key} cx={centro} cy={centro} r={radio} fill="none" stroke={seg.color} strokeWidth={grosor}
-              strokeDasharray={`${largo} ${circunferencia - largo}`} strokeDashoffset={dashoffset}
-              transform={`rotate(-90 ${centro} ${centro})`} />
-          );
-        })}
-        <text x={centro} y={centro - 2} textAnchor="middle" className="donut-total">{total}</text>
-        <text x={centro} y={centro + 15} textAnchor="middle" className="donut-total-label">activos</text>
-      </svg>
-      <ul className="donut-leyenda">
-        {segmentos.map((s) => {
-          const pct = total > 0 ? Math.round((s.valor / total) * 100) : 0;
-          return (
-            <li key={s.key}>
-              <span className="punto-color" style={{ background: s.color }} aria-hidden="true" />
-              <span className="donut-leyenda__nombre">{s.label}</span>
-              <span className="donut-leyenda__cifra">{mostrarPorcentaje ? `${pct}%` : s.valor}</span>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
+        const tiempos = filteredData.map(item => parseFloat(item.tiempo_promedio_minutos));
+        const promedio = tiempos.reduce((a, b) => a + b, 0) / tiempos.length;
+        const max = Math.max(...tiempos);
+        const min = Math.min(...tiempos);
+        const total = filteredData.reduce((a, b) => a + b.total_solicitudes, 0);
+        const ultimo = tiempos[tiempos.length - 1];
+        const anterior = tiempos.length > 1 ? tiempos[tiempos.length - 2] : ultimo;
+        const tendencia = ultimo - anterior;
 
-/* ============================================================
-   GRÁFICO 3 — Embudo del procedimiento
-   ============================================================ */
-function EmbudoEtapas({ segmentos, total, mostrarPorcentaje }) {
-  const max = Math.max(...segmentos.map((s) => s.total), 1);
-  return (
-    <div className="embudo">
-      {segmentos.map((s) => {
-        const pctAncho = Math.round((s.total / max) * 100);
-        const pctTotal = total > 0 ? Math.round((s.total / total) * 100) : 0;
-        return (
-          <div key={s.key} className="embudo-fila">
-            <div className="embudo-barra-wrap">
-              <div className={`embudo-barra${s.total === 0 ? ' embudo-barra--vacia' : ''}`} style={{ width: `${Math.max(pctAncho, s.total > 0 ? 4 : 0)}%`, background: s.color }} />
-            </div>
-            <div className="embudo-info">
-              <span className="punto-color" style={{ background: s.color }} aria-hidden="true" />
-              <span className="embudo-nombre">{s.label}</span>
-              <span className="embudo-valor">{mostrarPorcentaje ? `${pctTotal}%` : s.total}</span>
-            </div>
-          </div>
+        return {
+            promedio: promedio.toFixed(2),
+            max: max.toFixed(2),
+            min: min.toFixed(2),
+            total,
+            ultimo: ultimo.toFixed(2),
+            tendencia: tendencia.toFixed(2),
+            tendenciaPorcentaje: ((tendencia / (anterior || 1)) * 100).toFixed(1)
+        };
+    }, [filteredData]);
+
+    const etiquetas = useMemo(() => {
+        return filteredData.map(item =>
+            timeRange === 'anual' ? `${item.anio}` : `${item.mes} ${item.anio}`
         );
-      })}
-    </div>
-  );
-}
+    }, [filteredData, timeRange]);
 
-/* ============================================================
-   GRÁFICO 4 — Tendencia mensual (línea)
-   ============================================================ */
-function TendenciaMensual({ datos }) {
-  const width = 560; const height = 210;
-  const padL = 32; const padR = 14; const padT = 24; const padB = 30;
-  const innerW = width - padL - padR; const innerH = height - padT - padB;
-  const n = datos.length;
-  const maxVal = Math.max(...datos.flatMap((d) => [d.creados || 0, d.resueltos || 0]), 1);
-  const xFor = (i) => (n <= 1 ? padL + innerW / 2 : padL + (innerW * i) / (n - 1));
-  const yFor = (v) => padT + innerH - (v / maxVal) * innerH;
-  const puntosCreados = datos.map((d, i) => `${xFor(i)},${yFor(d.creados || 0)}`).join(' ');
-  const puntosResueltos = datos.map((d, i) => `${xFor(i)},${yFor(d.resueltos || 0)}`).join(' ');
-  const lineasGrid = [0, Math.round(maxVal / 2), maxVal];
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="tendencia-svg" role="img" aria-label="Tendencia mensual de expedientes creados versus resueltos">
-      {lineasGrid.map((gv) => (
-        <g key={gv}>
-          <line x1={padL} x2={width - padR} y1={yFor(gv)} y2={yFor(gv)} className="linea-grid" />
-          <text x={padL - 8} y={yFor(gv) + 4} textAnchor="end" className="eje-texto">{gv}</text>
-        </g>
-      ))}
-      <polyline points={puntosCreados} className="linea-datos linea-datos--primaria" />
-      <polyline points={puntosResueltos} className="linea-datos linea-datos--exito" />
-      {datos.map((d, i) => (
-        <g key={d.mes}>
-          <circle cx={xFor(i)} cy={yFor(d.creados || 0)} r="3.5" className="punto-datos punto-datos--primaria" />
-          <text x={xFor(i)} y={yFor(d.creados || 0) - 8} textAnchor="middle" className="dato-texto">{d.creados || 0}</text>
-          <circle cx={xFor(i)} cy={yFor(d.resueltos || 0)} r="3.5" className="punto-datos punto-datos--exito" />
-          <text x={xFor(i)} y={yFor(d.resueltos || 0) + 15} textAnchor="middle" className="dato-texto">{d.resueltos || 0}</text>
-          <text x={xFor(i)} y={height - 8} textAnchor="middle" className="eje-texto">{formatearMes(d.mes)}</text>
-        </g>
-      ))}
-    </svg>
-  );
-}
+    const chartData = useMemo(() => ({
+        labels: etiquetas,
+        datasets: [
+            {
+                label: 'Tiempo Promedio (minutos)',
+                data: filteredData.map(item => parseFloat(item.tiempo_promedio_minutos)),
+                borderColor: theme.palette.primary.main,
+                backgroundColor: theme.palette.primary.main + '33',
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: theme.palette.primary.main,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            },
+            {
+                label: 'Total Solicitudes',
+                data: filteredData.map(item => item.total_solicitudes),
+                borderColor: theme.palette.secondary.main,
+                backgroundColor: theme.palette.secondary.main + '33',
+                fill: false,
+                tension: 0.4,
+                borderDash: [5, 5],
+                pointBackgroundColor: theme.palette.secondary.main,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                yAxisID: 'y1',
+            }
+        ]
+    }), [filteredData, etiquetas, theme]);
 
-/* ============================================================
-   GRÁFICO 5 — Backlog acumulado (área)
-   ============================================================ */
-function BacklogAcumulado({ datos }) {
-  const width = 560; const height = 160;
-  const padL = 32; const padR = 14; const padT = 20; const padB = 26;
-  const innerW = width - padL - padR; const innerH = height - padT - padB;
-  const n = datos.length;
-  const maxAbs = Math.max(...datos.map((d) => Math.abs(d.acumulado)), 1);
-  const xFor = (i) => (n <= 1 ? padL + innerW / 2 : padL + (innerW * i) / (n - 1));
-  const yZero = padT + innerH / 2;
-  const yFor = (v) => yZero - (v / maxAbs) * (innerH / 2);
-  const linea = datos.map((d, i) => `${xFor(i)},${yFor(d.acumulado)}`).join(' ');
-  const areaPoints = `${xFor(0)},${yZero} ${linea} ${xFor(Math.max(n - 1, 0))},${yZero}`;
-  const ultimo = datos.length ? datos[datos.length - 1].acumulado : 0;
-  const color = ultimo > 0 ? 'var(--danger)' : ultimo < 0 ? 'var(--success)' : 'var(--neutral)';
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="backlog-svg" role="img" aria-label="Backlog acumulado en el periodo mostrado">
-      <line x1={padL} x2={width - padR} y1={yZero} y2={yZero} className="linea-cero" />
-      <text x={padL - 8} y={yZero + 4} textAnchor="end" className="eje-texto">0</text>
-      <polygon points={areaPoints} style={{ fill: color, opacity: 0.14 }} />
-      <polyline points={linea} style={{ stroke: color }} className="linea-datos" />
-      {datos.map((d, i) => (
-        <g key={d.mes}>
-          <circle cx={xFor(i)} cy={yFor(d.acumulado)} r="3.5" style={{ fill: color }} />
-          <text x={xFor(i)} y={yFor(d.acumulado) + (d.acumulado >= 0 ? -8 : 16)} textAnchor="middle" className="dato-texto">
-            {d.acumulado > 0 ? `+${d.acumulado}` : d.acumulado}
-          </text>
-          <text x={xFor(i)} y={height - 8} textAnchor="middle" className="eje-texto">{formatearMes(d.mes)}</text>
-        </g>
-      ))}
-    </svg>
-  );
-}
+    const pieData = useMemo(() => ({
+        labels: etiquetas,
+        datasets: [
+            {
+                label: 'Total Solicitudes',
+                data: filteredData.map(item => item.total_solicitudes),
+                backgroundColor: filteredData.map((_, i) => PALETA_CIRCULAR[i % PALETA_CIRCULAR.length]),
+                borderColor: '#fff',
+                borderWidth: 2,
+            }
+        ]
+    }), [filteredData, etiquetas]);
 
-/* ============================================================
-   GRÁFICOS 6, 7, 8, 9 — Barras horizontales genéricas
-   ============================================================ */
-function BarrasHorizontales({ filas, onRowClick }) {
-  const max = Math.max(...filas.map((f) => f.valor || 0), 1);
-  return (
-    <div className="barras-horizontales">
-      {filas.map((f) => (
-        <div
-          key={f.etiqueta}
-          className={`barra-fila${onRowClick && f.id ? ' barra-fila--clickeable' : ''}`}
-          title={f.title || f.etiqueta}
-          onClick={onRowClick && f.id ? () => onRowClick(f.id) : undefined}
-        >
-          <span className="barra-fila__etiqueta">{f.etiqueta}</span>
-          <div className="barra-fila__fondo">
-            <div className="barra-fila__lleno" style={{ width: `${Math.round(((f.valor || 0) / max) * 100)}%`, background: f.color || 'var(--primary)' }} />
-          </div>
-          <span className="barra-fila__valor">{f.valor}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: { usePointStyle: true, padding: 20, font: { size: 12, weight: '500' } }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function (context) {
+                        let label = context.dataset.label || '';
+                        if (label) label += ': ';
+                        if (context.parsed.y !== null) {
+                            label += context.dataset.label === 'Tiempo Promedio (minutos)'
+                                ? context.parsed.y.toFixed(2) + ' min'
+                                : context.parsed.y;
+                        }
+                        return label;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                ticks: { callback: (value) => value.toFixed(1) + ' min' }
+            },
+            y1: {
+                position: 'right',
+                beginAtZero: true,
+                grid: { drawOnChartArea: false },
+                ticks: { callback: (value) => value }
+            },
+            x: { grid: { display: false } }
+        }
+    };
 
-/* ============================================================
-   GRÁFICO 10 — Heatmap de audiencias por día
-   ============================================================ */
-function HeatmapAudiencias({ dias, mapaFechas }) {
-  const max = Math.max(...dias.map((f) => (mapaFechas.get(f)?.length || 0)), 1);
-  return (
-    <div className="heatmap-audiencias">
-      {dias.map((f) => {
-        const lista = mapaFechas.get(f) || [];
-        const cantidad = lista.length;
-        const intensidad = cantidad === 0 ? 0 : Math.max(0.18, cantidad / max);
-        const titulo = cantidad === 0 ? `${formatearFechaCorta(f)}: sin audiencias` : `${formatearFechaCorta(f)}: ${lista.join(', ')}`;
+    const barOptions = {
+        ...chartOptions,
+        plugins: { ...chartOptions.plugins, legend: { ...chartOptions.plugins.legend, position: 'top' } }
+    };
+
+    const pieOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: { usePointStyle: true, padding: 16, font: { size: 12 } }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function (context) {
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const valor = context.parsed;
+                        const pct = total ? ((valor / total) * 100).toFixed(1) : 0;
+                        return `${context.label}: ${valor} (${pct}%)`;
+                    }
+                }
+            }
+        }
+    };
+
+    const renderKPICard = (title, subtitle, percentage, total, dentro, fuera, dentroLabel, fueraLabel, color, icon, tooltipText) => {
+        const chartDataKPI = {
+            labels: [dentroLabel, fueraLabel],
+            datasets: [
+                {
+                    data: [dentro || 0, fuera || 0],
+                    backgroundColor: [color, '#e0e0e0'],
+                    borderColor: [color, '#bdbdbd'],
+                    borderWidth: 2,
+                }
+            ]
+        };
+
+        const chartOptionsKPI = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 10,
+                        usePointStyle: true,
+                        font: { size: 10 }
+                    }
+                }
+            }
+        };
+
         return (
-          <div key={f} className="heatmap-celda" style={{ background: `rgba(37, 99, 235, ${intensidad})` }} title={titulo}>
-            <span className="heatmap-celda__dia">{new Date(`${f}T00:00:00`).getDate()}</span>
-            <span className="heatmap-celda__valor">{cantidad}</span>
-          </div>
+            <Card elevation={3} sx={{ height: '100%' }}>
+                <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        <Box>
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                {title}
+                            </Typography>
+                            <Typography variant="h5" fontWeight="bold">
+                                {percentage}%
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {subtitle}
+                            </Typography>
+                        </Box>
+                        <Box sx={{
+                            bgcolor: color + '20',
+                            borderRadius: '50%',
+                            p: 1,
+                            display: 'flex'
+                        }}>
+                            {icon}
+                        </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ width: 80, height: 80 }}>
+                            <Doughnut data={chartDataKPI} options={chartOptionsKPI} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    {dentroLabel}
+                                </Typography>
+                                <Typography variant="body2" fontWeight="bold">
+                                    {dentro}
+                                </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    {fueraLabel}
+                                </Typography>
+                                <Typography variant="body2" fontWeight="bold">
+                                    {fuera}
+                                </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
+                                <Typography variant="caption" color="text.secondary">
+                                    Total: {total}
+                                </Typography>
+                                <Tooltip title={tooltipText}>
+                                    <IconButton size="small">
+                                        <InfoIcon size={16} />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
+                        </Box>
+                    </Box>
+                </CardContent>
+            </Card>
         );
-      })}
-    </div>
-  );
-}
+    };
 
-const DATOS_INICIALES = {
-  resumen: {},
-  proximasAudiencias: [],
-  inactivos: [],
-  docsObservados: [],
-  distribucionMensual: [],
-  topFuncionarios: [],
-  distribucionEtapas: [],
-};
-
-const FILTROS_INICIALES = { etapa: '', fechaDesde: '', fechaHasta: '', top: '5' };
-
-export default function Dashboard() {
-  const navigate = useNavigate();
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState(null);
-  const [datos, setDatos] = useState(DATOS_INICIALES);
-  const [actualizadoEn, setActualizadoEn] = useState(null);
-  const [filtros, setFiltros] = useState(FILTROS_INICIALES);
-
-  // Filtros locales de cada gráfico (no recargan datos del backend, solo cambian la vista)
-  const [rangoTendencia, setRangoTendencia] = useState('6');
-  const [rangoBacklog, setRangoBacklog] = useState('6');
-  const [modoEmbudo, setModoEmbudo] = useState('cantidad');
-  const [modoComposicion, setModoComposicion] = useState('cantidad');
-  const [topFuncionariosLocal, setTopFuncionariosLocal] = useState('todos');
-  const [umbralCritico, setUmbralCritico] = useState('30');
-  const [topInactivosLocal, setTopInactivosLocal] = useState('5');
-  const [ordenDocs, setOrdenDocs] = useState('desc');
-  const [ventanaHeatmap, setVentanaHeatmap] = useState('7');
-
-  /* NOTA: getDashboardResumen debe reenviar { etapa, fechaDesde, fechaHasta, top }
-     como @etapa, @fecha_desde, @fecha_hasta, @top al llamar al SP en el backend.
-     Si tu servicio actual no acepta este parámetro, agrégalo — la UI ya está lista. */
-  const cargarDatos = useCallback(async (filtrosParaCargar) => {
-    setCargando(true);
-    setError(null);
-    try {
-      const response = await getDashboardResumen(filtrosParaCargar);
-      if (response.ok) {
-        setDatos({ ...DATOS_INICIALES, ...response.data });
-        setActualizadoEn(new Date());
-      } else {
-        setError(response.mensaje || 'No se pudo cargar la información del dashboard.');
-      }
-    } catch (err) {
-      setError(err.message || 'Error de conexión con el servidor.');
-    } finally {
-      setCargando(false);
+    if (loading) {
+        return (
+            <Box sx={{ p: 3 }}>
+                <LinearProgress />
+                <Typography sx={{ mt: 2, textAlign: 'center' }}>
+                    Cargando datos del dashboard...
+                </Typography>
+            </Box>
+        );
     }
-  }, []);
 
-  useEffect(() => { cargarDatos(FILTROS_INICIALES); }, [cargarDatos]);
+    if (error) {
+        return (
+            <Box sx={{ p: 3 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    <AlertTitle>Error</AlertTitle>
+                    {error}
+                </Alert>
+                <Button variant="contained" onClick={fetchData} startIcon={<RefreshIcon />}>
+                    Reintentar
+                </Button>
+            </Box>
+        );
+    }
 
-  const aplicarFiltros = () => cargarDatos(filtros);
-  const limpiarFiltros = () => { setFiltros(FILTROS_INICIALES); cargarDatos(FILTROS_INICIALES); };
+    const audiencias = data?.audienciasPlazo || [];
+    const disolucion = data?.disolucionPlazo || [];
+    const observaciones = data?.expedientesObservaciones || [];
+    const documentos = data?.documentosSubsanados || [];
 
-  const {
-    resumen, proximasAudiencias, inactivos, docsObservados,
-    distribucionMensual, topFuncionarios, distribucionEtapas,
-  } = datos;
+    const getResumenKPI = (kpiData) => {
+        if (!kpiData || !kpiData.length) return null;
+        return kpiData[0] || null;
+    };
 
-  /* ---- KPIs ---- */
-  const kpis = useMemo(() => [
-    { key: 'vencidos', icono: 'alerta', tono: 'danger', label: 'Vencidos', valor: resumen.vencidos || 0, detalle: 'Fecha límite de audiencia ya pasada, expediente aún activo.', destacar: (resumen.vencidos || 0) > 0 },
-    { key: 'por_vencer', icono: 'reloj', tono: 'warning', label: 'Por vencer (7 días)', valor: resumen.por_vencer_7dias || 0, detalle: 'Vence el plazo de audiencia en los próximos 7 días.' },
-    { key: 'activos', icono: 'expediente', tono: 'brand', label: 'Activos', valor: resumen.total_activos || 0, detalle: 'Estado ACTIVO (excluye archivados y cancelados).' },
-    { key: 'evaluacion', icono: 'lupa', tono: 'info', label: 'En evaluación', valor: resumen.en_evaluacion || 0, detalle: 'Validando admisibilidad de requisitos.' },
-    { key: 'audiencia', icono: 'usuarios', tono: 'info', label: 'En audiencia', valor: resumen.en_audiencia || 0, detalle: 'Proceso conciliatorio en curso.' },
-    { key: 'archivados', icono: 'archivo', tono: 'success', label: 'Archivados', valor: resumen.archivados || 0, detalle: 'Proceso concluido.' },
-    { key: 'cancelados', icono: 'candado-abierto', tono: 'neutral', label: 'Cancelados', valor: resumen.cancelados || 0, detalle: 'Interrumpido antes de concluir.' },
-  ], [resumen]);
+    const resumenAudiencias = getResumenKPI(audiencias);
+    const resumenDisolucion = getResumenKPI(disolucion);
+    const resumenObservaciones = getResumenKPI(observaciones);
+    const resumenDocumentos = getResumenKPI(documentos);
 
-  const veredicto = useMemo(() => {
-    const vencidos = resumen.vencidos || 0;
-    const porVencer = resumen.por_vencer_7dias || 0;
-    if (vencidos > 0) return { nivel: 'critico', texto: `Atención inmediata: ${vencidos} expediente${vencidos === 1 ? '' : 's'} vencido${vencidos === 1 ? '' : 's'}, sin audiencia programada dentro del plazo.` };
-    if (porVencer > 0) return { nivel: 'atencion', texto: `${porVencer} expediente${porVencer === 1 ? '' : 's'} vence${porVencer === 1 ? '' : 'n'} su plazo esta semana. Programar antes de que pasen a "vencido".` };
-    return { nivel: 'ok', texto: 'Sin expedientes vencidos ni por vencer esta semana. Los plazos están bajo control.' };
-  }, [resumen]);
-
-  const totalActivos = resumen.total_activos || 0;
-  const vencidosNum = resumen.vencidos || 0;
-  const porVencerNum = resumen.por_vencer_7dias || 0;
-  const aTiempoNum = Math.max(totalActivos - vencidosNum - porVencerNum, 0);
-  const cumplimientoPlazos = totalActivos > 0 ? Math.round(((totalActivos - vencidosNum) / totalActivos) * 100) : 100;
-
-  const segmentosComposicion = [
-    { key: 'atiempo', label: 'A tiempo', valor: aTiempoNum, color: 'var(--success)' },
-    { key: 'porvencer', label: 'Por vencer (7 días)', valor: porVencerNum, color: 'var(--warning)' },
-    { key: 'vencidos', label: 'Vencidos', valor: vencidosNum, color: 'var(--danger)' },
-  ];
-
-  const segmentosEtapas = useMemo(() => ETAPAS_PIPELINE.map((etapa) => {
-    const encontrado = distribucionEtapas.find((d) => d.etapa === etapa.key);
-    return { ...etapa, total: encontrado ? encontrado.total : 0 };
-  }), [distribucionEtapas]);
-  const totalEtapas = segmentosEtapas.reduce((sum, s) => sum + s.total, 0);
-  const cuelloDeBotella = useMemo(() => {
-    const conDatos = segmentosEtapas.filter((s) => s.total > 0);
-    if (conDatos.length === 0) return null;
-    return conDatos.reduce((max, s) => (s.total > max.total ? s : max), conDatos[0]);
-  }, [segmentosEtapas]);
-
-  const mensualAsc = useMemo(() => [...distribucionMensual].reverse(), [distribucionMensual]);
-  const mensualVisible = useMemo(() => mensualAsc.slice(-Number(rangoTendencia)), [mensualAsc, rangoTendencia]);
-  const balanceNeto = mensualVisible.reduce((sum, d) => sum + ((d.creados || 0) - (d.resueltos || 0)), 0);
-  const totalCreadosPeriodo = mensualVisible.reduce((sum, d) => sum + (d.creados || 0), 0);
-  const totalResueltosPeriodo = mensualVisible.reduce((sum, d) => sum + (d.resueltos || 0), 0);
-
-  const mensualBacklog = useMemo(() => mensualAsc.slice(-Number(rangoBacklog)), [mensualAsc, rangoBacklog]);
-  const backlogSerie = useMemo(() => {
-    let corrido = 0;
-    return mensualBacklog.map((d) => {
-      corrido += (d.creados || 0) - (d.resueltos || 0);
-      return { mes: d.mes, acumulado: corrido };
-    });
-  }, [mensualBacklog]);
-
-  const filasFuncionarios = useMemo(() => {
-    const base = topFuncionarios.map((f) => ({ etiqueta: f.funcionario, valor: f.cantidad, color: 'var(--primary)' }));
-    if (topFuncionariosLocal === 'todos') return base;
-    return base.slice(0, Number(topFuncionariosLocal));
-  }, [topFuncionarios, topFuncionariosLocal]);
-
-  const bucketsAntiguedad = useMemo(() => inactivos.reduce((acc, e) => {
-    acc[severidadPorDias(e.dias_inactivo, Number(umbralCritico))] += 1;
-    return acc;
-  }, { normal: 0, atencion: 0, critico: 0 }), [inactivos, umbralCritico]);
-
-  const umbralAtencion = Math.round(Number(umbralCritico) / 2);
-  const filasAntiguedad = [
-    { etiqueta: `0–${umbralAtencion} días`, valor: bucketsAntiguedad.normal, color: 'var(--success)' },
-    { etiqueta: `${umbralAtencion + 1}–${umbralCritico} días`, valor: bucketsAntiguedad.atencion, color: 'var(--warning)' },
-    { etiqueta: `Más de ${umbralCritico} días`, valor: bucketsAntiguedad.critico, color: 'var(--danger)' },
-  ];
-
-  const filasTopInactivos = useMemo(() => inactivos
-    .slice(0, Number(topInactivosLocal))
-    .map((e) => ({
-      etiqueta: e.numero_expediente,
-      valor: e.dias_inactivo,
-      id: e.expediente_id,
-      color: severidadPorDias(e.dias_inactivo, Number(umbralCritico)) === 'critico' ? 'var(--danger)' : severidadPorDias(e.dias_inactivo, Number(umbralCritico)) === 'atencion' ? 'var(--warning)' : 'var(--success)',
-      title: `${e.numero_expediente} — ${nombreOSinRegistrar(e.solicitante)} / ${nombreOSinRegistrar(e.demandado)} — ${e.dias_inactivo} días`,
-    })), [inactivos, topInactivosLocal, umbralCritico]);
-
-  const filasDocsObservados = useMemo(() => {
-    const base = docsObservados.map((d) => ({
-      etiqueta: d.numero_expediente,
-      valor: d.docs_observados,
-      color: 'var(--warning)',
-      title: `${d.numero_expediente} — ${nombreOSinRegistrar(d.solicitante)} / ${nombreOSinRegistrar(d.demandado)}`,
-    }));
-    const ordenado = [...base].sort((a, b) => (ordenDocs === 'desc' ? b.valor - a.valor : a.valor - b.valor));
-    return ordenado;
-  }, [docsObservados, ordenDocs]);
-  // Nota: CONSULTA 4 del SP no devuelve expediente_id, por eso estas barras no son clickeables.
-  // Si quieres navegar desde aquí, agrega "e.id AS expediente_id" al SELECT de esa consulta.
-
-  const diasHeatmap = useMemo(() => {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const n = Number(ventanaHeatmap);
-    return Array.from({ length: n }, (_, i) => {
-      const d = new Date(hoy);
-      d.setDate(d.getDate() + i);
-      return d.toISOString().slice(0, 10);
-    });
-  }, [ventanaHeatmap]);
-
-  const mapaAudienciasPorDia = useMemo(() => {
-    const mapa = new Map();
-    proximasAudiencias.forEach((a) => {
-      if (!a.fecha_programada) return;
-      const clave = new Date(a.fecha_programada).toISOString().slice(0, 10);
-      const lista = mapa.get(clave) || [];
-      lista.push(a.numero_expediente);
-      mapa.set(clave, lista);
-    });
-    return mapa;
-  }, [proximasAudiencias]);
-
-  const diaConMasCarga = useMemo(() => {
-    let mejor = null;
-    diasHeatmap.forEach((f) => {
-      const cantidad = mapaAudienciasPorDia.get(f)?.length || 0;
-      if (!mejor || cantidad > mejor.cantidad) mejor = { fecha: f, cantidad };
-    });
-    return mejor && mejor.cantidad > 0 ? mejor : null;
-  }, [diasHeatmap, mapaAudienciasPorDia]);
-
-  // Ajusta esta ruta si tu router define otro path para el detalle de expediente.
-  const irAExpediente = (expedienteId) => {
-    if (!expedienteId) return;
-    navigate(`/modulo3/expedientes/${expedienteId}`);
-  };
-
-  if (cargando) {
     return (
-      <>
-        <Sidebar />
-        <main className="contenido-modulo3">
-          <div className="dashboard-modulo3">
-            <div className="dashboard-loading" role="status" aria-live="polite">
-              <div className="spinner" aria-hidden="true" />
-              <p>Cargando dashboard…</p>
-            </div>
-          </div>
-        </main>
-      </>
+        <Box sx={{ p: 3 }}>
+            {/* Header */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                    <Typography variant="h4" gutterBottom>
+                        📊 Dashboard de Indicadores
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Análisis completo de KPIs del sistema
+                    </Typography>
+                </Box>
+                <Stack direction="row" spacing={2} alignItems="center">
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={fetchData}
+                    >
+                        Actualizar
+                    </Button>
+                </Stack>
+            </Box>
+
+            {/* Filtros de fecha */}
+            <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+                <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+                    <Typography variant="subtitle2">Filtros:</Typography>
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <InputLabel>Desde</InputLabel>
+                        <Select
+                            value={filtros.fecha_desde}
+                            label="Desde"
+                            onChange={(e) => setFiltros(prev => ({ ...prev, fecha_desde: e.target.value }))}
+                        >
+                            <MenuItem value={new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]}>
+                                Inicio de año
+                            </MenuItem>
+                            <MenuItem value={new Date(new Date().getFullYear(), new Date().getMonth() - 6, 1).toISOString().split('T')[0]}>
+                                6 meses atrás
+                            </MenuItem>
+                            <MenuItem value={new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0]}>
+                                1 mes atrás
+                            </MenuItem>
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <InputLabel>Hasta</InputLabel>
+                        <Select
+                            value={filtros.fecha_hasta}
+                            label="Hasta"
+                            onChange={(e) => setFiltros(prev => ({ ...prev, fecha_hasta: e.target.value }))}
+                        >
+                            <MenuItem value={new Date().toISOString().split('T')[0]}>
+                                Hoy
+                            </MenuItem>
+                            <MenuItem value={new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]}>
+                                Fin de año
+                            </MenuItem>
+                        </Select>
+                    </FormControl>
+                </Stack>
+            </Paper>
+
+            {/* KPIs Cards - Usando Flexbox en lugar de Grid */}
+            <Box sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: 3,
+                mb: 4
+            }}>
+                {/* KPI 1: Audiencias en Plazo Legal */}
+                <Box sx={{ 
+                    flex: '1 1 100%',
+                    '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
+                    '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+                }}>
+                    {renderKPICard(
+                        'Audiencias en Plazo Legal',
+                        '15 días desde recepción',
+                        resumenAudiencias?.porcentaje_cumplimiento || 0,
+                        resumenAudiencias?.total_expedientes || 0,
+                        resumenAudiencias?.dentro_plazo || 0,
+                        resumenAudiencias?.fuera_plazo || 0,
+                        'Dentro plazo',
+                        'Fuera plazo',
+                        '#4caf50',
+                        <Box sx={{ color: '#4caf50', display: 'flex' }}><GavelIcon size={24} /></Box>,
+                        'Porcentaje de expedientes con audiencia programada dentro de 15 días'
+                    )}
+                </Box>
+
+                {/* KPI 2: Disolución en Plazo */}
+                <Box sx={{ 
+                    flex: '1 1 100%',
+                    '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
+                    '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+                }}>
+                    {renderKPICard(
+                        'Disolución en Plazo',
+                        '15 días desde solicitud',
+                        resumenDisolucion?.porcentaje_cumplimiento || 0,
+                        resumenDisolucion?.total_solicitudes_disolucion || 0,
+                        resumenDisolucion?.resueltas_dentro_plazo || 0,
+                        resumenDisolucion?.resueltas_fuera_plazo || 0,
+                        'Resueltas en plazo',
+                        'Fuera de plazo',
+                        '#2196f3',
+                        <Box sx={{ color: '#2196f3', display: 'flex' }}><TrendingUpIcon size={24} /></Box>,
+                        'Porcentaje de solicitudes de disolución resueltas en menos de 15 días'
+                    )}
+                </Box>
+
+                {/* KPI 3: Expedientes con Observaciones */}
+                <Box sx={{ 
+                    flex: '1 1 100%',
+                    '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
+                    '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+                }}>
+                    {renderKPICard(
+                        'Expedientes con Observaciones',
+                        'Documentos observados o inadmisibles',
+                        resumenObservaciones?.porcentaje_observaciones || 0,
+                        resumenObservaciones?.total_pre_solicitudes || 0,
+                        resumenObservaciones?.con_observaciones || 0,
+                        resumenObservaciones?.sin_observaciones || 0,
+                        'Con observaciones',
+                        'Sin observaciones',
+                        '#ff9800',
+                        <Box sx={{ color: '#ff9800', display: 'flex' }}><DescriptionIcon size={24} /></Box>,
+                        'Porcentaje de expedientes con documentos observados o inadmisibles'
+                    )}
+                </Box>
+
+                {/* KPI 4: Documentos Subsanados en Plazo */}
+                <Box sx={{ 
+                    flex: '1 1 100%',
+                    '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
+                    '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+                }}>
+                    {renderKPICard(
+                        'Documentos Subsanados en Plazo',
+                        '2 días hábiles',
+                        resumenDocumentos?.porcentaje_subsanacion_plazo || 0,
+                        resumenDocumentos?.total_documentos_observados || 0,
+                        resumenDocumentos?.subsanados_plazo || 0,
+                        resumenDocumentos?.subsanados_fuera_plazo || 0,
+                        'Subsanados en plazo',
+                        'Fuera de plazo',
+                        '#9c27b0',
+                        <Box sx={{ color: '#9c27b0', display: 'flex' }}><AssignmentIcon size={24} /></Box>,
+                        'Porcentaje de documentos observados subsanados dentro de 2 días hábiles'
+                    )}
+                </Box>
+            </Box>
+
+            <Divider sx={{ my: 4 }} />
+
+            {/* Secciones completas por indicador */}
+            <IndicadorKPI
+                titulo="Audiencias en Plazo Legal"
+                descripcion="% de expedientes con audiencia programada dentro de 15 días desde recepción"
+                data={audiencias}
+                fieldMap={{
+                    total: 'total_expedientes',
+                    dentro: 'dentro_plazo',
+                    fuera: 'fuera_plazo',
+                    porcentaje: 'porcentaje_cumplimiento',
+                    mes: 'mes'
+                }}
+                dentroLabel="Dentro de plazo"
+                fueraLabel="Fuera de plazo"
+                color={theme.palette.success.main}
+                icon={<GavelIcon size={24} />}
+            />
+
+            <IndicadorKPI
+                titulo="Disolución en Plazo"
+                descripcion="% de solicitudes de disolución resueltas dentro de 15 días desde solicitud"
+                data={disolucion}
+                fieldMap={{
+                    total: 'total_solicitudes_disolucion',
+                    dentro: 'resueltas_dentro_plazo',
+                    fuera: 'resueltas_fuera_plazo',
+                    porcentaje: 'porcentaje_cumplimiento',
+                    mes: 'mes'
+                }}
+                dentroLabel="Resueltas en plazo"
+                fueraLabel="Fuera de plazo"
+                color={theme.palette.info.main}
+                icon={<TrendingUpIcon size={24} />}
+            />
+
+            <IndicadorKPI
+                titulo="Expedientes con Observaciones"
+                descripcion="% de expedientes con documentos observados o inadmisibles"
+                data={observaciones}
+                fieldMap={{
+                    total: 'total_pre_solicitudes',
+                    dentro: 'sin_observaciones',
+                    fuera: 'con_observaciones',
+                    porcentaje: 'porcentaje_observaciones',
+                    mes: 'mes'
+                }}
+                dentroLabel="Sin observaciones"
+                fueraLabel="Con observaciones"
+                color={theme.palette.warning.main}
+                icon={<DescriptionIcon size={24} />}
+            />
+
+            <IndicadorKPI
+                titulo="Documentos Subsanados en Plazo"
+                descripcion="% de documentos observados subsanados dentro de 2 días hábiles"
+                data={documentos}
+                fieldMap={{
+                    total: 'total_documentos_observados',
+                    dentro: 'subsanados_plazo',
+                    fuera: 'subsanados_fuera_plazo',
+                    porcentaje: 'porcentaje_subsanacion_plazo',
+                    mes: 'mes'
+                }}
+                dentroLabel="Subsanados en plazo"
+                fueraLabel="Fuera de plazo"
+                color="#9c27b0"
+                icon={<AssignmentIcon size={24} />}
+            />
+
+            <Divider sx={{ my: 4 }} />
+
+            {/* KPI 5: Tiempo Promedio de Envío */}
+            <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+                📊 Tiempo Promedio de Envío
+            </Typography>
+
+            {stats && (
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    gap: 3,
+                    mb: 4
+                }}>
+                    <Box sx={{ 
+                        flex: '1 1 100%',
+                        '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
+                        '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+                    }}>
+                        <Card elevation={2}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography color="textSecondary" variant="caption">Promedio General</Typography>
+                                        <Typography variant="h4">{stats.promedio} <small style={{ fontSize: '14px' }}>min</small></Typography>
+                                    </Box>
+                                    <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
+                                        <AccessTimeIcon />
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    </Box>
+
+                    <Box sx={{ 
+                        flex: '1 1 100%',
+                        '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
+                        '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+                    }}>
+                        <Card elevation={2}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography color="textSecondary" variant="caption">Tendencia</Typography>
+                                        <Typography variant="h4" sx={{ color: parseFloat(stats.tendencia) < 0 ? 'success.main' : 'error.main' }}>
+                                            {parseFloat(stats.tendencia) < 0 ? '↓' : '↑'} {Math.abs(parseFloat(stats.tendencia)).toFixed(1)} min
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{
+                                        bgcolor: parseFloat(stats.tendencia) < 0 ? 'success.light' : 'error.light',
+                                        borderRadius: '50%', p: 1, display: 'flex', color: 'white'
+                                    }}>
+                                        {parseFloat(stats.tendencia) < 0 ? <TrendingDownIcon /> : <TrendingUpIcon />}
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    </Box>
+
+                    <Box sx={{ 
+                        flex: '1 1 100%',
+                        '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
+                        '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+                    }}>
+                        <Card elevation={2}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography color="textSecondary" variant="caption">Total Solicitudes</Typography>
+                                        <Typography variant="h4">{stats.total}</Typography>
+                                    </Box>
+                                    <Box sx={{ bgcolor: 'secondary.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
+                                        <SpeedIcon />
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    </Box>
+
+                    <Box sx={{ 
+                        flex: '1 1 100%',
+                        '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
+                        '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+                    }}>
+                        <Card elevation={2}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography color="textSecondary" variant="caption">Rango de Tiempo</Typography>
+                                        <Typography variant="h4" sx={{ fontSize: '1.2rem' }}>{stats.min} - {stats.max} min</Typography>
+                                    </Box>
+                                    <Box sx={{ bgcolor: 'info.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
+                                        <BarChartIcon />
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    </Box>
+                </Box>
+            )}
+
+            <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <InputLabel>Tipo de gráfico</InputLabel>
+                    <Select
+                        value={viewType}
+                        label="Tipo de gráfico"
+                        onChange={(e) => setViewType(e.target.value)}
+                    >
+                        <MenuItem value="line">Línea</MenuItem>
+                        <MenuItem value="bar">Barras</MenuItem>
+                        <MenuItem value="pie">Circular</MenuItem>
+                    </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <InputLabel>Período</InputLabel>
+                    <Select
+                        value={timeRange}
+                        label="Período"
+                        onChange={(e) => setTimeRange(e.target.value)}
+                    >
+                        <MenuItem value="semanal">Semanal</MenuItem>
+                        <MenuItem value="mensual">Mensual</MenuItem>
+                        <MenuItem value="anual">Anual</MenuItem>
+                    </Select>
+                </FormControl>
+
+                <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<CalendarTodayIcon />}
+                    onClick={() => setDetalleOpen(true)}
+                >
+                    Ver detalles
+                </Button>
+            </Box>
+
+            {/* Gráfico principal - Usando Flexbox */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                <Box sx={{ flex: '1 1 100%' }}>
+                    <Paper elevation={3} sx={{ p: 3 }}>
+                        <Box sx={{ height: 450, position: 'relative' }}>
+                            {filteredData.length === 0 ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
+                                    <ErrorOutlineIcon size={60} />
+                                    <Typography color="text.secondary" sx={{ mt: 2 }}>
+                                        No hay datos disponibles
+                                    </Typography>
+                                </Box>
+                            ) : viewType === 'line' ? (
+                                <Line data={chartData} options={chartOptions} />
+                            ) : viewType === 'bar' ? (
+                                <Bar data={chartData} options={barOptions} />
+                            ) : (
+                                <Pie data={pieData} options={pieOptions} />
+                            )}
+                        </Box>
+                    </Paper>
+                </Box>
+            </Box>
+
+            {/* Modal de Detalle */}
+            <Dialog
+                open={detalleOpen}
+                onClose={() => setDetalleOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>Detalle {timeRange === 'anual' ? 'Anual' : timeRange === 'semanal' ? 'Semanal' : 'Mensual'}</DialogTitle>
+                <DialogContent dividers>
+                    <Box sx={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '2px solid #eee' }}>
+                                    <th style={{ padding: '12px', textAlign: 'left' }}>
+                                        {timeRange === 'anual' ? 'Año' : 'Mes'}
+                                    </th>
+                                    <th style={{ padding: '12px', textAlign: 'right' }}>Solicitudes</th>
+                                    <th style={{ padding: '12px', textAlign: 'right' }}>Tiempo Promedio (min)</th>
+                                    <th style={{ padding: '12px', textAlign: 'center' }}>Tendencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredData.map((item, index) => {
+                                    const tiempoActual = parseFloat(item.tiempo_promedio_minutos);
+                                    const tiempoAnterior = index > 0 ? parseFloat(filteredData[index - 1].tiempo_promedio_minutos) : null;
+                                    const trend = tiempoAnterior ? ((tiempoActual - tiempoAnterior) / tiempoAnterior * 100) : 0;
+
+                                    return (
+                                        <tr key={`${item.anio}-${item.mes}-${index}`} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                            <td style={{ padding: '10px' }}>
+                                                {item.mes ? <><strong>{item.mes}</strong> {item.anio}</> : <strong>{item.anio}</strong>}
+                                            </td>
+                                            <td style={{ padding: '10px', textAlign: 'right' }}>{item.total_solicitudes}</td>
+                                            <td style={{ padding: '10px', textAlign: 'right' }}>{item.tiempo_promedio_minutos}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                                                {index > 0 && (
+                                                    <Chip
+                                                        size="small"
+                                                        label={`${trend > 0 ? '+' : ''}${trend.toFixed(1)}%`}
+                                                        color={trend < 0 ? 'success' : 'error'}
+                                                        variant="outlined"
+                                                    />
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDetalleOpen(false)}>Cerrar</Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
     );
-  }
+};
 
-  if (error) {
-    return (
-      <>
-        <Sidebar />
-        <main className="contenido-modulo3">
-          <div className="dashboard-modulo3">
-            <div className="dashboard-error" role="alert">
-              <Icono nombre="alerta" className="dashboard-error__icono" />
-              <div>
-                <p className="dashboard-error__titulo">No se pudo cargar el dashboard</p>
-                <p className="dashboard-error__detalle">{error}</p>
-              </div>
-              <button type="button" className="btn-primario" onClick={() => cargarDatos(filtros)}>Reintentar</button>
-            </div>
-          </div>
-        </main>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Sidebar />
-      <main className="contenido-modulo3">
-        <div className="dashboard-modulo3">
-
-          <header className="dashboard-header">
-            <div className="dashboard-header__texto">
-              <h1>Dashboard</h1>
-              <p>Resumen operativo del procedimiento administrativo de disolución de matrimonio.</p>
-            </div>
-            <div className="dashboard-header__acciones">
-              {actualizadoEn && (
-                <span className="dashboard-header__actualizado">
-                  Actualizado {new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit' }).format(actualizadoEn)}
-                </span>
-              )}
-              <button type="button" className="btn-refrescar" onClick={() => cargarDatos(filtros)} disabled={cargando}>
-                <Icono nombre="refrescar" className="btn-refrescar__icono" />
-                Actualizar
-              </button>
-            </div>
-          </header>
-
-          {/* Filtro global — conecta directamente con @etapa, @fecha_desde, @fecha_hasta, @top del SP */}
-          <div className="filtro-global">
-            <Icono nombre="filtro" className="filtro-global__icono" />
-            <div className="filtro-global__campo">
-              <label htmlFor="f-etapa">Etapa</label>
-              <select id="f-etapa" value={filtros.etapa} onChange={(e) => setFiltros((f) => ({ ...f, etapa: e.target.value }))}>
-                <option value="">Todas las etapas</option>
-                {ETAPAS_PIPELINE.map((e) => <option key={e.key} value={e.key}>{e.label}</option>)}
-              </select>
-            </div>
-            <div className="filtro-global__campo">
-              <label htmlFor="f-desde">Desde</label>
-              <input id="f-desde" type="date" value={filtros.fechaDesde} onChange={(e) => setFiltros((f) => ({ ...f, fechaDesde: e.target.value }))} />
-            </div>
-            <div className="filtro-global__campo">
-              <label htmlFor="f-hasta">Hasta</label>
-              <input id="f-hasta" type="date" value={filtros.fechaHasta} onChange={(e) => setFiltros((f) => ({ ...f, fechaHasta: e.target.value }))} />
-            </div>
-            <div className="filtro-global__campo">
-              <label htmlFor="f-top">Top N</label>
-              <select id="f-top" value={filtros.top} onChange={(e) => setFiltros((f) => ({ ...f, top: e.target.value }))}>
-                {['5', '10', '15', '20'].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-            <div className="filtro-global__acciones">
-              <button type="button" className="btn-primario" onClick={aplicarFiltros}>Aplicar</button>
-              <button type="button" className="btn-secundario" onClick={limpiarFiltros}>Limpiar</button>
-            </div>
-          </div>
-
-          <div className={`veredicto veredicto--${veredicto.nivel}`} role="status">
-            <Icono nombre={veredicto.nivel === 'ok' ? 'check' : 'alerta'} className="veredicto__icono" />
-            <p>{veredicto.texto}</p>
-          </div>
-
-          {/* KPIs -------------------------------------------------- */}
-          <section className="dashboard-kpis" aria-label="Indicadores generales">
-            {kpis.map((kpi) => (
-              <article key={kpi.key} className={`kpi-card kpi-card--${kpi.tono}${kpi.destacar ? ' kpi-card--destacado' : ''}`}>
-                {kpi.destacar && <span className="kpi-card__sello">Atención</span>}
-                <Icono nombre={kpi.icono} className="kpi-card__icono" />
-                <span className="kpi-card__valor">{kpi.valor.toLocaleString('es-PE')}</span>
-                <span className="kpi-card__label">{kpi.label}</span>
-                <p className="kpi-card__detalle">{kpi.detalle}</p>
-              </article>
-            ))}
-          </section>
-
-          {/* GRÁFICOS ------------------------------------------------ */}
-          <section className="dashboard-charts">
-
-            {/* 1. Gauge */}
-            <div className="chart-card chart-card--centrado">
-              <div className="chart-card__header">
-                <div><h3>Cumplimiento de plazos</h3><p className="chart-card__subtitulo">% de activos dentro de su plazo de audiencia.</p></div>
-              </div>
-              <GaugeCumplimiento porcentaje={cumplimientoPlazos} />
-              <p className={`chart-insight ${cumplimientoPlazos < 70 ? 'chart-insight--danger' : cumplimientoPlazos < 90 ? '' : 'chart-insight--success'}`}>
-                <strong>{totalActivos - vencidosNum}</strong> de <strong>{totalActivos}</strong> dentro de plazo · <strong>{vencidosNum}</strong> vencidos.
-              </p>
-            </div>
-
-            {/* 2. Donut composición */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Composición de activos</h3><p className="chart-card__subtitulo">A tiempo, por vencer y vencidos.</p></div>
-                <FiltroMini ariaLabel="Modo de composición" valor={modoComposicion} onChange={setModoComposicion}
-                  opciones={[{ value: 'cantidad', label: 'Cantidad' }, { value: 'porcentaje', label: 'Porcentaje' }]} />
-              </div>
-              {totalActivos === 0 ? <p className="empty-message">No hay expedientes activos para este filtro.</p> : (
-                <>
-                  <Donut segmentos={segmentosComposicion} total={totalActivos} mostrarPorcentaje={modoComposicion === 'porcentaje'} />
-                  <p className="chart-insight">
-                    <strong>{Math.round((vencidosNum / totalActivos) * 100)}%</strong> de los expedientes activos ya están vencidos.
-                  </p>
-                </>
-              )}
-            </div>
-
-            {/* 3. Embudo */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Flujo del procedimiento</h3><p className="chart-card__subtitulo">Expedientes activos por etapa, en orden real del proceso.</p></div>
-                <FiltroMini ariaLabel="Modo del embudo" valor={modoEmbudo} onChange={setModoEmbudo}
-                  opciones={[{ value: 'cantidad', label: 'Cantidad' }, { value: 'porcentaje', label: 'Porcentaje' }]} />
-              </div>
-              {totalEtapas === 0 ? <p className="empty-message">No hay expedientes registrados para este filtro.</p> : (
-                <>
-                  <EmbudoEtapas segmentos={segmentosEtapas} total={totalEtapas} mostrarPorcentaje={modoEmbudo === 'porcentaje'} />
-                  {cuelloDeBotella && (
-                    <p className="chart-insight">
-                      Mayor concentración en <strong>{cuelloDeBotella.label}</strong> ({cuelloDeBotella.total}, {Math.round((cuelloDeBotella.total / totalEtapas) * 100)}%){cuelloDeBotella.key !== 'DISOLUCION' ? ': posible cuello de botella.' : ': próximos a concluir.'}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* 4. Tendencia mensual */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Ingreso vs. resolución mensual</h3><p className="chart-card__subtitulo">Orden cronológico, izquierda: más antiguo.</p></div>
-                <FiltroMini ariaLabel="Rango de meses" valor={rangoTendencia} onChange={setRangoTendencia}
-                  opciones={[{ value: '3', label: '3 meses' }, { value: '6', label: '6 meses' }]} />
-              </div>
-              <div className="leyenda-linea">
-                <span><i className="punto-color" style={{ background: 'var(--primary)' }} /> Creados</span>
-                <span><i className="punto-color" style={{ background: 'var(--success)' }} /> Resueltos</span>
-              </div>
-              {mensualVisible.length === 0 ? <p className="empty-message">No hay datos mensuales para este filtro.</p> : (
-                <>
-                  <TendenciaMensual datos={mensualVisible} />
-                  <p className={`chart-insight ${balanceNeto > 0 ? 'chart-insight--danger' : balanceNeto < 0 ? 'chart-insight--success' : ''}`}>
-                    Ingresaron <strong>{totalCreadosPeriodo}</strong>, se resolvieron <strong>{totalResueltosPeriodo}</strong>. Balance: <strong>{balanceNeto > 0 ? `+${balanceNeto}` : balanceNeto}</strong>{balanceNeto > 0 ? ' — backlog creciendo.' : balanceNeto < 0 ? ' — backlog bajando.' : ' — estable.'}
-                  </p>
-                </>
-              )}
-            </div>
-
-            {/* 5. Backlog acumulado */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Backlog acumulado</h3><p className="chart-card__subtitulo">Suma corrida de (creados − resueltos) en el rango mostrado.</p></div>
-                <FiltroMini ariaLabel="Rango de meses del backlog" valor={rangoBacklog} onChange={setRangoBacklog}
-                  opciones={[{ value: '3', label: '3 meses' }, { value: '6', label: '6 meses' }]} />
-              </div>
-              {backlogSerie.length === 0 ? <p className="empty-message">No hay datos suficientes.</p> : (
-                <>
-                  <BacklogAcumulado datos={backlogSerie} />
-                  <p className={`chart-insight ${backlogSerie[backlogSerie.length - 1].acumulado > 0 ? 'chart-insight--danger' : backlogSerie[backlogSerie.length - 1].acumulado < 0 ? 'chart-insight--success' : ''}`}>
-                    A {formatearMes(backlogSerie[backlogSerie.length - 1].mes)}: <strong>{backlogSerie[backlogSerie.length - 1].acumulado > 0 ? `+${backlogSerie[backlogSerie.length - 1].acumulado}` : backlogSerie[backlogSerie.length - 1].acumulado}</strong> expedientes de diferencia neta en el rango. No incluye lo anterior al rango.
-                  </p>
-                </>
-              )}
-            </div>
-
-            {/* 6. Funcionarios */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Expedientes por funcionario</h3><p className="chart-card__subtitulo">Según "registrado por", en el rango filtrado.</p></div>
-                <FiltroMini ariaLabel="Cantidad de funcionarios a mostrar" valor={topFuncionariosLocal} onChange={setTopFuncionariosLocal}
-                  opciones={[{ value: '5', label: 'Top 5' }, { value: '10', label: 'Top 10' }, { value: 'todos', label: 'Todos' }]} />
-              </div>
-              {filasFuncionarios.length === 0 ? <p className="empty-message">No hay expedientes con funcionario registrado.</p> : (
-                <>
-                  <BarrasHorizontales filas={filasFuncionarios} />
-                  <p className="chart-insight"><strong>{filasFuncionarios[0].etiqueta}</strong> lidera con {filasFuncionarios[0].valor} expediente{filasFuncionarios[0].valor === 1 ? '' : 's'}.</p>
-                </>
-              )}
-            </div>
-
-            {/* 7. Antigüedad por rango */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Antigüedad por rango</h3><p className="chart-card__subtitulo">Expedientes activos según días sin actividad.</p></div>
-                <FiltroMini ariaLabel="Umbral crítico de días" valor={umbralCritico} onChange={setUmbralCritico}
-                  opciones={[{ value: '30', label: 'Crítico: 30 días' }, { value: '45', label: 'Crítico: 45 días' }, { value: '60', label: 'Crítico: 60 días' }]} />
-              </div>
-              {inactivos.length === 0 ? <p className="empty-message">No hay expedientes inactivos.</p> : (
-                <>
-                  <BarrasHorizontales filas={filasAntiguedad} />
-                  <p className={`chart-insight ${bucketsAntiguedad.critico > 0 ? 'chart-insight--danger' : ''}`}>
-                    {bucketsAntiguedad.critico > 0
-                      ? <><strong>{bucketsAntiguedad.critico}</strong> expediente{bucketsAntiguedad.critico === 1 ? '' : 's'} supera{bucketsAntiguedad.critico === 1 ? '' : 'n'} los {umbralCritico} días sin movimiento.</>
-                      : `Ningún expediente supera los ${umbralCritico} días sin movimiento.`}
-                  </p>
-                </>
-              )}
-            </div>
-
-            {/* 8. Top inactivos */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Top expedientes más inactivos</h3><p className="chart-card__subtitulo">Ordenados por días sin movimiento. Clic para abrir.</p></div>
-                <FiltroMini ariaLabel="Cantidad a mostrar" valor={topInactivosLocal} onChange={setTopInactivosLocal}
-                  opciones={[{ value: '5', label: 'Top 5' }, { value: '10', label: 'Top 10' }]} />
-              </div>
-              {filasTopInactivos.length === 0 ? <p className="empty-message">No hay expedientes inactivos.</p> : (
-                <>
-                  <BarrasHorizontales filas={filasTopInactivos} onRowClick={irAExpediente} />
-                  <p className="chart-insight"><strong>{filasTopInactivos[0].etiqueta}</strong> lleva {filasTopInactivos[0].valor} días sin movimiento: revisar primero.</p>
-                </>
-              )}
-            </div>
-
-            {/* 9. Docs observados */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Documentos observados por expediente</h3><p className="chart-card__subtitulo">Sin versión APROBADA posterior. Pase el cursor para ver nombres.</p></div>
-                <FiltroMini ariaLabel="Orden" valor={ordenDocs} onChange={setOrdenDocs}
-                  opciones={[{ value: 'desc', label: 'Mayor a menor' }, { value: 'asc', label: 'Menor a mayor' }]} />
-              </div>
-              {filasDocsObservados.length === 0 ? <p className="empty-message">No hay documentos observados pendientes.</p> : (
-                <>
-                  <BarrasHorizontales filas={filasDocsObservados} />
-                  <p className="chart-insight">Mayor cantidad de observaciones: <strong>{[...filasDocsObservados].sort((a, b) => b.valor - a.valor)[0].etiqueta}</strong> ({[...filasDocsObservados].sort((a, b) => b.valor - a.valor)[0].valor}).</p>
-                </>
-              )}
-            </div>
-
-            {/* 10. Heatmap audiencias */}
-            <div className="chart-card">
-              <div className="chart-card__header">
-                <div><h3>Audiencias por día</h3><p className="chart-card__subtitulo">Basado en las próximas audiencias listadas por el filtro Top N.</p></div>
-                <FiltroMini ariaLabel="Ventana de días" valor={ventanaHeatmap} onChange={setVentanaHeatmap}
-                  opciones={[{ value: '7', label: '7 días' }, { value: '14', label: '14 días' }]} />
-              </div>
-              {proximasAudiencias.length === 0 ? <p className="empty-message">No hay audiencias programadas próximamente.</p> : (
-                <>
-                  <HeatmapAudiencias dias={diasHeatmap} mapaFechas={mapaAudienciasPorDia} />
-                  <p className="chart-insight">
-                    {diaConMasCarga
-                      ? <>Mayor carga: <strong>{formatearFechaCorta(diaConMasCarga.fecha)}</strong> con {diaConMasCarga.cantidad} audiencia{diaConMasCarga.cantidad === 1 ? '' : 's'}.</>
-                      : `Sin audiencias en los próximos ${ventanaHeatmap} días dentro del listado.`}
-                  </p>
-                </>
-              )}
-            </div>
-
-          </section>
-        </div>
-      </main>
-    </>
-  );
-}
+export default DashboardKPI;
