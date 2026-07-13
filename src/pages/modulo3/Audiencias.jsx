@@ -9,7 +9,7 @@ export default function Audiencias() {
     const [audiencias, setAudiencias] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState(null);
-    
+
     const [filtrosTemp, setFiltrosTemp] = useState({
         numeroExpediente: '',
         numeroMesaPartes: '',
@@ -29,25 +29,20 @@ export default function Audiencias() {
 
     const formatFechaHora = (fechaStr) => {
         if (!fechaStr) return '—';
-        
         let cadena = fechaStr;
-        if (cadena.endsWith('Z')) {
-            cadena = cadena.slice(0, -1); 
-        }
+        if (cadena.endsWith('Z')) cadena = cadena.slice(0, -1);
         cadena = cadena.replace('T', ' ');
         const [fechaParte, horaParte] = cadena.split(' ');
         const [year, month, day] = fechaParte.split('-');
         const [hour, minute] = horaParte.split(':');
-        
         const fecha = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
-        
         return fecha.toLocaleString('es-PE', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
         });
     };
 
@@ -55,14 +50,13 @@ export default function Audiencias() {
         setCargando(true);
         setError(null);
         try {
-            const resExp = await getExpedientes({ estado: 'ACTIVO' });
+            // ✅ Obtener TODOS los expedientes (incluyendo ARCHIVADO)
+            const resExp = await getExpedientes();
             let expedientes = [];
             if (resExp && Array.isArray(resExp.data)) {
                 expedientes = resExp.data;
             } else if (Array.isArray(resExp)) {
                 expedientes = resExp;
-            } else {
-                expedientes = [];
             }
 
             const promesas = expedientes.map(async (exp) => {
@@ -76,11 +70,13 @@ export default function Audiencias() {
                     } else if (Array.isArray(resAud)) {
                         audienciasData = resAud;
                     }
-                    audienciaActual = audienciasData.find(a => a.es_actual === true);
+                    audienciaActual = audienciasData.find((a) => a.es_actual === true);
                     tieneAudiencia = audienciaActual !== undefined;
                 } catch (err) {
+                    // Si falla, lo ignoramos
                 }
 
+                // ✅ Incluir expedientes que tengan audiencia O estén en etapa AUDIENCIA
                 const debeIncluir = tieneAudiencia || exp.etapa === 'AUDIENCIA';
                 if (!debeIncluir) return null;
 
@@ -99,6 +95,7 @@ export default function Audiencias() {
                         audienciaId: audienciaActual.id,
                         tieneAudiencia: true,
                         etapa: exp.etapa,
+                        estadoExpediente: exp.estado, // ✅ guardamos estado del expediente
                     };
                 } else {
                     return {
@@ -115,42 +112,49 @@ export default function Audiencias() {
                         audienciaId: null,
                         tieneAudiencia: false,
                         etapa: exp.etapa,
+                        estadoExpediente: exp.estado, // ✅ guardamos estado del expediente
                     };
                 }
             });
 
             let resultados = await Promise.all(promesas);
-            resultados = resultados.filter(r => r !== null);
+            resultados = resultados.filter((r) => r !== null);
 
+            // --- Aplicar filtros ---
             let filtrados = resultados;
             if (filtrosAplicados.numeroExpediente) {
-                filtrados = filtrados.filter(a =>
+                filtrados = filtrados.filter((a) =>
                     a.numeroExpediente?.toLowerCase().includes(filtrosAplicados.numeroExpediente.toLowerCase())
                 );
             }
             if (filtrosAplicados.numeroMesaPartes) {
-                filtrados = filtrados.filter(a =>
+                filtrados = filtrados.filter((a) =>
                     a.numeroMesaPartes?.toLowerCase().includes(filtrosAplicados.numeroMesaPartes.toLowerCase())
                 );
             }
             if (filtrosAplicados.dni) {
                 const dni = filtrosAplicados.dni;
-                filtrados = filtrados.filter(a =>
-                    a.dniSolicitante?.includes(dni) || a.dniDemandado?.includes(dni)
+                filtrados = filtrados.filter(
+                    (a) => a.dniSolicitante?.includes(dni) || a.dniDemandado?.includes(dni)
                 );
             }
             if (filtrosAplicados.estadoAudiencia && filtrosAplicados.estadoAudiencia !== 'SIN_PROGRAMAR') {
-                filtrados = filtrados.filter(a => a.estadoAudiencia === filtrosAplicados.estadoAudiencia);
+                filtrados = filtrados.filter((a) => a.estadoAudiencia === filtrosAplicados.estadoAudiencia);
             } else if (filtrosAplicados.estadoAudiencia === 'SIN_PROGRAMAR') {
-                filtrados = filtrados.filter(a => !a.tieneAudiencia);
+                filtrados = filtrados.filter((a) => !a.tieneAudiencia);
             }
             if (filtrosAplicados.fechaDesde && filtrosAplicados.estadoAudiencia !== 'SIN_PROGRAMAR') {
-                filtrados = filtrados.filter(a => a.fechaProgramada && new Date(a.fechaProgramada) >= new Date(filtrosAplicados.fechaDesde));
+                filtrados = filtrados.filter(
+                    (a) => a.fechaProgramada && new Date(a.fechaProgramada) >= new Date(filtrosAplicados.fechaDesde)
+                );
             }
             if (filtrosAplicados.fechaHasta && filtrosAplicados.estadoAudiencia !== 'SIN_PROGRAMAR') {
-                filtrados = filtrados.filter(a => a.fechaProgramada && new Date(a.fechaProgramada) <= new Date(filtrosAplicados.fechaHasta));
+                filtrados = filtrados.filter(
+                    (a) => a.fechaProgramada && new Date(a.fechaProgramada) <= new Date(filtrosAplicados.fechaHasta)
+                );
             }
 
+            // Ordenar por fecha (primero las más próximas)
             filtrados.sort((a, b) => {
                 if (!a.fechaProgramada && !b.fechaProgramada) return 0;
                 if (!a.fechaProgramada) return 1;
@@ -160,6 +164,7 @@ export default function Audiencias() {
 
             setAudiencias(filtrados);
         } catch (err) {
+            console.error(err);
             setError('No se pudieron cargar las audiencias. Intente de nuevo.');
         } finally {
             setCargando(false);
@@ -168,10 +173,11 @@ export default function Audiencias() {
 
     useEffect(() => {
         cargar();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filtrosAplicados]);
 
     const handleFiltroChange = (campo, valor) => {
-        setFiltrosTemp(prev => ({ ...prev, [campo]: valor }));
+        setFiltrosTemp((prev) => ({ ...prev, [campo]: valor }));
     };
 
     const aplicarFiltros = () => {
@@ -199,13 +205,18 @@ export default function Audiencias() {
         navigate(`/modulo3/expediente/${expedienteId}/programar-audiencia`);
     };
 
+    const handleVerResultado = (expedienteId) => {
+        // Usamos la misma ruta de registrar porque ahí se muestra el resultado
+        navigate(`/modulo3/expediente/${expedienteId}/registrar-audiencia`);
+    };
+
     return (
         <>
             <Sidebar />
             <main className="contenido-modulo3">
                 <div className="pagina-header">
                     <h1>Audiencias</h1>
-                    <p>Gestión rápida de audiencias (pendientes, realizadas, reprogramadas)</p>
+                    <p>Gestión rápida de audiencias (pendientes, realizadas, reprogramadas, archivadas)</p>
                 </div>
 
                 <div className="filtros-panel">
@@ -216,7 +227,7 @@ export default function Audiencias() {
                                 type="text"
                                 placeholder="Ej: EXP-20260001"
                                 value={filtrosTemp.numeroExpediente}
-                                onChange={e => handleFiltroChange('numeroExpediente', e.target.value)}
+                                onChange={(e) => handleFiltroChange('numeroExpediente', e.target.value)}
                             />
                         </div>
                         <div className="filtro-grupo">
@@ -225,7 +236,7 @@ export default function Audiencias() {
                                 type="text"
                                 placeholder="Ej: 123"
                                 value={filtrosTemp.numeroMesaPartes}
-                                onChange={e => handleFiltroChange('numeroMesaPartes', e.target.value)}
+                                onChange={(e) => handleFiltroChange('numeroMesaPartes', e.target.value)}
                             />
                         </div>
                         <div className="filtro-grupo">
@@ -234,7 +245,7 @@ export default function Audiencias() {
                                 type="text"
                                 placeholder="DNI del solicitante o demandado"
                                 value={filtrosTemp.dni}
-                                onChange={e => handleFiltroChange('dni', e.target.value)}
+                                onChange={(e) => handleFiltroChange('dni', e.target.value)}
                             />
                         </div>
                         <div className="filtro-grupo">
@@ -242,7 +253,7 @@ export default function Audiencias() {
                             <div className="select-wrapper">
                                 <select
                                     value={filtrosTemp.estadoAudiencia}
-                                    onChange={e => handleFiltroChange('estadoAudiencia', e.target.value)}
+                                    onChange={(e) => handleFiltroChange('estadoAudiencia', e.target.value)}
                                 >
                                     <option value="">Todos</option>
                                     <option value="PROGRAMADA">Programada</option>
@@ -257,7 +268,7 @@ export default function Audiencias() {
                             <input
                                 type="date"
                                 value={filtrosTemp.fechaDesde}
-                                onChange={e => handleFiltroChange('fechaDesde', e.target.value)}
+                                onChange={(e) => handleFiltroChange('fechaDesde', e.target.value)}
                             />
                         </div>
                         <div className="filtro-grupo">
@@ -265,12 +276,16 @@ export default function Audiencias() {
                             <input
                                 type="date"
                                 value={filtrosTemp.fechaHasta}
-                                onChange={e => handleFiltroChange('fechaHasta', e.target.value)}
+                                onChange={(e) => handleFiltroChange('fechaHasta', e.target.value)}
                             />
                         </div>
                         <div className="acciones-filtros">
-                            <button onClick={aplicarFiltros} className="btn-buscar"> Buscar</button>
-                            <button onClick={limpiarFiltros} className="btn-limpiar"> Limpiar</button>
+                            <button onClick={aplicarFiltros} className="btn-buscar">
+                                Buscar
+                            </button>
+                            <button onClick={limpiarFiltros} className="btn-limpiar">
+                                Limpiar
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -293,8 +308,9 @@ export default function Audiencias() {
                                     <th>Solicitante</th>
                                     <th>Demandado</th>
                                     <th>Fecha/Hora</th>
-                                    <th>Estado</th>
+                                    <th>Estado Audiencia</th>
                                     <th>Intento</th>
+                                    <th>Estado Expediente</th> {/* ✅ Nueva columna */}
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -305,47 +321,79 @@ export default function Audiencias() {
                                         <td>{a.numeroMesaPartes}</td>
                                         <td>{a.solicitante}</td>
                                         <td>{a.demandado}</td>
-                                        <td>
-                                            {a.fechaProgramada ? formatFechaHora(a.fechaProgramada) : '—'}
-                                        </td>
+                                        <td>{a.fechaProgramada ? formatFechaHora(a.fechaProgramada) : '—'}</td>
                                         <td>
                                             {a.estadoAudiencia === 'SIN_PROGRAMAR' ? (
-                                                <span className="estado-audiencia sin-programar">
-                                                    Sin programar
-                                                </span>
+                                                <span className="estado-audiencia sin-programar">Sin programar</span>
                                             ) : (
-                                                <span className={`estado-audiencia ${a.estadoAudiencia.toLowerCase()}`}>
-                                                    {a.estadoAudiencia === 'PROGRAMADA' ? 'Programada' :
-                                                     a.estadoAudiencia === 'REALIZADA' ? 'Realizada' :
-                                                     a.estadoAudiencia === 'REPROGRAMADA' ? 'Reprogramada' :
-                                                     a.estadoAudiencia}
+                                                <span
+                                                    className={`estado-audiencia ${a.estadoAudiencia.toLowerCase()}`}
+                                                >
+                                                    {a.estadoAudiencia === 'PROGRAMADA'
+                                                        ? 'Programada'
+                                                        : a.estadoAudiencia === 'REALIZADA'
+                                                        ? 'Realizada'
+                                                        : a.estadoAudiencia === 'REPROGRAMADA'
+                                                        ? 'Reprogramada'
+                                                        : a.estadoAudiencia}
                                                 </span>
                                             )}
                                         </td>
+                                        <td>{a.numeroIntento ? `${a.numeroIntento}/2` : '—'}</td>
                                         <td>
-                                            {a.numeroIntento ? `${a.numeroIntento}/2` : '—'}
+                                            <span
+                                                className={`estado-expediente ${a.estadoExpediente?.toLowerCase()}`}
+                                            >
+                                                {a.estadoExpediente || '—'}
+                                            </span>
                                         </td>
                                         <td>
-                                            {!a.tieneAudiencia ? (
-                                                <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
-                                                    Programar
-                                                </button>
-                                            ) : a.estadoAudiencia === 'PROGRAMADA' ? (
-                                                <button className="btn-registrar" onClick={() => handleRegistrar(a.expedienteId)}>
-                                                    Registrar
-                                                </button>
-                                            ) : a.estadoAudiencia === 'REPROGRAMADA' ? (
-                                                <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
-                                                    Reprogramar
-                                                </button>
-                                            ) : a.estadoAudiencia === 'REALIZADA' ? (
-                                                <button className="btn-ver" onClick={() => handleRegistrar(a.expedienteId)}>
+                                            {a.estadoExpediente === 'ARCHIVADO' ? (
+                                                // ✅ Si está archivado, solo mostramos "Ver resultado"
+                                                <button
+                                                    className="btn-ver"
+                                                    onClick={() => handleVerResultado(a.expedienteId)}
+                                                >
                                                     Ver resultado
                                                 </button>
                                             ) : (
-                                                <button className="btn-programar" onClick={() => handleProgramar(a.expedienteId)}>
-                                                    Programar
-                                                </button>
+                                                // Comportamiento normal para no archivados
+                                                !a.tieneAudiencia ? (
+                                                    <button
+                                                        className="btn-programar"
+                                                        onClick={() => handleProgramar(a.expedienteId)}
+                                                    >
+                                                        Programar
+                                                    </button>
+                                                ) : a.estadoAudiencia === 'PROGRAMADA' ? (
+                                                    <button
+                                                        className="btn-registrar"
+                                                        onClick={() => handleRegistrar(a.expedienteId)}
+                                                    >
+                                                        Registrar
+                                                    </button>
+                                                ) : a.estadoAudiencia === 'REPROGRAMADA' ? (
+                                                    <button
+                                                        className="btn-programar"
+                                                        onClick={() => handleProgramar(a.expedienteId)}
+                                                    >
+                                                        Reprogramar
+                                                    </button>
+                                                ) : a.estadoAudiencia === 'REALIZADA' ? (
+                                                    <button
+                                                        className="btn-ver"
+                                                        onClick={() => handleVerResultado(a.expedienteId)}
+                                                    >
+                                                        Ver resultado
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="btn-programar"
+                                                        onClick={() => handleProgramar(a.expedienteId)}
+                                                    >
+                                                        Programar
+                                                    </button>
+                                                )
                                             )}
                                         </td>
                                     </tr>

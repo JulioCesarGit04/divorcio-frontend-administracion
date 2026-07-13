@@ -1,0 +1,367 @@
+/* ─── Página header ────────────────────────────────────────── */
+.pagina-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagina-header h1 {
+    font-size: 1.8rem;
+    color: #1a2a3a;
+    margin: 0;
+}
+
+.pagina-header p {
+    color: #6b7280;
+    margin: 4px 0 0 0;
+    font-size: 0.95rem;
+}
+
+.btn-primario {
+    background: #0f3b6f;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s, transform 0.1s;
+    font-weight: 500;
+}
+
+.btn-primario:hover {
+    background: #1a4f8a;
+    transform: translateY(-1px);
+}
+
+.btn-primario:active {
+    transform: scale(0.98);
+}
+
+/* ─── Tabla ────────────────────────────────────────────────── */
+.tabla-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabla thead {
+    background: #f8fafc;
+}
+
+.tabla th {
+    padding: 0.8rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.tabla td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid #f1f3f5;
+    vertical-align: middle;
+}
+
+.tabla tbody tr:hover {
+    background: #f8fafc;
+}
+
+.tabla tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ─── Badges ────────────────────────────────────────────────── */
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge.activo {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge.inactivo {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.rol-badge {
+    display: inline-block;
+    padding: 0.2rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.rol-badge.admin {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.rol-badge.asistente {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* ─── Botones de acción ────────────────────────────────────── */
+.btn-editar {
+    padding: 0.25rem 0.7rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.2s;
+    margin-right: 0.4rem;
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-editar:hover {
+    background: #e0a800;
+}
+
+.btn-estado {
+    padding: 0.25rem 0.7rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.2s;
+    color: white;
+}
+
+.btn-estado.deshabilitar {
+    background: #dc3545;
+}
+
+.btn-estado.deshabilitar:hover {
+    background: #bd2130;
+}
+
+.btn-estado.habilitar {
+    background: #28a745;
+}
+
+.btn-estado.habilitar:hover {
+    background: #1e7e34;
+}
+
+/* ─── Modal ────────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.modal {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    animation: modalIn 0.25s ease-out;
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal h2 {
+    margin-top: 0;
+    color: #1a2a3a;
+    font-size: 1.4rem;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 0.8rem;
+}
+
+.modal-body {
+    margin: 1.2rem 0;
+}
+
+.campo {
+    margin-bottom: 1rem;
+}
+
+.campo label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.85rem;
+}
+
+.campo input,
+.campo select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.campo input:focus,
+.campo select:focus {
+    outline: none;
+    border-color: #0f3b6f;
+    box-shadow: 0 0 0 3px rgba(15, 59, 111, 0.1);
+}
+
+.campo input:disabled,
+.campo select:disabled {
+    background: #f1f3f5;
+    cursor: not-allowed;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1rem;
+}
+
+.btn-cancelar {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.btn-cancelar:hover {
+    background: #5a6268;
+}
+
+.btn-guardar {
+    background: #0f3b6f;
+    color: white;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.btn-guardar:hover {
+    background: #1a4f8a;
+}
+
+.btn-guardar:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ─── Mensajes ────────────────────────────────────────────── */
+.cargando {
+    text-align: center;
+    color: #6b7280;
+    margin-top: 3rem;
+}
+
+.spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top: 4px solid #0f3b6f;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 0.8rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 1rem 1.2rem;
+    border-radius: 6px;
+    border-left: 4px solid #dc3545;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.mensaje-exito {
+    background: #d4edda;
+    color: #155724;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    border-left: 4px solid #28a745;
+    margin: 0 0 1rem 0;
+}
+
+.btn-reintentar {
+    background: #0f3b6f;
+    color: white;
+    border: none;
+    padding: 4px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+
+.btn-reintentar:hover {
+    background: #1a4f8a;
+}
+
+.vacio {
+    text-align: center;
+    color: #6b7280;
+    margin-top: 3rem;
+}
+
+.vacio p {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}

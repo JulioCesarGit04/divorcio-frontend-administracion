@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../../components/modulo3/Sidebar'
 import { getExpedientes } from '../../services/ProcedimientoService'
@@ -20,12 +20,11 @@ const etiquetaEtapa = {
 export default function ExpedientesActivos() {
     const navigate = useNavigate()
     const [expedientes, setExpedientes] = useState([])
-    const [expedientesFiltrados, setExpedientesFiltrados] = useState([])
     const [cargando, setCargando] = useState(true)
 
     // --- Paginación ---
     const [paginaActual, setPaginaActual] = useState(1)
-    const [tamanoPagina] = useState(10) // Ajusta según prefieras
+    const [tamanoPagina] = useState(10)
 
     const [filtros, setFiltros] = useState({
         estado: '',
@@ -49,15 +48,11 @@ export default function ExpedientesActivos() {
             const response = await getExpedientes(filtrosLimpios)
             const data = response.data || []
 
-            const ordenados = [...data].sort((a, b) =>
-                new Date(a.fecha_recepcion) - new Date(b.fecha_recepcion)
-            )
-
-            setExpedientes(ordenados)
-            setExpedientesFiltrados(ordenados)
-            setPaginaActual(1) // Reiniciar página al cargar
+            // Ya no ordenamos aquí, lo hará useMemo
+            setExpedientes(data)
+            setPaginaActual(1)
         } catch (error) {
-            // Manejo de error
+            console.error('Error cargando expedientes:', error)
         } finally {
             setCargando(false)
         }
@@ -65,24 +60,38 @@ export default function ExpedientesActivos() {
 
     useEffect(() => { cargar() }, [])
 
-    useEffect(() => {
-        let filtrados = [...expedientes]
+    // ✅ ORDEN Y FILTRADO con useMemo
+    const expedientesFiltradosYOrdenados = useMemo(() => {
+        let resultado = [...expedientes]
 
+        // Filtrar por rango de fechas
         if (filtros.fechaDesde) {
             const fechaDesde = new Date(filtros.fechaDesde)
             fechaDesde.setHours(0, 0, 0, 0)
-            filtrados = filtrados.filter(e => new Date(e.fecha_recepcion) >= fechaDesde)
+            resultado = resultado.filter(e => {
+                const fecha = e.fecha_recepcion ? new Date(e.fecha_recepcion) : (e.fecha_pago ? new Date(e.fecha_pago) : new Date(0))
+                return fecha >= fechaDesde
+            })
         }
-
         if (filtros.fechaHasta) {
             const fechaHasta = new Date(filtros.fechaHasta)
             fechaHasta.setHours(23, 59, 59)
-            filtrados = filtrados.filter(e => new Date(e.fecha_recepcion) <= fechaHasta)
+            resultado = resultado.filter(e => {
+                const fecha = e.fecha_recepcion ? new Date(e.fecha_recepcion) : (e.fecha_pago ? new Date(e.fecha_pago) : new Date(0))
+                return fecha <= fechaHasta
+            })
         }
 
-        setExpedientesFiltrados(filtrados)
-        setPaginaActual(1) // Reiniciar página al cambiar fechas
-    }, [filtros.fechaDesde, filtros.fechaHasta, expedientes])
+        // ✅ ORDEN: más antiguo primero (por fecha_recepcion o fecha_pago)
+        resultado.sort((a, b) => {
+            const fechaA = a.fecha_recepcion ? new Date(a.fecha_recepcion) : (a.fecha_pago ? new Date(a.fecha_pago) : new Date(0))
+            const fechaB = b.fecha_recepcion ? new Date(b.fecha_recepcion) : (b.fecha_pago ? new Date(b.fecha_pago) : new Date(0))
+            if (fechaA - fechaB !== 0) return fechaA - fechaB
+            return (a.id || 0) - (b.id || 0)
+        })
+
+        return resultado
+    }, [expedientes, filtros.fechaDesde, filtros.fechaHasta])
 
     const handleFiltroChange = (campo, valor) => {
         setFiltros(prev => ({ ...prev, [campo]: valor }))
@@ -105,41 +114,33 @@ export default function ExpedientesActivos() {
 
     const handleVerExpediente = (id) => navigate(`/modulo3/detalle/${id}`)
 
-    // --- Paginación: cálculo de elementos a mostrar ---
+    // --- Paginación ---
     const indiceInicio = (paginaActual - 1) * tamanoPagina
     const indiceFin = indiceInicio + tamanoPagina
-    const elementosPagina = expedientesFiltrados.slice(indiceInicio, indiceFin)
-    const totalPaginas = Math.ceil(expedientesFiltrados.length / tamanoPagina)
+    const elementosPagina = expedientesFiltradosYOrdenados.slice(indiceInicio, indiceFin)
+    const totalPaginas = Math.ceil(expedientesFiltradosYOrdenados.length / tamanoPagina)
 
     const irPagina = (pagina) => {
         if (pagina < 1 || pagina > totalPaginas) return
         setPaginaActual(pagina)
     }
 
-    // --- Función para generar números de página con elipsis ---
     const obtenerRangoPaginas = () => {
         const paginas = []
         const total = totalPaginas
         const actual = paginaActual
-        const delta = 2 // cuántas páginas mostrar a cada lado
+        const delta = 2
 
         if (total <= 7) {
             for (let i = 1; i <= total; i++) paginas.push(i)
         } else {
-            // Siempre mostrar primera y última
             paginas.push(1)
             let rangoInicio = Math.max(2, actual - delta)
             let rangoFin = Math.min(total - 1, actual + delta)
 
-            if (actual - delta > 2) {
-                paginas.push('...')
-            }
-            for (let i = rangoInicio; i <= rangoFin; i++) {
-                paginas.push(i)
-            }
-            if (actual + delta < total - 1) {
-                paginas.push('...')
-            }
+            if (actual - delta > 2) paginas.push('...')
+            for (let i = rangoInicio; i <= rangoFin; i++) paginas.push(i)
+            if (actual + delta < total - 1) paginas.push('...')
             paginas.push(total)
         }
         return paginas
@@ -149,7 +150,6 @@ export default function ExpedientesActivos() {
         <>
             <Sidebar />
             <main className="contenido-modulo3">
-
                 <div className="pagina-header">
                     <h1>Expedientes</h1>
                     <p>Todos los expedientes</p>
@@ -157,7 +157,6 @@ export default function ExpedientesActivos() {
 
                 <div className="filtros-panel">
                     <div className="filtros-grid filtros-grid--expedientes">
-                        {/* Filtros (sin cambios) */}
                         <div className="filtro-grupo">
                             <label>Estado</label>
                             <div className="select-wrapper">
@@ -231,13 +230,13 @@ export default function ExpedientesActivos() {
 
                         <div className="acciones-filtros">
                             <button onClick={aplicarFiltros} className="btn-buscar">Buscar</button>
-                            <button onClick={limpiarFiltros} className="btn-limpiar"> Limpiar</button>
+                            <button onClick={limpiarFiltros} className="btn-limpiar">Limpiar</button>
                         </div>
                     </div>
                 </div>
 
                 <div className="resultados-info">
-                    Mostrando {expedientesFiltrados.length} de {expedientes.length} expediente{expedientes.length !== 1 ? 's' : ''}
+                    Mostrando {expedientesFiltradosYOrdenados.length} de {expedientes.length} expediente{expedientes.length !== 1 ? 's' : ''}
                     {totalPaginas > 1 && (
                         <span style={{ marginLeft: '1rem', fontSize: '0.9rem', color: '#6b7280' }}>
                             (Página {paginaActual} de {totalPaginas})
@@ -247,7 +246,7 @@ export default function ExpedientesActivos() {
 
                 {cargando ? (
                     <p className="cargando">Cargando...</p>
-                ) : expedientesFiltrados.length === 0 ? (
+                ) : expedientesFiltradosYOrdenados.length === 0 ? (
                     <div className="vacio">
                         <p>No se encontraron expedientes con los filtros aplicados.</p>
                     </div>
@@ -306,7 +305,6 @@ export default function ExpedientesActivos() {
                             </table>
                         </div>
 
-                        {/* Controles de paginación */}
                         {totalPaginas > 1 && (
                             <div className="paginacion-container" style={{
                                 display: 'flex',
@@ -375,7 +373,6 @@ export default function ExpedientesActivos() {
                         )}
                     </>
                 )}
-
             </main>
         </>
     )

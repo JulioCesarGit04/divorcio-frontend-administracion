@@ -127,44 +127,44 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
         }
 
         // 5. Reprogramación de audiencia (con plazo límite)
-        if (tieneAudienciaReprogramada && expediente.fecha_limite_audiencia) {
-            const fechaOriginalStr = audienciaActual.fecha_programada
-            const horaOriginal = formatHoraLocal(fechaOriginalStr)
-            setInfo({
-                titulo: 'Reprogramación de audiencia',
-                fechaLimite: expediente.fecha_limite_audiencia,
-                fechaEvento: fechaOriginalStr,
-                horaEvento: horaOriginal,
-                mostrar: true
-            })
-            setCargandoDias(true)
-            const hoy = new Date().toISOString().split('T')[0]
-            const limite = expediente.fecha_limite_audiencia.split('T')[0]
-            getDiasHabilesEntre(hoy, limite)
-                .then(data => setDiasRestantes(data.dias))
-                .catch(() => setDiasRestantes(null))
-                .finally(() => setCargandoDias(false))
-            return
-        }
+if (tieneAudienciaReprogramada && expediente.fecha_limite_audiencia) {
+    const fechaOriginalStr = audienciaActual.fecha_programada
+    const horaOriginal = formatHoraLocal(fechaOriginalStr)
+    setInfo({
+        titulo: 'Reprogramación de audiencia',
+        fechaLimite: expediente.fecha_limite_audiencia,
+        fechaEvento: fechaOriginalStr,
+        horaEvento: horaOriginal,
+        mostrar: true
+    })
+    let dias = expediente.dias_restantes_audiencia_habiles;
+    if (dias !== null && dias !== undefined) {
+        dias = dias + 1;
+    }
+    setDiasRestantes(dias);
+    return
+}
+
+
+
 
         // 6. Plazo para programar audiencia (EVALUACION, DOCUMENTOS_INTERNOS, AUDIENCIA)
-        if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUDIENCIA') && expediente.fecha_limite_audiencia) {
-            setInfo({
-                titulo: 'Plazo para programar audiencia',
-                fechaLimite: expediente.fecha_limite_audiencia,
-                fechaEvento: null,
-                horaEvento: null,
-                mostrar: true
-            })
-            setCargandoDias(true)
-            const hoy = new Date().toISOString().split('T')[0]
-            const limite = expediente.fecha_limite_audiencia.split('T')[0]
-            getDiasHabilesEntre(hoy, limite)
-                .then(data => setDiasRestantes(data.dias))
-                .catch(() => setDiasRestantes(null))
-                .finally(() => setCargandoDias(false))
-            return
-        }
+if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUDIENCIA') && expediente.fecha_limite_audiencia) {
+    setInfo({
+        titulo: 'Plazo para programar audiencia',
+        fechaLimite: expediente.fecha_limite_audiencia,
+        fechaEvento: null,
+        horaEvento: null,
+        mostrar: true
+    })
+    // Usar el valor del backend y sumarle 1 para corregir el desfase
+    let dias = expediente.dias_restantes_audiencia_habiles;
+    if (dias !== null && dias !== undefined) {
+        dias = dias + 1;
+    }
+    setDiasRestantes(dias);
+    return
+}
 
         // 7. Ningún caso coincide → ocultar
         setInfo({ ...info, mostrar: false })
@@ -177,16 +177,16 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
             setEstado('normal')
         } else if (diasRestantes < 0) {
             setColor('#dc2626')
-            setEstado('vencido')   // ← Negativos → PLAZO VENCIDO
+            setEstado('vencido')
         } else if (diasRestantes < 3) {
             setColor('#dc2626')
-            setEstado('urgente')   // ← 0, 1, 2 → rojo
+            setEstado('urgente')
         } else if (diasRestantes <= 7) {
             setColor('#eab308')
-            setEstado('proximo')   // ← 3 a 7 → amarillo
+            setEstado('proximo')
         } else {
             setColor('#22c55e')
-            setEstado('normal')    // ← >7 → verde
+            setEstado('normal')
         }
     }, [diasRestantes])
 
@@ -208,7 +208,7 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
         return null
     }
 
-    // ─── Panel de depuración ──────────────────────────────────────────────────
+    // ─── Panel de depuración (sin cambios) ──────────────────────────────────
     const contarDiasHabilesLocal = (inicioStr, finStr) => {
         const inicio = new Date(inicioStr)
         const fin = new Date(finStr)
@@ -225,24 +225,39 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
     }
 
     const handleDebugCalcular = async () => {
-        if (!debugInicio || debugDias <= 0) return
-        setDebugCargando(true)
+        if (!debugInicio || debugDias <= 0) return;
+        setDebugCargando(true);
         try {
-            const resSuma = await sumarDiasHabiles(debugInicio, debugDias)
-            const fechaFinalBackend = resSuma.fecha
-            const resEntre = await getDiasHabilesEntre(debugInicio, fechaFinalBackend)
-            const diasBackend = resEntre.dias
-            const diasFrontend = contarDiasHabilesLocal(debugInicio, fechaFinalBackend)
+            console.log('🔍 handleDebugCalcular - debugInicio:', debugInicio);
+            console.log('🔍 handleDebugCalcular - debugDias:', debugDias);
 
-            setDebugResultadoBackend(fechaFinalBackend)
-            setDebugDiasBackend(diasBackend)
-            setDebugFrontend(diasFrontend)
+            const resSuma = await sumarDiasHabiles(debugInicio, debugDias);
+            console.log('🔍 resSuma:', resSuma);
+            const fechaFinalBackend = resSuma.fecha;
+            console.log('🔍 fechaFinalBackend:', fechaFinalBackend);
+
+            const resEntre = await getDiasHabilesEntre(debugInicio, fechaFinalBackend);
+            console.log('🔍 resEntre:', resEntre);
+            const diasBackend = resEntre.dias;
+            console.log('🔍 diasBackend:', diasBackend);
+
+            const diasFrontend = contarDiasHabilesLocal(debugInicio, fechaFinalBackend);
+            console.log('🔍 diasFrontend:', diasFrontend);
+
+            setDebugResultadoBackend(fechaFinalBackend);
+            setDebugDiasBackend(diasBackend);
+            setDebugFrontend(diasFrontend);
+
+            console.log('✅ Estados actualizados:');
+            console.log('  debugResultadoBackend:', fechaFinalBackend);
+            console.log('  debugDiasBackend:', diasBackend);
+            console.log('  debugFrontend:', diasFrontend);
         } catch (error) {
-            console.error('Error en depuración:', error)
+            console.error('Error en depuración:', error);
         } finally {
-            setDebugCargando(false)
+            setDebugCargando(false);
         }
-    }
+    };
 
     // ─── Renderizado condicional según debug ──────────────────────────────────
     if (debug) {

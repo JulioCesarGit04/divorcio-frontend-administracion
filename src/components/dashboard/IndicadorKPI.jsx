@@ -1,450 +1,256 @@
 // src/components/dashboard/IndicadorKPI.jsx
-// Componente genérico y reutilizable para mostrar un indicador de tipo
-// "% dentro de plazo / fuera de plazo" con evolución mensual, igual que
-// se hizo con "Tiempo Promedio de Envío", pero parametrizable para
-// cualquier KPI que tenga esa misma forma (dentro/fuera/porcentaje).
 //
-// USO:
-// <IndicadorKPI
-//     titulo="Audiencias en Plazo Legal"
-//     descripcion="% de expedientes con audiencia programada dentro de 15 días"
-//     data={data.audienciasPlazo}
-//     fieldMap={{
-//         total: 'total_expedientes',
-//         dentro: 'dentro_plazo',
-//         fuera: 'fuera_plazo',
-//         porcentaje: 'porcentaje_cumplimiento',
-//         mes: 'mes'          // o 'nombre_mes' según tu backend
-//     }}
-//     dentroLabel="Dentro de plazo"
-//     fueraLabel="Fuera de plazo"
-//     color={theme.palette.success.main}
-//     icon={<GavelIcon size={24} />}
-// />
+// Vista detallada de un KPI individual. Se apoya 100% en `fieldMap` para leer
+// los datos: nunca asume nombres de campo fijos ni recalcula el porcentaje
+// por su cuenta. Esto es intencional -> el número que ves acá SIEMPRE es el
+// mismo que el de la tarjeta resumen de arriba, porque ambos leen el mismo
+// campo del mismo objeto. Si algún día cambian los nombres de campo del
+// backend, solo hay que tocar el `fieldMap` que le pasa Dashboard.jsx, no
+// este archivo.
 
 import React, { useState, useMemo } from 'react';
 import {
     Box,
     Paper,
     Typography,
-    Card,
-    CardContent,
-    useTheme,
     FormControl,
     InputLabel,
     Select,
     MenuItem,
-    Button,
-    Chip,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions
+    Stack,
+    Divider
 } from '@mui/material';
-// ELIMINADO: import Grid from '@mui/material/GridLegacy';
-import {
-    CalendarTodayIcon,
-    ErrorOutlineIcon,
-    CheckCircleIcon,
-    CancelIcon,
-    BarChartIcon
-} from '../icons/DashboardIcons';
 import {
     Chart as ChartJS,
     CategoryScale,
     LinearScale,
+    BarElement,
     PointElement,
     LineElement,
-    BarElement,
     Title,
     Tooltip as ChartTooltip,
     Legend,
-    ArcElement
+    ArcElement,
+    Filler
 } from 'chart.js';
-import { Line, Bar, Doughnut } from 'react-chartjs-2';
-import { traducirMes } from '../../utils/meses';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+import { TrendingUpIcon, TrendingDownIcon } from '../icons/DashboardIcons';
 
 ChartJS.register(
-    CategoryScale, LinearScale, PointElement, LineElement,
-    BarElement, Title, ChartTooltip, Legend, ArcElement
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    PointElement,
+    LineElement,
+    Title,
+    ChartTooltip,
+    Legend,
+    ArcElement,
+    Filler
 );
+
+// Arma una etiqueta de período legible a partir de un registro. Si el
+// backend no envía 'mes'/'anio' (porque el SP solo devuelve un total, sin
+// desglose mensual) nunca deja pasar "undefined undefined": usa un rótulo
+// neutro en su lugar.
+const etiquetaPeriodo = (item, fieldMap, index, total) => {
+    const mes = fieldMap.mes ? item[fieldMap.mes] : undefined;
+    const anio = item.anio;
+
+    if (mes && anio) return `${mes} ${anio}`;
+    if (anio) return `${anio}`;
+    if (mes) return `${mes}`;
+
+    // Sin mes/año: si es el único registro, es "el período filtrado".
+    // Si hay varios, al menos los diferenciamos por posición.
+    return total > 1 ? `Registro ${index + 1}` : 'Período filtrado';
+};
 
 const IndicadorKPI = ({
     titulo,
     descripcion,
     data = [],
-    fieldMap = {},
-    dentroLabel = 'Dentro de plazo',
-    fueraLabel = 'Fuera de plazo',
-    color = '#2563eb',
+    fieldMap,
+    dentroLabel = 'Dentro',
+    fueraLabel = 'Fuera',
+    color = '#1976d2',
     icon = null
 }) => {
-    const theme = useTheme();
-    const [viewType, setViewType] = useState('bar');
-    const [timeRange, setTimeRange] = useState('mensual');
-    const [detalleOpen, setDetalleOpen] = useState(false);
+    const [chartType, setChartType] = useState('bar');
+    const [periodo, setPeriodo] = useState('mensual');
 
-    const f = {
-        total: fieldMap.total || 'total',
-        dentro: fieldMap.dentro || 'dentro',
-        fuera: fieldMap.fuera || 'fuera',
-        porcentaje: fieldMap.porcentaje || 'porcentaje',
-        mes: fieldMap.mes || 'mes'
+    const registros = Array.isArray(data) ? data : [];
+    const hayDatos = registros.length > 0;
+
+    // Registro "actual": igual criterio que Dashboard.jsx (primer elemento
+    // del arreglo) para que el detalle nunca contradiga a la tarjeta resumen.
+    const actual = hayDatos ? registros[0] : null;
+    const anterior = registros.length > 1 ? registros[1] : null;
+
+    const leer = (item, campo, fallback = 0) => {
+        if (!item || !fieldMap || !fieldMap[campo]) return fallback;
+        const valor = item[fieldMap[campo]];
+        return valor === undefined || valor === null ? fallback : valor;
     };
 
-    const normalizados = useMemo(() => {
-        return (data || []).map(item => ({
-            anio: item.anio,
-            mes: traducirMes(item[f.mes]),
-            total: Number(item[f.total]) || 0,
-            dentro: Number(item[f.dentro]) || 0,
-            fuera: Number(item[f.fuera]) || 0,
-            porcentaje: Number(item[f.porcentaje]) || 0
-        }));
-    }, [data, f.mes, f.total, f.dentro, f.fuera, f.porcentaje]);
+    const porcentajeActual = hayDatos ? parseFloat(leer(actual, 'porcentaje', 0)) : 0;
+    const totalActual = hayDatos ? leer(actual, 'total', 0) : 0;
+    const dentroActual = hayDatos ? leer(actual, 'dentro', 0) : 0;
+    const fueraActual = hayDatos ? leer(actual, 'fuera', 0) : 0;
 
-    const filteredData = useMemo(() => {
-        if (!normalizados.length) return [];
+    const tendencia = useMemo(() => {
+        if (!anterior) return null;
+        const porcentajeAnterior = parseFloat(leer(anterior, 'porcentaje', 0));
+        return (porcentajeActual - porcentajeAnterior).toFixed(1);
+    }, [actual, anterior]); // eslint-disable-line react-hooks/exhaustive-deps
 
-        if (timeRange === 'anual') {
-            const porAnio = {};
-            normalizados.forEach(item => {
-                const anio = item.anio;
-                if (!porAnio[anio]) {
-                    porAnio[anio] = { anio, mes: '', total: 0, dentro: 0, fuera: 0 };
-                }
-                porAnio[anio].total += item.total;
-                porAnio[anio].dentro += item.dentro;
-                porAnio[anio].fuera += item.fuera;
-            });
-            return Object.values(porAnio)
-                .sort((a, b) => a.anio - b.anio)
-                .map(g => ({
-                    ...g,
-                    porcentaje: g.total ? Number(((g.dentro / g.total) * 100).toFixed(2)) : 0
-                }));
+    const etiquetas = useMemo(
+        () => registros.map((item, i) => etiquetaPeriodo(item, fieldMap, i, registros.length)),
+        [registros, fieldMap]
+    );
+
+    const chartData = useMemo(() => {
+        if (!hayDatos) return null;
+
+        if (registros.length === 1) {
+            // Un solo registro: comparación Dentro vs Fuera, igual a la tarjeta.
+            return {
+                labels: [dentroLabel, fueraLabel],
+                datasets: [{
+                    label: titulo,
+                    data: [dentroActual, fueraActual],
+                    backgroundColor: [color, '#ffcdd2'],
+                    borderColor: [color, '#e57373'],
+                    borderWidth: 2
+                }]
+            };
         }
 
-        if (timeRange === 'semanal') {
-            return normalizados.slice(-4);
-        }
-
-        return normalizados.slice(-12);
-    }, [normalizados, timeRange]);
-
-    const stats = useMemo(() => {
-        if (!filteredData.length) return null;
-        const porcentajes = filteredData.map(item => item.porcentaje);
-        const totalGeneral = filteredData.reduce((a, b) => a + b.total, 0);
-        const dentroGeneral = filteredData.reduce((a, b) => a + b.dentro, 0);
-        const fueraGeneral = filteredData.reduce((a, b) => a + b.fuera, 0);
-        const promedio = totalGeneral ? (dentroGeneral / totalGeneral) * 100 : 0;
-        const ultimo = porcentajes[porcentajes.length - 1];
-        const anterior = porcentajes.length > 1 ? porcentajes[porcentajes.length - 2] : ultimo;
-        const tendencia = ultimo - anterior;
-
+        // Varios registros (desglose temporal, cuando el backend lo entregue):
+        // se grafica la evolución del % que ya usa la tarjeta resumen.
         return {
-            promedio: promedio.toFixed(2),
-            totalGeneral,
-            dentroGeneral,
-            fueraGeneral,
-            tendencia: tendencia.toFixed(2)
-        };
-    }, [filteredData]);
-
-    const etiquetas = useMemo(() => (
-        filteredData.map(item => timeRange === 'anual' ? `${item.anio}` : `${item.mes} ${item.anio}`)
-    ), [filteredData, timeRange]);
-
-    const chartData = useMemo(() => ({
-        labels: etiquetas,
-        datasets: [
-            {
-                label: `% ${dentroLabel}`,
-                data: filteredData.map(item => item.porcentaje),
-                borderColor: color,
-                backgroundColor: color + '33',
-                fill: viewType === 'line',
-                tension: 0.4,
-                pointBackgroundColor: color,
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-            },
-            {
-                label: `% ${fueraLabel}`,
-                data: filteredData.map(item => Number((100 - item.porcentaje).toFixed(2))),
-                borderColor: theme.palette.error.main,
-                backgroundColor: theme.palette.error.main + '33',
-                fill: viewType === 'line',
-                tension: 0.4,
-                pointBackgroundColor: theme.palette.error.main,
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-            }
-        ]
-    }), [filteredData, etiquetas, color, theme, viewType, dentroLabel, fueraLabel]);
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
-            tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}%` } }
-        },
-        scales: {
-            y: {
-                beginAtZero: true, max: 100,
-                grid: { color: 'rgba(0,0,0,0.05)' },
-                ticks: { callback: (v) => v + '%' }
-            },
-            x: { grid: { display: false } }
-        }
-    };
-
-    const doughnutData = useMemo(() => {
-        if (!stats) return null;
-        return {
-            labels: [dentroLabel, fueraLabel],
+            labels: etiquetas,
             datasets: [{
-                data: [stats.dentroGeneral, stats.fueraGeneral],
-                backgroundColor: [color, theme.palette.error.main],
-                borderColor: '#fff',
+                label: '% ' + dentroLabel,
+                data: registros.map(item => parseFloat(leer(item, 'porcentaje', 0))),
+                backgroundColor: color + '55',
+                borderColor: color,
                 borderWidth: 2,
+                fill: chartType === 'line',
+                tension: 0.35
             }]
         };
-    }, [stats, color, theme, dentroLabel, fueraLabel]);
+    }, [registros, hayDatos, dentroActual, fueraActual, dentroLabel, fueraLabel, color, etiquetas, chartType, titulo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const doughnutOptions = {
+    const opciones = {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '65%',
         plugins: {
-            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } },
+            legend: { display: registros.length > 1, position: 'top' },
             tooltip: {
                 callbacks: {
-                    label: (ctx) => {
-                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                        const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
-                        return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
-                    }
+                    label: (ctx) => registros.length === 1
+                        ? `${ctx.label}: ${ctx.parsed.y ?? ctx.parsed}`
+                        : `${ctx.dataset.label}: ${ctx.parsed.y}%`
                 }
             }
-        }
+        },
+        scales: registros.length === 1
+            ? { y: { beginAtZero: true }, x: { grid: { display: false } } }
+            : { y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + '%' } }, x: { grid: { display: false } } }
     };
 
     return (
-        <Box sx={{ mb: 5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                <Box sx={{ bgcolor: color + '20', borderRadius: '50%', p: 1, display: 'flex', color }}>
-                    {icon}
-                </Box>
-                <Box>
-                    <Typography variant="h5">{titulo}</Typography>
-                    <Typography variant="body2" color="text.secondary">{descripcion}</Typography>
+        <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                    {icon && (
+                        <Box sx={{ bgcolor: color + '20', borderRadius: '50%', p: 1, display: 'flex', color }}>
+                            {icon}
+                        </Box>
+                    )}
+                    <Box>
+                        <Typography variant="h6">{titulo}</Typography>
+                        <Typography variant="body2" color="text.secondary">{descripcion}</Typography>
+                    </Box>
                 </Box>
             </Box>
 
-            {/* Stats Cards - Usando Flexbox en lugar de Grid */}
-            {stats && (
-                <Box sx={{ 
-                    display: 'flex', 
-                    flexWrap: 'wrap', 
-                    gap: 3,
-                    mb: 3,
-                    mt: 1
-                }}>
-                    {/* Card 1: % Promedio */}
-                    <Box sx={{ 
-                        flex: '1 1 100%',
-                        '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
-                        '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
+            {!hayDatos ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                    Sin registros para el período seleccionado.
+                </Typography>
+            ) : (
+                <>
+                    <Box sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' },
+                        gap: 2,
+                        mb: 3
                     }}>
-                        <Card elevation={2}>
-                            <CardContent>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <Box>
-                                        <Typography color="textSecondary" variant="caption">% Promedio</Typography>
-                                        <Typography variant="h4" sx={{ color }}>{stats.promedio}%</Typography>
-                                    </Box>
-                                    <Box sx={{ bgcolor: color + '20', borderRadius: '50%', p: 1, display: 'flex', color }}>
-                                        <CheckCircleIcon size={22} />
-                                    </Box>
-                                </Box>
-                            </CardContent>
-                        </Card>
-                    </Box>
-
-                    {/* Card 2: Tendencia */}
-                    <Box sx={{ 
-                        flex: '1 1 100%',
-                        '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
-                        '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
-                    }}>
-                        <Card elevation={2}>
-                            <CardContent>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <Box>
-                                        <Typography color="textSecondary" variant="caption">Tendencia</Typography>
-                                        <Typography variant="h4" sx={{ color: parseFloat(stats.tendencia) >= 0 ? 'success.main' : 'error.main' }}>
-                                            {parseFloat(stats.tendencia) >= 0 ? '↑' : '↓'} {Math.abs(parseFloat(stats.tendencia)).toFixed(1)}%
-                                        </Typography>
-                                    </Box>
-                                    <Box sx={{ bgcolor: 'grey.100', borderRadius: '50%', p: 1, display: 'flex' }}>
-                                        <BarChartIcon size={22} />
-                                    </Box>
-                                </Box>
-                            </CardContent>
-                        </Card>
-                    </Box>
-
-                    {/* Card 3: Total registros */}
-                    <Box sx={{ 
-                        flex: '1 1 100%',
-                        '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
-                        '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
-                    }}>
-                        <Card elevation={2}>
-                            <CardContent>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <Box>
-                                        <Typography color="textSecondary" variant="caption">Total registros</Typography>
-                                        <Typography variant="h4">{stats.totalGeneral}</Typography>
-                                    </Box>
-                                    <Box sx={{ bgcolor: 'info.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
-                                        <BarChartIcon size={22} />
-                                    </Box>
-                                </Box>
-                            </CardContent>
-                        </Card>
-                    </Box>
-
-                    {/* Card 4: Dentro / Fuera */}
-                    <Box sx={{ 
-                        flex: '1 1 100%',
-                        '@media (min-width:600px)': { flex: '1 1 calc(50% - 12px)' },
-                        '@media (min-width:900px)': { flex: '1 1 calc(25% - 18px)' }
-                    }}>
-                        <Card elevation={2}>
-                            <CardContent>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <Box>
-                                        <Typography color="textSecondary" variant="caption">Dentro / Fuera</Typography>
-                                        <Typography variant="h4" sx={{ fontSize: '1.2rem' }}>
-                                            {stats.dentroGeneral} / {stats.fueraGeneral}
-                                        </Typography>
-                                    </Box>
-                                    <Box sx={{ bgcolor: 'error.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
-                                        <CancelIcon size={22} />
-                                    </Box>
-                                </Box>
-                            </CardContent>
-                        </Card>
-                    </Box>
-                </Box>
-            )}
-
-            <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                    <InputLabel>Tipo de gráfico</InputLabel>
-                    <Select value={viewType} label="Tipo de gráfico" onChange={(e) => setViewType(e.target.value)}>
-                        <MenuItem value="bar">Barras</MenuItem>
-                        <MenuItem value="line">Línea</MenuItem>
-                        <MenuItem value="pie">Circular</MenuItem>
-                    </Select>
-                </FormControl>
-
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                    <InputLabel>Período</InputLabel>
-                    <Select value={timeRange} label="Período" onChange={(e) => setTimeRange(e.target.value)}>
-                        <MenuItem value="semanal">Semanal</MenuItem>
-                        <MenuItem value="mensual">Mensual</MenuItem>
-                        <MenuItem value="anual">Anual</MenuItem>
-                    </Select>
-                </FormControl>
-
-                <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<CalendarTodayIcon size={18} />}
-                    onClick={() => setDetalleOpen(true)}
-                >
-                    Ver detalles
-                </Button>
-            </Box>
-
-            {/* Gráfico - Usando Flexbox en lugar de Grid */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                <Box sx={{ 
-                    flex: '1 1 100%',
-                    '@media (min-width:900px)': { flex: viewType === 'pie' ? '1 1 50%' : '1 1 100%' }
-                }}>
-                    <Paper elevation={3} sx={{ p: 3 }}>
-                        <Box sx={{ height: 380, position: 'relative' }}>
-                            {filteredData.length === 0 ? (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
-                                    <ErrorOutlineIcon size={50} />
-                                    <Typography color="text.secondary" sx={{ mt: 2 }}>
-                                        No hay datos disponibles
-                                    </Typography>
-                                </Box>
-                            ) : viewType === 'bar' ? (
-                                <Bar data={chartData} options={chartOptions} />
-                            ) : viewType === 'line' ? (
-                                <Line data={chartData} options={chartOptions} />
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">% Promedio</Typography>
+                            <Typography variant="h6" fontWeight="bold">{porcentajeActual.toFixed(2)}%</Typography>
+                        </Box>
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">Tendencia</Typography>
+                            {tendencia === null ? (
+                                <Typography variant="body2" color="text.secondary">Sin datos suficientes</Typography>
                             ) : (
-                                doughnutData && <Doughnut data={doughnutData} options={doughnutOptions} />
+                                <Typography variant="h6" fontWeight="bold" sx={{ color: parseFloat(tendencia) >= 0 ? 'success.main' : 'error.main', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    {parseFloat(tendencia) >= 0 ? <TrendingUpIcon size={18} /> : <TrendingDownIcon size={18} />}
+                                    {parseFloat(tendencia) >= 0 ? '+' : ''}{tendencia}%
+                                </Typography>
                             )}
                         </Box>
-                    </Paper>
-                </Box>
-            </Box>
-
-            <Dialog open={detalleOpen} onClose={() => setDetalleOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>Detalle — {titulo}</DialogTitle>
-                <DialogContent dividers>
-                    <Box sx={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid #eee' }}>
-                                    <th style={{ padding: '12px', textAlign: 'left' }}>
-                                        {timeRange === 'anual' ? 'Año' : 'Mes'}
-                                    </th>
-                                    <th style={{ padding: '12px', textAlign: 'right' }}>Total</th>
-                                    <th style={{ padding: '12px', textAlign: 'right' }}>{dentroLabel}</th>
-                                    <th style={{ padding: '12px', textAlign: 'right' }}>{fueraLabel}</th>
-                                    <th style={{ padding: '12px', textAlign: 'center' }}>% Dentro</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredData.map((item, index) => (
-                                    <tr key={`${item.anio}-${item.mes}-${index}`} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td style={{ padding: '10px' }}>
-                                            {item.mes ? <><strong>{item.mes}</strong> {item.anio}</> : <strong>{item.anio}</strong>}
-                                        </td>
-                                        <td style={{ padding: '10px', textAlign: 'right' }}>{item.total}</td>
-                                        <td style={{ padding: '10px', textAlign: 'right' }}>{item.dentro}</td>
-                                        <td style={{ padding: '10px', textAlign: 'right' }}>{item.fuera}</td>
-                                        <td style={{ padding: '10px', textAlign: 'center' }}>
-                                            <Chip
-                                                size="small"
-                                                label={`${item.porcentaje}%`}
-                                                color={item.porcentaje >= 80 ? 'success' : item.porcentaje >= 50 ? 'warning' : 'error'}
-                                                variant="outlined"
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">Total registros</Typography>
+                            <Typography variant="h6" fontWeight="bold">{totalActual}</Typography>
+                        </Box>
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">{dentroLabel} / {fueraLabel}</Typography>
+                            <Typography variant="h6" fontWeight="bold">{dentroActual} / {fueraActual}</Typography>
+                        </Box>
                     </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDetalleOpen(false)}>Cerrar</Button>
-                </DialogActions>
-            </Dialog>
-        </Box>
+
+                    <Divider sx={{ mb: 2 }} />
+
+                    <Stack direction="row" spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
+                        <FormControl size="small" sx={{ minWidth: 130 }}>
+                            <InputLabel>Tipo de gráfico</InputLabel>
+                            <Select value={chartType} label="Tipo de gráfico" onChange={(e) => setChartType(e.target.value)}>
+                                <MenuItem value="bar">Barras</MenuItem>
+                                <MenuItem value="line">Línea</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <FormControl size="small" sx={{ minWidth: 130 }}>
+                            <InputLabel>Período</InputLabel>
+                            <Select value={periodo} label="Período" onChange={(e) => setPeriodo(e.target.value)}>
+                                <MenuItem value="semanal">Semanal</MenuItem>
+                                <MenuItem value="mensual">Mensual</MenuItem>
+                                <MenuItem value="anual">Anual</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Stack>
+
+                    {registros.length === 1 && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                            El backend aún entrega un solo total para este KPI (sin desglose mensual), por eso el selector de Período no cambia el gráfico todavía.
+                        </Typography>
+                    )}
+
+                    <Box sx={{ height: 260, position: 'relative' }}>
+                        {chartType === 'pie' ? (
+                            <Pie data={chartData} options={opciones} />
+                        ) : chartType === 'line' ? (
+                            <Line data={chartData} options={opciones} />
+                        ) : (
+                            <Bar data={chartData} options={opciones} />
+                        )}
+                    </Box>
+                </>
+            )}
+        </Paper>
     );
 };
 

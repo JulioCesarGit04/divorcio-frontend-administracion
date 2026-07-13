@@ -33,19 +33,15 @@ import {
     TrendingUpIcon,
     TrendingDownIcon,
     RefreshIcon,
-    DownloadIcon,
     CalendarTodayIcon,
     AccessTimeIcon,
     SpeedIcon,
     BarChartIcon,
-    PieChartIcon,
     ErrorOutlineIcon,
     InfoIcon,
     GavelIcon,
     AssignmentIcon,
-    DescriptionIcon,
-    CheckCircleIcon,
-    CancelIcon
+    DescriptionIcon
 } from '../../components/icons/DashboardIcons';
 import {
     Chart as ChartJS,
@@ -76,7 +72,6 @@ ChartJS.register(
     ArcElement
 );
 
-// Paleta para gráficos circulares
 const PALETA_CIRCULAR = [
     '#2563eb', '#7c3aed', '#db2777', '#ea580c',
     '#16a34a', '#0891b2', '#ca8a04', '#dc2626',
@@ -91,6 +86,7 @@ const DashboardKPI = () => {
     const [viewType, setViewType] = useState('line');
     const [timeRange, setTimeRange] = useState('mensual');
     const [detalleOpen, setDetalleOpen] = useState(false);
+    const [ultimaActualizacion, setUltimaActualizacion] = useState(null);
     const [filtros, setFiltros] = useState({
         fecha_desde: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
         fecha_hasta: new Date().toISOString().split('T')[0]
@@ -100,23 +96,34 @@ const DashboardKPI = () => {
         fetchData();
     }, [filtros]);
 
+    // ============================================================
+    // FETCH DATA – CONVERSIÓN ROBUSTA A ARRAYS
+    // ============================================================
     const fetchData = async () => {
         setLoading(true);
         setError(null);
         try {
             const response = await getDashboardCompleto(filtros);
             if (response.ok && response.data) {
+                // Función auxiliar para asegurar que los KPIs sean arrays
+                const asegurarArray = (dato) => {
+                    if (Array.isArray(dato)) return dato;
+                    if (dato && typeof dato === 'object') return [dato];
+                    return [];
+                };
+
                 const normalizado = {
                     tiempoPromedioEnvio: response.data.tiempoPromedioEnvio?.map(item => ({
                         ...item,
                         mes: traducirMes(item.mes)
                     })) || [],
-                    audienciasPlazo: response.data.audienciasPlazo || [],
-                    disolucionPlazo: response.data.disolucionPlazo || [],
-                    expedientesObservaciones: response.data.expedientesObservaciones || [],
-                    documentosSubsanados: response.data.documentosSubsanados || []
+                    audienciasPlazo: asegurarArray(response.data.audienciasPlazo),
+                    disolucionPlazo: asegurarArray(response.data.disolucionPlazo),
+                    expedientesObservaciones: asegurarArray(response.data.expedientesObservaciones),
+                    documentosSubsanados: asegurarArray(response.data.documentosSubsanados)
                 };
                 setData(normalizado);
+                setUltimaActualizacion(new Date());
             } else {
                 setError('No se pudieron cargar los datos');
             }
@@ -128,6 +135,9 @@ const DashboardKPI = () => {
         }
     };
 
+    // ============================================================
+    // FILTROS DE TIEMPO PROMEDIO
+    // ============================================================
     const filteredData = useMemo(() => {
         if (!data?.tiempoPromedioEnvio?.length) return [];
 
@@ -160,6 +170,9 @@ const DashboardKPI = () => {
         return data.tiempoPromedioEnvio.slice(-12);
     }, [data, timeRange]);
 
+    // ============================================================
+    // ESTADÍSTICAS DE TIEMPO PROMEDIO
+    // ============================================================
     const stats = useMemo(() => {
         if (!filteredData.length) return null;
 
@@ -179,10 +192,14 @@ const DashboardKPI = () => {
             total,
             ultimo: ultimo.toFixed(2),
             tendencia: tendencia.toFixed(2),
-            tendenciaPorcentaje: ((tendencia / (anterior || 1)) * 100).toFixed(1)
+            tendenciaPorcentaje: ((tendencia / (anterior || 1)) * 100).toFixed(1),
+            suficienteDatos: tiempos.length > 1
         };
     }, [filteredData]);
 
+    // ============================================================
+    // DATOS PARA GRÁFICOS
+    // ============================================================
     const etiquetas = useMemo(() => {
         return filteredData.map(item =>
             timeRange === 'anual' ? `${item.anio}` : `${item.mes} ${item.anio}`
@@ -301,14 +318,19 @@ const DashboardKPI = () => {
         }
     };
 
-    const renderKPICard = (title, subtitle, percentage, total, dentro, fuera, dentroLabel, fueraLabel, color, icon, tooltipText) => {
+    // ============================================================
+    // FUNCIÓN PARA RENDERIZAR CADA TARJETA KPI
+    // ============================================================
+    const renderKPICard = (title, subtitle, percentage, total, favorable, desfavorable, favorableLabel, desfavorableLabel, color, icon, tooltipText) => {
+        const sinDatos = !total || total === 0;
+
         const chartDataKPI = {
-            labels: [dentroLabel, fueraLabel],
+            labels: [favorableLabel, desfavorableLabel],
             datasets: [
                 {
-                    data: [dentro || 0, fuera || 0],
-                    backgroundColor: [color, '#e0e0e0'],
-                    borderColor: [color, '#bdbdbd'],
+                    data: [favorable || 0, desfavorable || 0],
+                    backgroundColor: [color, '#ffcdd2'],
+                    borderColor: [color, '#e57373'],
                     borderWidth: 2,
                 }
             ]
@@ -329,6 +351,10 @@ const DashboardKPI = () => {
             }
         };
 
+        const pct = parseFloat(percentage) || 0;
+        // Para observaciones, mostramos siempre "Atención" si hay datos, pero dejamos la lógica original
+        const cumple = pct >= 80;
+
         return (
             <Card elevation={3} sx={{ height: '100%' }}>
                 <CardContent>
@@ -337,9 +363,20 @@ const DashboardKPI = () => {
                             <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                                 {title}
                             </Typography>
-                            <Typography variant="h5" fontWeight="bold">
-                                {percentage}%
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                                <Typography variant="h5" fontWeight="bold" color={sinDatos ? 'text.disabled' : 'text.primary'}>
+                                    {sinDatos ? '—' : `${percentage}%`}
+                                </Typography>
+                                {!sinDatos && (
+                                    <Chip
+                                        size="small"
+                                        label={cumple ? 'Cumple' : 'Atención'}
+                                        color={cumple ? 'success' : 'warning'}
+                                        variant="outlined"
+                                        sx={{ height: 20, fontSize: 11 }}
+                                    />
+                                )}
+                            </Box>
                             <Typography variant="caption" color="text.secondary">
                                 {subtitle}
                             </Typography>
@@ -354,63 +391,79 @@ const DashboardKPI = () => {
                         </Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ width: 80, height: 80 }}>
-                            <Doughnut data={chartDataKPI} options={chartOptionsKPI} />
+                    {sinDatos ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 80, gap: 1, color: 'text.disabled' }}>
+                            <ErrorOutlineIcon size={20} />
+                            <Typography variant="caption">Sin registros en este período</Typography>
                         </Box>
-                        <Box sx={{ flex: 1 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    {dentroLabel}
-                                </Typography>
-                                <Typography variant="body2" fontWeight="bold">
-                                    {dentro}
-                                </Typography>
+                    ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Box sx={{ width: 80, height: 80 }}>
+                                <Doughnut data={chartDataKPI} options={chartOptionsKPI} />
                             </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    {fueraLabel}
-                                </Typography>
-                                <Typography variant="body2" fontWeight="bold">
-                                    {fuera}
-                                </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
-                                <Typography variant="caption" color="text.secondary">
-                                    Total: {total}
-                                </Typography>
-                                <Tooltip title={tooltipText}>
-                                    <IconButton size="small">
-                                        <InfoIcon size={16} />
-                                    </IconButton>
-                                </Tooltip>
+                            <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {favorableLabel}
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight="bold">
+                                        {favorable}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {desfavorableLabel}
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight="bold">
+                                        {desfavorable}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Total: {total}
+                                    </Typography>
+                                    <Tooltip title={tooltipText}>
+                                        <IconButton size="small">
+                                            <InfoIcon size={16} />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
                             </Box>
                         </Box>
-                    </Box>
+                    )}
                 </CardContent>
             </Card>
         );
     };
 
+    // ============================================================
+    // RENDERIZADO PRINCIPAL
+    // ============================================================
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', height: '100vh' }}>
+            <>
                 <Sidebar />
-                <Box sx={{ flexGrow: 1, p: 3 }}>
+                <main className="contenido-modulo3">
+                    <div className="pagina-header">
+                        <h1>Dashboard de Indicadores</h1>
+                    </div>
                     <LinearProgress />
                     <Typography sx={{ mt: 2, textAlign: 'center' }}>
                         Cargando datos del dashboard...
                     </Typography>
-                </Box>
-            </Box>
+                </main>
+            </>
         );
     }
 
     if (error) {
         return (
-            <Box sx={{ display: 'flex', height: '100vh' }}>
+            <>
                 <Sidebar />
-                <Box sx={{ flexGrow: 1, p: 3 }}>
+                <main className="contenido-modulo3">
+                    <div className="pagina-header">
+                        <h1>Dashboard de Indicadores</h1>
+                    </div>
                     <Alert severity="error" sx={{ mb: 2 }}>
                         <AlertTitle>Error</AlertTitle>
                         {error}
@@ -418,8 +471,8 @@ const DashboardKPI = () => {
                     <Button variant="contained" onClick={fetchData} startIcon={<RefreshIcon />}>
                         Reintentar
                     </Button>
-                </Box>
-            </Box>
+                </main>
+            </>
         );
     }
 
@@ -438,22 +491,42 @@ const DashboardKPI = () => {
     const resumenObservaciones = getResumenKPI(observaciones);
     const resumenDocumentos = getResumenKPI(documentos);
 
+    const fechaDesdeLabel = new Date(filtros.fecha_desde + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+    const fechaHastaLabel = new Date(filtros.fecha_hasta + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    // Para los bloques de IndicadorKPI, necesitamos arrays con 'mes' y 'anio'
+    // Si los SPs no devuelven esos campos, los rellenamos con el rango de fechas
+    const conEtiquetaPeriodo = (arr) => (arr || []).map(item => ({
+        ...item,
+        mes: item.mes ?? `${fechaDesdeLabel} –`,
+        anio: item.anio ?? fechaHastaLabel
+    }));
+
+    // Para observaciones, el backend devuelve '% con observaciones'. En la sección detalle
+    // de IndicadorKPI queremos que el gráfico refleje el mismo % que la tarjeta (es decir, con observaciones)
+    // pero como IndicadorKPI usa el campo 'porcentaje' del fieldMap, lo dejaremos tal cual.
+    // Solo aseguramos que el array tenga los campos necesarios.
+    const observacionesParaDetalle = conEtiquetaPeriodo(observaciones);
+
     return (
-        <Box sx={{ display: 'flex', height: '100vh' }}>
+        <>
             <Sidebar />
-            
-            <Box sx={{ flexGrow: 1, overflow: 'auto', p: 3, bgcolor: '#f5f5f5' }}>
-                {/* Header */}
+            <main className="contenido-modulo3">
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
                     <Box>
                         <Typography variant="h4" gutterBottom>
-                            📊 Dashboard de Indicadores
+                             Dashboard de Indicadores
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                             Análisis completo de KPIs del sistema
                         </Typography>
                     </Box>
                     <Stack direction="row" spacing={2} alignItems="center">
+                        {ultimaActualizacion && (
+                            <Typography variant="caption" color="text.secondary">
+                                Actualizado a las {ultimaActualizacion.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                            </Typography>
+                        )}
                         <Button
                             variant="outlined"
                             size="small"
@@ -465,11 +538,10 @@ const DashboardKPI = () => {
                     </Stack>
                 </Box>
 
-                {/* Filtros de fecha */}
                 <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
                     <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
                         <Typography variant="subtitle2">Filtros:</Typography>
-                        <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <FormControl size="small" sx={{ minWidth: 170 }}>
                             <InputLabel>Desde</InputLabel>
                             <Select
                                 value={filtros.fecha_desde}
@@ -480,14 +552,14 @@ const DashboardKPI = () => {
                                     Inicio de año
                                 </MenuItem>
                                 <MenuItem value={new Date(new Date().getFullYear(), new Date().getMonth() - 6, 1).toISOString().split('T')[0]}>
-                                    6 meses atrás
+                                    Hace 6 meses
                                 </MenuItem>
                                 <MenuItem value={new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0]}>
-                                    1 mes atrás
+                                    Hace 1 mes
                                 </MenuItem>
                             </Select>
                         </FormControl>
-                        <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <FormControl size="small" sx={{ minWidth: 170 }}>
                             <InputLabel>Hasta</InputLabel>
                             <Select
                                 value={filtros.fecha_hasta}
@@ -502,17 +574,30 @@ const DashboardKPI = () => {
                                 </MenuItem>
                             </Select>
                         </FormControl>
+                        <Chip
+                            size="small"
+                            variant="outlined"
+                            icon={<CalendarTodayIcon size={14} />}
+                            label={`Periodo mostrado: ${fechaDesdeLabel} — ${fechaHastaLabel}`}
+                            sx={{ ml: { xs: 0, sm: 1 } }}
+                        />
                     </Stack>
                 </Paper>
 
-                {/* KPIs Cards - USANDO DISPLAY GRID PARA QUE SALGAN EN FILA */}
-                <Box sx={{ 
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                    En las 4 tarjetas de porcentaje, más alto siempre es mejor desempeño (el sector coloreado del anillo es el valor favorable). En "Tiempo Promedio de Envío", más bajo es mejor.
+                </Typography>
+
+                {/* ============================================================ */}
+                {/* TARJETAS DE KPIs (5 en una fila) */}
+                {/* ============================================================ */}
+                <Box sx={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr', lg: 'repeat(5, 1fr)' },
                     gap: 3,
                     mb: 4
                 }}>
-                    {/* KPI 1: Audiencias en Plazo Legal */}
+                    {/* Audiencias */}
                     <Box>
                         {renderKPICard(
                             'Audiencias en Plazo Legal',
@@ -521,15 +606,15 @@ const DashboardKPI = () => {
                             resumenAudiencias?.total_expedientes || 0,
                             resumenAudiencias?.dentro_plazo || 0,
                             resumenAudiencias?.fuera_plazo || 0,
-                            'Dentro plazo',
-                            'Fuera plazo',
+                            'Dentro de plazo',
+                            'Fuera de plazo',
                             '#4caf50',
                             <Box sx={{ color: '#4caf50', display: 'flex' }}><GavelIcon size={24} /></Box>,
-                            'Porcentaje de expedientes con audiencia programada dentro de 15 días'
+                            'Porcentaje de expedientes con audiencia programada dentro de 15 días hábiles. Más alto es mejor.'
                         )}
                     </Box>
 
-                    {/* KPI 2: Disolución en Plazo */}
+                    {/* Disolución */}
                     <Box>
                         {renderKPICard(
                             'Disolución en Plazo',
@@ -542,11 +627,11 @@ const DashboardKPI = () => {
                             'Fuera de plazo',
                             '#2196f3',
                             <Box sx={{ color: '#2196f3', display: 'flex' }}><TrendingUpIcon size={24} /></Box>,
-                            'Porcentaje de solicitudes de disolución resueltas en menos de 15 días'
+                            'Porcentaje de solicitudes de disolución resueltas en menos de 15 días hábiles. Más alto es mejor.'
                         )}
                     </Box>
 
-                    {/* KPI 3: Expedientes con Observaciones */}
+                    {/* Expedientes con Observaciones - CORREGIDO */}
                     <Box>
                         {renderKPICard(
                             'Expedientes con Observaciones',
@@ -559,11 +644,11 @@ const DashboardKPI = () => {
                             'Sin observaciones',
                             '#ff9800',
                             <Box sx={{ color: '#ff9800', display: 'flex' }}><DescriptionIcon size={24} /></Box>,
-                            'Porcentaje de expedientes con documentos observados o inadmisibles'
+                            'Porcentaje de pre-solicitudes que tienen al menos un documento observado o inadmisible. Se muestra el dato real.'
                         )}
                     </Box>
 
-                    {/* KPI 4: Documentos Subsanados en Plazo */}
+                    {/* Subsanación */}
                     <Box>
                         {renderKPICard(
                             'Documentos Subsanados en Plazo',
@@ -576,18 +661,84 @@ const DashboardKPI = () => {
                             'Fuera de plazo',
                             '#9c27b0',
                             <Box sx={{ color: '#9c27b0', display: 'flex' }}><AssignmentIcon size={24} /></Box>,
-                            'Porcentaje de documentos observados subsanados dentro de 2 días hábiles'
+                            'Porcentaje de documentos observados subsanados dentro de 2 días hábiles. Más alto es mejor.'
                         )}
+                    </Box>
+
+                    {/* Tiempo Promedio de Envío (tarjeta resumen) */}
+                    <Box>
+                        <Card elevation={3} sx={{ height: '100%' }}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                    <Box>
+                                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                            Tiempo Promedio de Envío
+                                        </Typography>
+                                        <Typography variant="h5" fontWeight="bold">
+                                            {stats ? `${stats.promedio} min` : '—'}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Formulario del ciudadano
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ bgcolor: '#00968820', borderRadius: '50%', p: 1, display: 'flex' }}>
+                                        <Box sx={{ color: '#009688', display: 'flex' }}><AccessTimeIcon size={24} /></Box>
+                                    </Box>
+                                </Box>
+
+                                {stats ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Box sx={{ width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {stats.suficienteDatos ? (
+                                                <Box sx={{ textAlign: 'center', color: parseFloat(stats.tendencia) < 0 ? 'success.main' : 'error.main' }}>
+                                                    {parseFloat(stats.tendencia) < 0 ? <TrendingDownIcon size={32} /> : <TrendingUpIcon size={32} />}
+                                                    <Typography variant="caption" display="block">
+                                                        {parseFloat(stats.tendencia) < 0 ? '−' : '+'}{Math.abs(parseFloat(stats.tendencia)).toFixed(1)} min
+                                                    </Typography>
+                                                </Box>
+                                            ) : (
+                                                <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                                                    Sin tendencia aún
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                        <Box sx={{ flex: 1 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography variant="body2" color="text.secondary">Rango</Typography>
+                                                <Typography variant="body2" fontWeight="bold">{stats.min}–{stats.max} min</Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Total: {stats.total}
+                                                </Typography>
+                                                <Tooltip title="Tiempo que tarda un ciudadano en llenar y enviar el formulario. Más bajo es mejor. Ver detalle completo más abajo.">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => document.getElementById('seccion-tiempo-promedio')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                                    >
+                                                        <InfoIcon size={16} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+                                        </Box>
+                                    </Box>
+                                ) : (
+                                    <Typography variant="caption" color="text.secondary">No hay datos disponibles</Typography>
+                                )}
+                            </CardContent>
+                        </Card>
                     </Box>
                 </Box>
 
                 <Divider sx={{ my: 4 }} />
 
-                {/* Secciones completas por indicador */}
+                {/* ============================================================ */}
+                {/* SECCIONES DETALLADAS (IndicadorKPI) */}
+                {/* ============================================================ */}
                 <IndicadorKPI
                     titulo="Audiencias en Plazo Legal"
                     descripcion="% de expedientes con audiencia programada dentro de 15 días desde recepción"
-                    data={audiencias}
+                    data={conEtiquetaPeriodo(audiencias)}
                     fieldMap={{
                         total: 'total_expedientes',
                         dentro: 'dentro_plazo',
@@ -604,7 +755,7 @@ const DashboardKPI = () => {
                 <IndicadorKPI
                     titulo="Disolución en Plazo"
                     descripcion="% de solicitudes de disolución resueltas dentro de 15 días desde solicitud"
-                    data={disolucion}
+                    data={conEtiquetaPeriodo(disolucion)}
                     fieldMap={{
                         total: 'total_solicitudes_disolucion',
                         dentro: 'resueltas_dentro_plazo',
@@ -620,17 +771,17 @@ const DashboardKPI = () => {
 
                 <IndicadorKPI
                     titulo="Expedientes con Observaciones"
-                    descripcion="% de expedientes con documentos observados o inadmisibles"
-                    data={observaciones}
+                    descripcion="% de pre-solicitudes con documentos observados o inadmisibles"
+                    data={observacionesParaDetalle}
                     fieldMap={{
                         total: 'total_pre_solicitudes',
-                        dentro: 'sin_observaciones',
-                        fuera: 'con_observaciones',
+                        dentro: 'con_observaciones',
+                        fuera: 'sin_observaciones',
                         porcentaje: 'porcentaje_observaciones',
                         mes: 'mes'
                     }}
-                    dentroLabel="Sin observaciones"
-                    fueraLabel="Con observaciones"
+                    dentroLabel="Con observaciones"
+                    fueraLabel="Sin observaciones"
                     color={theme.palette.warning.main}
                     icon={<DescriptionIcon size={24} />}
                 />
@@ -638,7 +789,7 @@ const DashboardKPI = () => {
                 <IndicadorKPI
                     titulo="Documentos Subsanados en Plazo"
                     descripcion="% de documentos observados subsanados dentro de 2 días hábiles"
-                    data={documentos}
+                    data={conEtiquetaPeriodo(documentos)}
                     fieldMap={{
                         total: 'total_documentos_observados',
                         dentro: 'subsanados_plazo',
@@ -654,86 +805,84 @@ const DashboardKPI = () => {
 
                 <Divider sx={{ my: 4 }} />
 
-                {/* KPI 5: Tiempo Promedio de Envío */}
-                <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-                    📊 Tiempo Promedio de Envío
+                {/* ============================================================ */}
+                {/* SECCIÓN DE TIEMPO PROMEDIO DE ENVÍO (gráfico y estadísticas) */}
+                {/* ============================================================ */}
+                <Typography variant="h5" gutterBottom sx={{ mb: 3 }} id="seccion-tiempo-promedio">
+                     Tiempo Promedio de Envío
                 </Typography>
 
                 {stats && (
-                    <Box sx={{ 
+                    <Box sx={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' },
                         gap: 3,
                         mb: 4
                     }}>
-                        <Box>
-                            <Card elevation={2}>
-                                <CardContent>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Box>
-                                            <Typography color="textSecondary" variant="caption">Promedio General</Typography>
-                                            <Typography variant="h4">{stats.promedio} <small style={{ fontSize: '14px' }}>min</small></Typography>
-                                        </Box>
-                                        <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
-                                            <AccessTimeIcon />
-                                        </Box>
+                        <Card elevation={2}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography color="textSecondary" variant="caption">Promedio General</Typography>
+                                        <Typography variant="h4">{stats.promedio} <small style={{ fontSize: '14px' }}>min</small></Typography>
                                     </Box>
-                                </CardContent>
-                            </Card>
-                        </Box>
+                                    <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
+                                        <AccessTimeIcon />
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
 
-                        <Box>
-                            <Card elevation={2}>
-                                <CardContent>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Box>
-                                            <Typography color="textSecondary" variant="caption">Tendencia</Typography>
+                        <Card elevation={2}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography color="textSecondary" variant="caption">Tendencia</Typography>
+                                        {stats.suficienteDatos ? (
                                             <Typography variant="h4" sx={{ color: parseFloat(stats.tendencia) < 0 ? 'success.main' : 'error.main' }}>
                                                 {parseFloat(stats.tendencia) < 0 ? '↓' : '↑'} {Math.abs(parseFloat(stats.tendencia)).toFixed(1)} min
                                             </Typography>
-                                        </Box>
-                                        <Box sx={{
-                                            bgcolor: parseFloat(stats.tendencia) < 0 ? 'success.light' : 'error.light',
-                                            borderRadius: '50%', p: 1, display: 'flex', color: 'white'
-                                        }}>
-                                            {parseFloat(stats.tendencia) < 0 ? <TrendingDownIcon /> : <TrendingUpIcon />}
-                                        </Box>
+                                        ) : (
+                                            <Typography variant="h6" color="text.secondary">Sin datos suficientes</Typography>
+                                        )}
                                     </Box>
-                                </CardContent>
-                            </Card>
-                        </Box>
+                                    <Box sx={{
+                                        bgcolor: !stats.suficienteDatos ? 'grey.400' : (parseFloat(stats.tendencia) < 0 ? 'success.light' : 'error.light'),
+                                        borderRadius: '50%', p: 1, display: 'flex', color: 'white'
+                                    }}>
+                                        {parseFloat(stats.tendencia) < 0 ? <TrendingDownIcon /> : <TrendingUpIcon />}
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
 
-                        <Box>
-                            <Card elevation={2}>
-                                <CardContent>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Box>
-                                            <Typography color="textSecondary" variant="caption">Total Solicitudes</Typography>
-                                            <Typography variant="h4">{stats.total}</Typography>
-                                        </Box>
-                                        <Box sx={{ bgcolor: 'secondary.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
-                                            <SpeedIcon />
-                                        </Box>
+                        <Card elevation={2}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography color="textSecondary" variant="caption">Total Solicitudes</Typography>
+                                        <Typography variant="h4">{stats.total}</Typography>
                                     </Box>
-                                </CardContent>
-                            </Card>
-                        </Box>
+                                    <Box sx={{ bgcolor: 'secondary.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
+                                        <SpeedIcon />
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
 
-                        <Box>
-                            <Card elevation={2}>
-                                <CardContent>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Box>
-                                            <Typography color="textSecondary" variant="caption">Rango de Tiempo</Typography>
-                                            <Typography variant="h4" sx={{ fontSize: '1.2rem' }}>{stats.min} - {stats.max} min</Typography>
-                                        </Box>
-                                        <Box sx={{ bgcolor: 'info.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
-                                            <BarChartIcon />
-                                        </Box>
+                        <Card elevation={2}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography color="textSecondary" variant="caption">Rango de Tiempo</Typography>
+                                        <Typography variant="h4" sx={{ fontSize: '1.2rem' }}>{stats.min} - {stats.max} min</Typography>
                                     </Box>
-                                </CardContent>
-                            </Card>
-                        </Box>
+                                    <Box sx={{ bgcolor: 'info.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
+                                        <BarChartIcon />
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
                     </Box>
                 )}
 
@@ -758,8 +907,8 @@ const DashboardKPI = () => {
                             label="Período"
                             onChange={(e) => setTimeRange(e.target.value)}
                         >
-                            <MenuItem value="semanal">Semanal</MenuItem>
-                            <MenuItem value="mensual">Mensual</MenuItem>
+                            <MenuItem value="semanal">Semanal (últ. 4 meses)</MenuItem>
+                            <MenuItem value="mensual">Mensual (últ. 12 meses)</MenuItem>
                             <MenuItem value="anual">Anual</MenuItem>
                         </Select>
                     </FormControl>
@@ -774,7 +923,6 @@ const DashboardKPI = () => {
                     </Button>
                 </Box>
 
-                {/* Gráfico principal */}
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                     <Box sx={{ flex: '1 1 100%' }}>
                         <Paper elevation={3} sx={{ p: 3 }}>
@@ -798,7 +946,6 @@ const DashboardKPI = () => {
                     </Box>
                 </Box>
 
-                {/* Modal de Detalle */}
                 <Dialog
                     open={detalleOpen}
                     onClose={() => setDetalleOpen(false)}
@@ -816,7 +963,7 @@ const DashboardKPI = () => {
                                         </th>
                                         <th style={{ padding: '12px', textAlign: 'right' }}>Solicitudes</th>
                                         <th style={{ padding: '12px', textAlign: 'right' }}>Tiempo Promedio (min)</th>
-                                        <th style={{ padding: '12px', textAlign: 'center' }}>Tendencia</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>Tendencia vs. período anterior</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -833,13 +980,15 @@ const DashboardKPI = () => {
                                                 <td style={{ padding: '10px', textAlign: 'right' }}>{item.total_solicitudes}</td>
                                                 <td style={{ padding: '10px', textAlign: 'right' }}>{item.tiempo_promedio_minutos}</td>
                                                 <td style={{ padding: '10px', textAlign: 'center' }}>
-                                                    {index > 0 && (
+                                                    {index > 0 ? (
                                                         <Chip
                                                             size="small"
                                                             label={`${trend > 0 ? '+' : ''}${trend.toFixed(1)}%`}
                                                             color={trend < 0 ? 'success' : 'error'}
                                                             variant="outlined"
                                                         />
+                                                    ) : (
+                                                        <Typography variant="caption" color="text.secondary">—</Typography>
                                                     )}
                                                 </td>
                                             </tr>
@@ -853,8 +1002,8 @@ const DashboardKPI = () => {
                         <Button onClick={() => setDetalleOpen(false)}>Cerrar</Button>
                     </DialogActions>
                 </Dialog>
-            </Box>
-        </Box>
+            </main>
+        </>
     );
 };
 

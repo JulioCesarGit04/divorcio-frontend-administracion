@@ -19,6 +19,14 @@ const IconExpedientes = () => (
   </svg>
 );
 
+// ✅ Icono para Usuarios (el que faltaba)
+const IconUsuarios = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
 const IconLogout = () => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#e57373" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -110,8 +118,8 @@ const S = {
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { logout } = useAuth();
-  const navigate   = useNavigate();
+  const { usuario, logout } = useAuth(); // ✅ Extraer usuario para condicionar
+  const navigate = useNavigate();
 
   async function handleLogout() {
     await logout();
@@ -144,6 +152,14 @@ export default function Sidebar() {
           <IconExpedientes />
           <span style={S.label(collapsed)}>Expedientes</span>
         </NavLink>
+
+        {/* ✅ Enlace corregido: ruta /admin/usuarios, icono de usuarios, etiqueta correcta, y solo para administradores */}
+        {usuario?.rol === 'ADMINISTRADOR' && (
+          <NavLink to="/admin/usuarios" style={linkStyle}>
+            <IconUsuarios />
+            <span style={S.label(collapsed)}>Gestión de Usuarios</span>
+          </NavLink>
+        )}
       </nav>
       <div style={S.bottom}>
         <div
@@ -156,7 +172,6 @@ export default function Sidebar() {
           <span style={{ ...S.label(collapsed), color: '#e57373' }}>Cerrar sesión</span>
         </div>
       </div>
-
     </aside>
   );
 }
