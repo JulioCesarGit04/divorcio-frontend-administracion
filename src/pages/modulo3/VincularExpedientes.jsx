@@ -203,7 +203,6 @@ export default function VincularExpedientes() {
                                 </thead>
                                 <tbody>
                                     {elementosPagina.map((pe, index) => {
-                                        // ← MODIFICADO: número de fila global (índice real +1)
                                         const numeroFila = (paginaActual - 1) * tamanoPagina + index + 1
                                         return (
                                             <tr key={pe.PreSolicitudes_Id}>

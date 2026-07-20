@@ -21,7 +21,6 @@ export default function Layout({ children }) {
       fontFamily:    "'Barlow', 'Segoe UI', sans-serif",
     }}>
 
-      {/* ── Header ── */}
       <header style={{
         background: '#0054a6',
         display:    'flex',
@@ -31,7 +30,6 @@ export default function Layout({ children }) {
         zIndex:     200,
         position:   'relative',
       }}>
-        {/* Izquierda: logo + nombre + badge */}
         <div style={{ display: 'flex', alignItems: 'center', flex: 1, padding: '0 24px', gap: 10 }}>
           <img
             src="/logo.svg"
@@ -58,7 +56,6 @@ export default function Layout({ children }) {
           </span>
         </div>
 
-        {/* Derecha: diagonal + usuario */}
         <div style={{ display: 'flex', alignItems: 'stretch', flexShrink: 0 }}>
           <div style={{
             width:      32,
@@ -73,7 +70,6 @@ export default function Layout({ children }) {
             gap:        12,
             padding:    '0 20px 0 6px',
           }}>
-            {/* Avatar */}
             <div style={{
               width:          30,
               height:         30,
@@ -89,7 +85,6 @@ export default function Layout({ children }) {
             }}>
               {getIniciales(usuario?.nombre)}
             </div>
-            {/* Nombre y rol */}
             <div>
               <div style={{ color: '#ffffff', fontSize: 12, fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap' }}>
                 {usuario?.nombre}
@@ -102,7 +97,6 @@ export default function Layout({ children }) {
         </div>
       </header>
 
-      {/* ── Cuerpo: sidebar + contenido ── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
         <Sidebar />

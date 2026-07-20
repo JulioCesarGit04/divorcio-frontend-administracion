@@ -206,16 +206,12 @@ export default function ResolucionDisolucion() {
         }
     }, [archivoPreviewUrl])
 
-    // ============================================================
-    //  HANDLE REGISTRAR SEGUNDO PAGO (con validación de fecha futura)
-    // ============================================================
     const handleRegistrarSegundoPago = async (e) => {
         e.preventDefault()
         if (!fechaSegundoPago) {
             setMensaje({ tipo: 'error', texto: 'Seleccione la fecha del segundo pago' })
             return
         }
-        // ✅ Validación de fecha futura
         const hoy = getFechaPeru()
         if (fechaSegundoPago > hoy) {
             setMensaje({ tipo: 'error', texto: 'No se puede registrar una fecha futura.' })
@@ -240,9 +236,6 @@ export default function ResolucionDisolucion() {
         }
     }
 
-    // ============================================================
-    //  RENDERIZADO CONDICIONAL PARA REGISTRAR SEGUNDO PAGO
-    // ============================================================
     if (!cargando && !error && !expediente?.fecha_pago_disolucion) {
         return (
             <>
@@ -319,9 +312,6 @@ export default function ResolucionDisolucion() {
         )
     }
 
-    // ============================================================
-    //  RESTO DE FUNCIONES Y RENDERIZADO PRINCIPAL
-    // ============================================================
     const handleArchivoChange = (file) => {
         if (archivoPreviewUrl) {
             URL.revokeObjectURL(archivoPreviewUrl)
@@ -565,7 +555,6 @@ export default function ResolucionDisolucion() {
                             </div>
                         </div>
 
-                        {/* Datos del expediente */}
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
                             <div className="datos-grid">
@@ -592,7 +581,6 @@ export default function ResolucionDisolucion() {
                             </div>
                         </div>
 
-                        {/* SECCIÓN 1: EMISIÓN DE RESOLUCIÓN */}
                         <div className="seccion">
                             <h2>Emisión de Resolución de Disolución</h2>
                             {yaTieneResolucion && (
@@ -861,7 +849,6 @@ export default function ResolucionDisolucion() {
                             )}
                         </div>
 
-                        {/* SECCIÓN 2: PAGO DE COPIAS CERTIFICADAS */}
                         <div className="seccion" style={{ borderLeft: '4px solid #eab308', backgroundColor: '#fefce8' }}>
                             <h2>Comprobante de Pago de Copias Certificadas</h2>
                             <div className="rf-campos-fila">

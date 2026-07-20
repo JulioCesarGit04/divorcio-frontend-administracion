@@ -22,7 +22,6 @@ export default function ExpedientesActivos() {
     const [expedientes, setExpedientes] = useState([])
     const [cargando, setCargando] = useState(true)
 
-    // --- Paginación ---
     const [paginaActual, setPaginaActual] = useState(1)
     const [tamanoPagina] = useState(10)
 
@@ -48,7 +47,6 @@ export default function ExpedientesActivos() {
             const response = await getExpedientes(filtrosLimpios)
             const data = response.data || []
 
-            // Ya no ordenamos aquí, lo hará useMemo
             setExpedientes(data)
             setPaginaActual(1)
         } catch (error) {
@@ -60,11 +58,9 @@ export default function ExpedientesActivos() {
 
     useEffect(() => { cargar() }, [])
 
-    // ✅ ORDEN Y FILTRADO con useMemo
     const expedientesFiltradosYOrdenados = useMemo(() => {
         let resultado = [...expedientes]
 
-        // Filtrar por rango de fechas
         if (filtros.fechaDesde) {
             const fechaDesde = new Date(filtros.fechaDesde)
             fechaDesde.setHours(0, 0, 0, 0)
@@ -82,7 +78,6 @@ export default function ExpedientesActivos() {
             })
         }
 
-        // ✅ ORDEN: más antiguo primero (por fecha_recepcion o fecha_pago)
         resultado.sort((a, b) => {
             const fechaA = a.fecha_recepcion ? new Date(a.fecha_recepcion) : (a.fecha_pago ? new Date(a.fecha_pago) : new Date(0))
             const fechaB = b.fecha_recepcion ? new Date(b.fecha_recepcion) : (b.fecha_pago ? new Date(b.fecha_pago) : new Date(0))
@@ -114,7 +109,6 @@ export default function ExpedientesActivos() {
 
     const handleVerExpediente = (id) => navigate(`/modulo3/detalle/${id}`)
 
-    // --- Paginación ---
     const indiceInicio = (paginaActual - 1) * tamanoPagina
     const indiceFin = indiceInicio + tamanoPagina
     const elementosPagina = expedientesFiltradosYOrdenados.slice(indiceInicio, indiceFin)

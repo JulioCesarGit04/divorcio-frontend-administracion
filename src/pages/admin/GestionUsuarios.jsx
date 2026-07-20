@@ -13,7 +13,6 @@ export default function GestionUsuarios() {
     const [mensajeExito, setMensajeExito] = useState('');
     const [mensajeError, setMensajeError] = useState('');
 
-    // Confirmación para cambiar estado
     const [confirmarModal, setConfirmarModal] = useState({ visible: false, id: null, activo: false, nombre: '' });
 
     const cargarUsuarios = async () => {
@@ -31,7 +30,7 @@ export default function GestionUsuarios() {
             } else if (err.response?.status === 404) {
                 setError('El servidor no encontró la ruta de usuarios. Verifica que el backend esté corriendo.');
             } else if (err.code === 'ERR_NETWORK') {
-                setError('No se pudo conectar al servidor. Asegúrate de que el backend esté corriendo en http://localhost:3000');
+               setError('No se pudo conectar al servidor. Verifica tu conexión a internet.');
             } else {
                 setError('Error al cargar usuarios. Verifica que el backend esté corriendo.');
             }
@@ -55,7 +54,7 @@ export default function GestionUsuarios() {
             setForm({
                 nombre: usuario.nombre,
                 correo: usuario.correo,
-                password: '',  // campo para nueva contraseña (solo en edición)
+                password: '', 
                 rol: usuario.rol
             });
         } else {
@@ -78,7 +77,6 @@ export default function GestionUsuarios() {
     };
 
     const guardarUsuario = async () => {
-        // Validaciones
         if (!form.nombre.trim()) {
             setMensajeError('El nombre es obligatorio');
             return;
@@ -98,14 +96,12 @@ export default function GestionUsuarios() {
 
         try {
             if (usuarioEditando) {
-                // 1. Actualizar datos del usuario (nombre, correo, rol)
                 await actualizarUsuario(usuarioEditando.id, {
                     nombre: form.nombre.trim(),
                     correo: form.correo.trim(),
                     rol: form.rol
                 });
 
-                // 2. Si se proporcionó una nueva contraseña, actualizarla
                 if (form.password && form.password.length >= 6) {
                     await cambiarPasswordUsuario(usuarioEditando.id, form.password);
                     setMensajeExito('Usuario actualizado y contraseña cambiada correctamente');
@@ -113,7 +109,6 @@ export default function GestionUsuarios() {
                     setMensajeExito('Usuario actualizado correctamente');
                 }
             } else {
-                // Crear nuevo usuario (requiere contraseña)
                 await crearUsuario({
                     nombre: form.nombre.trim(),
                     correo: form.correo.trim(),
@@ -253,7 +248,6 @@ export default function GestionUsuarios() {
                 </div>
             )}
 
-            {/* Modal de creación/edición */}
             {mostrarModal && (
                 <div className="modal-overlay" onClick={cerrarModal}>
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -332,7 +326,6 @@ export default function GestionUsuarios() {
                 </div>
             )}
 
-            {/* Modal de confirmación para cambiar estado */}
             {confirmarModal.visible && (
                 <div className="modal-overlay" onClick={cancelarConfirmacion}>
                     <div className="modal" onClick={(e) => e.stopPropagation()}>

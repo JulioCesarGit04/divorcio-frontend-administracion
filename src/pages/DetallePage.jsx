@@ -94,9 +94,7 @@ function BotonEstado({ estadoActual, valor, onClick }) {
 function FilaDocumento({ doc, evaluacion, onCambiarEstado, onCambiarObservacion, pdfAbierto, onTogglePdf, bloqueado }) {
   const estadoEv = evaluacion?.estado || 'SIN_EVALUAR';
   const cfg      = ICONOS_ESTADO[estadoEv];
-  const urlPdf   = `http://localhost:3000/uploads/${doc.ruta_archivo.split(/[\\/]/).pop()}`;
-  
-  // Mostrar campo de observación para OBSERVADO o INADMISIBLE
+const urlPdf   = `${(import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')}/uploads/${doc.ruta_archivo.split(/[\\/]/).pop()}`;  
   const mostrarCampoObservacion = !bloqueado && (estadoEv === 'OBSERVADO' || estadoEv === 'INADMISIBLE');
   
   const configCampo = {
@@ -202,7 +200,6 @@ function FilaDocumento({ doc, evaluacion, onCambiarEstado, onCambiarObservacion,
         </div>
       )}
 
-      {/* Visor PDF inline */}
       {pdfAbierto && (
         <div style={{ borderTop: '2px solid var(--azul-primary)', background: '#1a1a2e' }}>
           <div style={{
@@ -244,7 +241,6 @@ export default function DetallePage() {
   const [cargando, setCargando]   = useState(true);
   const [error, setError]         = useState('');
 
-  // Evaluaciones por documento: { [docId]: { estado, observacion } }
   const [evaluaciones, setEvaluaciones] = useState({});
   const [pdfAbierto, setPdfAbierto]     = useState(null);
   const [enviando, setEnviando]         = useState(false);
@@ -286,7 +282,6 @@ useEffect(() => {
     .finally(() => setCargando(false));
 }, [id]);
 
-  // ✅ MODIFICADO: Ya NO marca todos los documentos como INADMISIBLE
   function cambiarEstado(docId, nuevoEstado) {
     setEvaluaciones((prev) => ({
       ...prev,
@@ -305,7 +300,6 @@ useEffect(() => {
     setPdfAbierto((prev) => (prev === docId ? null : docId));
   }
 
-  // Construir mensaje personalizado para el ciudadano
   function construirMensajeCiudadano(estadoFinal, docs, evaluacionesActuales) {
     let mensaje = '';
     
@@ -360,14 +354,12 @@ useEffect(() => {
 
   const docs = solicitud.documentos || [];
 
-  // Todos deben estar evaluados
   const sinEvaluar = docs.filter((d) => !evaluaciones[d.id]?.estado);
   if (sinEvaluar.length > 0) {
     setErrEval('Debes evaluar todos los documentos antes de confirmar.');
     return;
   }
 
-  // Observados deben tener mensaje
   const observadoSinMsg = docs.find(
     (d) => evaluaciones[d.id]?.estado === 'OBSERVADO' && !evaluaciones[d.id]?.observacion?.trim()
   );
@@ -388,7 +380,6 @@ useEffect(() => {
     setExito(`✔ Pre-solicitud marcada como ${res.data.nuevoEstado}. Se notificó al ciudadano.`);
     setSolicitud((prev) => ({ ...prev, estado: res.data.nuevoEstado }));
     
-    // Recargar la página después de 1.5 segundos para mostrar el estado actualizado
     setTimeout(() => {
       window.location.reload();
     }, 1500);
@@ -418,7 +409,6 @@ useEffect(() => {
         ← Volver al listado
       </button>
 
-      {/* Encabezado */}
       <div style={{
         background: 'var(--blanco)', borderRadius: '10px',
         padding: '24px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
@@ -439,7 +429,6 @@ useEffect(() => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '20px' }}>
 
-        {/* Columna izquierda — datos */}
         <div style={{ background: 'var(--blanco)', borderRadius: '10px', padding: '24px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
           <SeccionTitulo titulo="Cónyuge Solicitante" />
           <FilaDato label="Nombres"   valor={solicitante?.nombres} />
@@ -458,7 +447,6 @@ useEffect(() => {
           <FilaDato label="Dirección" valor={demandado?.direccion} />
         </div>
 
-        {/* Columna derecha — documentos y evaluación */}
         <div style={{ background: 'var(--blanco)', borderRadius: '10px', padding: '24px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -472,7 +460,6 @@ useEffect(() => {
             )}
           </div>
 
-          {/* Estado de la pre-solicitud - Mensaje según el estado */}
           {yaFinalizada && (
             <div style={{
               background: solicitud.estado === 'ADMISIBLE' ? '#f0fff4' : 
@@ -492,20 +479,15 @@ useEffect(() => {
             </div>
 )}
 
-{/* Lista de documentos */}
 {solicitud.documentos?.map((doc) => {
   const esReemplazado = documentosReemplazados.includes(doc.id);
   const nuncaEvaluado = !doc.estado_evaluacion;
   
   let puedeEditar = !yaFinalizada;
   
-  // Si la solicitud está en OBSERVADA o viene de una OBSERVADA (está EN_CALIFICACION pero con documentos reemplazados)
   if (solicitud.estado === 'OBSERVADA') {
-    // En OBSERVADA, solo se editan los documentos reemplazados o los que nunca fueron evaluados
     puedeEditar = esReemplazado || nuncaEvaluado;
   } else if (solicitud.estado === 'EN_CALIFICACION' && documentosReemplazados.length > 0) {
-    // Si está EN_CALIFICACION pero hay documentos reemplazados (viene de OBSERVADA)
-    // Solo se edita el documento reemplazado
     puedeEditar = esReemplazado;
   }
 
@@ -523,7 +505,6 @@ useEffect(() => {
   );
 })}
 
-          {/* Errores y éxito */}
           {errEval && (
             <div style={{
               background: '#fff5f5', border: '1px solid var(--rojo-error)',
@@ -544,7 +525,6 @@ useEffect(() => {
             </div>
           )}
 
-          {/* Botón confirmar */}
           {!yaFinalizada && (
             <button
               onClick={handleEvaluar}
@@ -563,7 +543,6 @@ useEffect(() => {
             </button>
           )}
 
-          {/* Re-evaluación si está OBSERVADA */}
           {solicitud.estado === 'OBSERVADA' && !exito && (
             <p style={{ fontSize: '0.78rem', color: 'var(--gris-texto)', marginTop: '10px', textAlign: 'center' }}>
               Esta solicitud está <strong>OBSERVADA</strong>. Puedes re-evaluar los documentos una vez el ciudadano los reemplace.

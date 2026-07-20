@@ -1,7 +1,6 @@
-import api from './api'; // ← importa la instancia de axios configurada
+import api from './api';
 
 export const getUsuarios = async (filtros = {}) => {
-    // ✅ Quita el "/api" extra, solo usa "/usuarios"
     const res = await api.get('/usuarios', { params: filtros });
     return res.data.data;
 };

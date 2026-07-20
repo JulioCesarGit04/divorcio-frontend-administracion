@@ -1,7 +1,7 @@
 // src/services/modulo4Service.js
 import { fetchWithRetry, safeJson, TIMEOUTS } from './ProcedimientoService';
 
-const API_URL = 'http://localhost:3000/api/procedimiento';
+const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/procedimiento`;
 
 export const registrarSegundoPago = async (expediente_id, fecha_pago) => {
     const response = await fetchWithRetry(
@@ -105,7 +105,6 @@ export const getArchivamientoData = async (expediente_id) => {
     return data;
 };
 
-// NUEVA FUNCIÓN: Obtener el siguiente número de resolución
 export const obtenerSiguienteNumero = async () => {
     const response = await fetchWithRetry(
          `${API_URL}/resolucion-disolucion/next-number`,

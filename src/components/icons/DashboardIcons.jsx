@@ -1,7 +1,3 @@
-// src/components/icons/DashboardIcons.jsx
-// Íconos SVG propios para reemplazar @mui/icons-material
-// Todos heredan color vía currentColor y aceptan `size` (default 24)
-
 import React from 'react';
 
 const base = (size) => ({
@@ -15,7 +11,6 @@ const base = (size) => ({
     strokeLinejoin: 'round',
 });
 
-// Íconos de tendencia
 export const TrendingUpIcon = ({ size = 24, ...props }) => (
     <svg {...base(size)} {...props}>
         <polyline points="3 17 9 11 13 15 21 7" />
@@ -30,7 +25,6 @@ export const TrendingDownIcon = ({ size = 24, ...props }) => (
     </svg>
 );
 
-// Íconos de acciones
 export const RefreshIcon = ({ size = 24, ...props }) => (
     <svg {...base(size)} {...props}>
         <polyline points="23 4 23 10 17 10" />
@@ -47,7 +41,6 @@ export const DownloadIcon = ({ size = 24, ...props }) => (
     </svg>
 );
 
-// Íconos de calendario y tiempo
 export const CalendarTodayIcon = ({ size = 24, ...props }) => (
     <svg {...base(size)} {...props}>
         <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -64,7 +57,6 @@ export const AccessTimeIcon = ({ size = 24, ...props }) => (
     </svg>
 );
 
-// Íconos de métricas
 export const SpeedIcon = ({ size = 24, ...props }) => (
     <svg {...base(size)} {...props}>
         <path d="M12 2a10 10 0 1 0 10 10" />
@@ -88,7 +80,6 @@ export const PieChartIcon = ({ size = 24, ...props }) => (
     </svg>
 );
 
-// Íconos de estado
 export const ErrorOutlineIcon = ({ size = 24, ...props }) => (
     <svg {...base(size)} {...props}>
         <circle cx="12" cy="12" r="10" />
@@ -120,7 +111,6 @@ export const CancelIcon = ({ size = 24, ...props }) => (
     </svg>
 );
 
-// Íconos de documentos y trámites
 export const AssignmentIcon = ({ size = 24, ...props }) => (
     <svg {...base(size)} {...props}>
         <rect x="4" y="3" width="16" height="18" rx="2" />
@@ -148,7 +138,6 @@ export const GavelIcon = ({ size = 24, ...props }) => (
     </svg>
 );
 
-// Exportación por defecto (opcional)
 export default {
     TrendingUpIcon,
     TrendingDownIcon,

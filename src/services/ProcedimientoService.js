@@ -1,7 +1,8 @@
 // src/services/ProcedimientoService.js (FRONTEND)
-const API_URL = 'http://localhost:3000/api/procedimiento';
-const AUTH_URL = 'http://localhost:3000/api/auth';
-const UPLOADS_URL = 'http://localhost:3000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = `${BASE_URL}/procedimiento`;
+const AUTH_URL = `${BASE_URL}/auth`;
+const UPLOADS_URL = BASE_URL.replace(/\/api\/?$/, '');
 
 export const TIMEOUTS = {
     DEFAULT: 15000,
@@ -91,12 +92,8 @@ export const logout = async () => {
 export const getPdfUrl = (ruta) => {
     if (!ruta) return '#';
     if (ruta.startsWith('http')) return ruta;
-    if (ruta.startsWith('/uploads')) return `${UPLOADS_URL}${ruta}`;
-    if (ruta.includes(':\\') || ruta.includes(':/')) {
-        const fileName = ruta.split(/[\\/]/).pop();
-        return `${UPLOADS_URL}/uploads/${fileName}`;
-    }
-    return `${UPLOADS_URL}/uploads/${ruta}`;
+    const fileName = ruta.split(/[\\/]/).pop();
+    return `${UPLOADS_URL}/uploads/${fileName}`;
 };
 
 export const cambiarEstadoExpediente = async (id, nueva_etapa, motivo = '', nuevo_estado = null) => {

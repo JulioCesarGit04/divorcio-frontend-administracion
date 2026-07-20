@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import RutaProtegida from './components/RutaProtegida';
 import RutaAdmin from './components/RutaAdmin';
-import Layout from './components/Layout'; // ← Importar Layout
+import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import ListadoPage from './pages/ListadoPage';
 import DetallePage from './pages/DetallePage';
@@ -41,7 +41,6 @@ function App() {
             </RutaProtegida>
           } />
 
-          {/* ✅ Ruta para administradores con Layout */}
           <Route path="/admin/usuarios" element={
             <RutaAdmin>
               <Layout>

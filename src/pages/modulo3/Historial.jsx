@@ -245,7 +245,6 @@ function PreSolicitudAgrupada({ eventos }) {
         evaluacionesPorDoc.get(nombre).push({ estado, motivo, fecha: ev.fecha, usuario: ev.usuario });
     });
 
-    // ── 4. Procesar ──
     const docsAprobados = [];
     const docsObservados = [];
     const docsCorregidos = [];
@@ -274,9 +273,7 @@ function PreSolicitudAgrupada({ eventos }) {
             });
         }
 
-        // ── CORREGIDOS: buscar el archivo directamente desde los eventos ──
         if (fueObservado && estadoFinal === 'APROBADO') {
-            // Buscar el evento DOCUMENTO_CIUDADANO más reciente para este documento
             const subidasDoc = eventos
                 .filter(e => e.tipo_evento === 'DOCUMENTO_CIUDADANO' && e.accion === 'SUBIDA')
                 .filter(e => {
@@ -291,7 +288,6 @@ function PreSolicitudAgrupada({ eventos }) {
             let tipoCorreccion = '';
 
             if (subidasDoc.length > 0) {
-                // Extraer el archivo del detalle del evento más reciente
                 const ultimoEvento = subidasDoc[0];
                 const detalle = ultimoEvento.detalle || '';
                 const archivoMatch = detalle.match(/Archivo:\s*(.+)/);
@@ -314,8 +310,6 @@ function PreSolicitudAgrupada({ eventos }) {
         }
     }
 
-    // ── 5. Cambios de estado ──
-    // ── 5. Cambios de estado ──
 const cambiosEstado = eventos.filter(e =>
     (e.tipo_evento === 'EXPEDIENTE' || e.tipo_evento === 'PRE_SOLICITUD') &&
     (e.accion === 'ACTUALIZACION' || e.accion === 'CAMBIO_ESTADO') &&
@@ -323,7 +317,6 @@ const cambiosEstado = eventos.filter(e =>
     (e.detalle.includes('→') || e.detalle.includes('?'))
 );
 
-    // ── 6. Render ──
     return (
         <div className="hg-pre-agrupada" style={{ padding: '8px 0' }}>
             {documentosSubidos.length > 0 && (
@@ -422,7 +415,6 @@ const cambiosEstado = eventos.filter(e =>
                         <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>({docsCorregidos.length})</span>
                     </div>
                     {docsCorregidos.map((doc, idx) => {
-                        // Mostrar el archivo si existe
                         const archivoMostrar = doc.archivoCorregido && doc.archivoCorregido !== 'Sin archivo' && doc.archivoCorregido !== 'Archivo no disponible'
                             ? doc.archivoCorregido
                             : 'Archivo no disponible';
@@ -484,7 +476,6 @@ const cambiosEstado = eventos.filter(e =>
                 <span style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1f2937' }}> Cambios de estado</span>
                 {cambiosEstado.map((ev, idx) => {
                     let texto = ev.detalle || '';
-                    // Quitar prefijo "Pre-solicitud: " si existe
                     let textoLimpio = texto.replace(/^Pre-solicitud:\s*/, '');
                     textoLimpio = textoLimpio.replace(' ? ', ' → ');
                     let estadoAnterior = '';
@@ -526,13 +517,11 @@ const cambiosEstado = eventos.filter(e =>
         </div>
     );
 }
-// ─── EvaluacionDetalle (para sub-eventos de etapas) ──────────────────────────
 function EvaluacionDetalle({ item }) {
     let detalleObj = null;
     try {
         detalleObj = typeof item.detalle === 'string' ? JSON.parse(item.detalle) : item.detalle;
     } catch {
-        // Si no es JSON, mostrar texto plano
         return (
             <div className="hg-sub-evento">
                 <div className="hg-sub-info">
@@ -677,7 +666,6 @@ function EvaluacionDetalle({ item }) {
     );
 }
 
-// ─── SubEvento ──────────────────────────────────────────────────────────────────
 function SubEvento({ item }) {
     if (item.tipo_evento === 'EVALUACION_DOCUMENTO') {
         return <EvaluacionDetalle item={item} />;
@@ -726,7 +714,6 @@ function SubEvento({ item }) {
     );
 }
 
-// ─── EtapaTimeline ──────────────────────────────────────────────────────────
 function EtapaTimeline({ etapa, esUltima }) {
     const [expandida, setExpandida] = useState(true);
     const tieneSubEventos = etapa.sub_eventos.length > 0;
@@ -762,7 +749,6 @@ function EtapaTimeline({ etapa, esUltima }) {
     );
 }
 
-// ─── PreSolicitudCard ──────────────────────────────────────────────────────────
 function PreSolicitudCard({ tarjeta, detalle, cargandoDetalle, expandido, onToggle }) {
     const {
         pre_solicitud_id,
@@ -838,7 +824,6 @@ function PreSolicitudCard({ tarjeta, detalle, cargandoDetalle, expandido, onTogg
     );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
 export default function Historial() {
     const [tarjetas, setTarjetas] = useState([]);
     const [detalleCache, setDetalleCache] = useState({});

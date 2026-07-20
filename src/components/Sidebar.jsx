@@ -19,7 +19,6 @@ const IconExpedientes = () => (
   </svg>
 );
 
-// ✅ Icono para Usuarios (el que faltaba)
 const IconUsuarios = () => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -118,7 +117,7 @@ const S = {
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { usuario, logout } = useAuth(); // ✅ Extraer usuario para condicionar
+  const { usuario, logout } = useAuth(); 
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -153,7 +152,6 @@ export default function Sidebar() {
           <span style={S.label(collapsed)}>Expedientes</span>
         </NavLink>
 
-        {/* ✅ Enlace corregido: ruta /admin/usuarios, icono de usuarios, etiqueta correcta, y solo para administradores */}
         {usuario?.rol === 'ADMINISTRADOR' && (
           <NavLink to="/admin/usuarios" style={linkStyle}>
             <IconUsuarios />

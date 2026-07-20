@@ -4,7 +4,6 @@ import { getDiasHabilesEntre, sumarDiasHabiles } from '../../services/Procedimie
 import '../../styles/modulo3/PlazoAlerta.css'
 
 export default function PlazoAlerta({ expediente, audienciaActual, debug = false }) {
-    // ─── Estados del componente principal ──────────────────────────────────────
     const [diasRestantes, setDiasRestantes] = useState(null)
     const [color, setColor] = useState('#64748b')
     const [estado, setEstado] = useState('normal')
@@ -17,7 +16,6 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
     })
     const [cargandoDias, setCargandoDias] = useState(false)
 
-    // ─── Estados para el panel de depuración ──────────────────────────────────
     const [debugInicio, setDebugInicio] = useState('')
     const [debugDias, setDebugDias] = useState(15)
     const [debugResultadoBackend, setDebugResultadoBackend] = useState(null)
@@ -25,7 +23,6 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
     const [debugFrontend, setDebugFrontend] = useState(null)
     const [debugCargando, setDebugCargando] = useState(false)
 
-    // ─── Funciones auxiliares ──────────────────────────────────────────────────
     const formatFecha = (fecha) => {
         if (!fecha) return '—'
         return fecha.split('T')[0].split('-').reverse().join('/')
@@ -60,7 +57,6 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     }
 
-    // ─── useEffect principal – maneja todos los casos ────────────────────────
     useEffect(() => {
         if (!expediente) return
 
@@ -69,7 +65,6 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
         const tieneAudienciaRealizada = audienciaActual && audienciaActual.estado === 'REALIZADA'
         const tieneAudienciaReprogramada = audienciaActual && audienciaActual.estado === 'REPROGRAMADA'
 
-        // 1. Espera legal (días calendario – 60 días exactos)
         if (etapa === 'ESPERA_LEGAL' && expediente.fecha_fin_espera) {
             const dias = calcularDiasCalendarioRestantes(expediente.fecha_fin_espera)
             setDiasRestantes(dias)
@@ -83,7 +78,6 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
             return
         }
 
-        // 2. Disolución
         if (etapa === 'DISOLUCION') {
             setInfo({
                 titulo: 'Etapa de Disolución',
@@ -96,7 +90,6 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
             return
         }
 
-        // 3. Audiencia programada
         if (tieneAudienciaProgramada) {
             const fechaStr = audienciaActual.fecha_programada
             const horaFormateada = formatHoraLocal(fechaStr)
@@ -111,7 +104,6 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
             return
         }
 
-        // 4. Audiencia realizada
         if (tieneAudienciaRealizada) {
             const fechaStr = audienciaActual.fecha_programada
             const horaFormateada = formatHoraLocal(fechaStr)
@@ -126,7 +118,6 @@ export default function PlazoAlerta({ expediente, audienciaActual, debug = false
             return
         }
 
-        // 5. Reprogramación de audiencia (con plazo límite)
 if (tieneAudienciaReprogramada && expediente.fecha_limite_audiencia) {
     const fechaOriginalStr = audienciaActual.fecha_programada
     const horaOriginal = formatHoraLocal(fechaOriginalStr)
@@ -148,7 +139,6 @@ if (tieneAudienciaReprogramada && expediente.fecha_limite_audiencia) {
 
 
 
-        // 6. Plazo para programar audiencia (EVALUACION, DOCUMENTOS_INTERNOS, AUDIENCIA)
 if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUDIENCIA') && expediente.fecha_limite_audiencia) {
     setInfo({
         titulo: 'Plazo para programar audiencia',
@@ -157,7 +147,6 @@ if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUD
         horaEvento: null,
         mostrar: true
     })
-    // Usar el valor del backend y sumarle 1 para corregir el desfase
     let dias = expediente.dias_restantes_audiencia_habiles;
     if (dias !== null && dias !== undefined) {
         dias = dias + 1;
@@ -166,11 +155,9 @@ if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUD
     return
 }
 
-        // 7. Ningún caso coincide → ocultar
         setInfo({ ...info, mostrar: false })
     }, [expediente, audienciaActual])
 
-    // ─── useEffect para colores y estado visual ──────────────────────────────
     useEffect(() => {
         if (diasRestantes === null) {
             setColor('#64748b')
@@ -190,7 +177,6 @@ if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUD
         }
     }, [diasRestantes])
 
-    // ─── Función para generar el mensaje ──────────────────────────────────────
     const getDescripcion = () => {
         if (estado === 'vencido') return 'PLAZO VENCIDO'
         if (diasRestantes === null) return null
@@ -208,7 +194,6 @@ if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUD
         return null
     }
 
-    // ─── Panel de depuración (sin cambios) ──────────────────────────────────
     const contarDiasHabilesLocal = (inicioStr, finStr) => {
         const inicio = new Date(inicioStr)
         const fin = new Date(finStr)
@@ -228,30 +213,19 @@ if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUD
         if (!debugInicio || debugDias <= 0) return;
         setDebugCargando(true);
         try {
-            console.log('🔍 handleDebugCalcular - debugInicio:', debugInicio);
-            console.log('🔍 handleDebugCalcular - debugDias:', debugDias);
 
             const resSuma = await sumarDiasHabiles(debugInicio, debugDias);
-            console.log('🔍 resSuma:', resSuma);
             const fechaFinalBackend = resSuma.fecha;
-            console.log('🔍 fechaFinalBackend:', fechaFinalBackend);
 
             const resEntre = await getDiasHabilesEntre(debugInicio, fechaFinalBackend);
-            console.log('🔍 resEntre:', resEntre);
             const diasBackend = resEntre.dias;
-            console.log('🔍 diasBackend:', diasBackend);
 
             const diasFrontend = contarDiasHabilesLocal(debugInicio, fechaFinalBackend);
-            console.log('🔍 diasFrontend:', diasFrontend);
 
             setDebugResultadoBackend(fechaFinalBackend);
             setDebugDiasBackend(diasBackend);
             setDebugFrontend(diasFrontend);
 
-            console.log('✅ Estados actualizados:');
-            console.log('  debugResultadoBackend:', fechaFinalBackend);
-            console.log('  debugDiasBackend:', diasBackend);
-            console.log('  debugFrontend:', diasFrontend);
         } catch (error) {
             console.error('Error en depuración:', error);
         } finally {
@@ -259,11 +233,10 @@ if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUD
         }
     };
 
-    // ─── Renderizado condicional según debug ──────────────────────────────────
     if (debug) {
         return (
             <div className="plazo-alerta debug-panel" style={{ border: '2px solid #ccc', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                <h3 style={{ marginTop: 0 }}>🧪 Depuración de días hábiles</h3>
+                <h3 style={{ marginTop: 0 }}> Depuración de días hábiles</h3>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'end' }}>
                     <div>
                         <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold' }}>Fecha inicio</label>
@@ -299,7 +272,7 @@ if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUD
                         </p>
                         {debugDiasBackend !== debugDias && (
                             <p style={{ color: 'orange' }}>
-                                ⚠️ El número de días hábiles sumados ({debugDias}) no coincide con los contados ({debugDiasBackend}).
+                                 El número de días hábiles sumados ({debugDias}) no coincide con los contados ({debugDiasBackend}).
                             </p>
                         )}
                     </div>
@@ -311,7 +284,6 @@ if ((etapa === 'EVALUACION' || etapa === 'DOCUMENTOS_INTERNOS' || etapa === 'AUD
         )
     }
 
-    // ─── Modo normal: renderizado del componente principal ────────────────────
     if (!info.mostrar) return null
 
     return (

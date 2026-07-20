@@ -25,7 +25,6 @@ export default function ArchivamientoExpediente() {
     const [pdfAbiertoSunarp, setPdfAbiertoSunarp] = useState(false)
     const [pdfAbiertoReniec, setPdfAbiertoReniec] = useState(false)
 
-    // Toggles para las previsualizaciones de archivos nuevos (no existentes)
     const togglePreviaSunarp = () => {
         setPreviaAbierta(prev => ({ ...prev, sunarp: !prev.sunarp }))
     }
@@ -55,9 +54,7 @@ export default function ArchivamientoExpediente() {
         cargar()
     }, [id])
 
-    // Efecto para crear/revocar URLs de previsualización para archivos nuevos
     useEffect(() => {
-        // SUNARP
         if (previaAbierta.sunarp && archivos.sunarp) {
             const url = URL.createObjectURL(archivos.sunarp)
             setPreviewUrl(prev => ({ ...prev, sunarp: url }))
@@ -73,7 +70,6 @@ export default function ArchivamientoExpediente() {
     }, [previaAbierta.sunarp, archivos.sunarp])
 
     useEffect(() => {
-        // RENIEC
         if (previaAbierta.reniec && archivos.reniec) {
             const url = URL.createObjectURL(archivos.reniec)
             setPreviewUrl(prev => ({ ...prev, reniec: url }))
@@ -88,7 +84,6 @@ export default function ArchivamientoExpediente() {
         }
     }, [previaAbierta.reniec, archivos.reniec])
 
-    // Limpiar URLs al desmontar
     useEffect(() => {
         return () => {
             if (previewUrl.sunarp) URL.revokeObjectURL(previewUrl.sunarp)
@@ -108,7 +103,6 @@ export default function ArchivamientoExpediente() {
             return
         }
 
-        // Al cambiar el archivo, cerramos la preview de ese tipo
         setPreviaAbierta(prev => ({ ...prev, [tipo]: false }))
         setArchivos(prev => ({ ...prev, [tipo]: file }))
         setMensaje('')
@@ -120,7 +114,6 @@ export default function ArchivamientoExpediente() {
             return
         }
 
-        // Validar que existe la Resolución de Disolución
         const tieneResolucion = expediente?.num_resolucion && expediente?.fecha_elaboracion_resolucion;
         if (!tieneResolucion) {
             setMensaje(' Primero debe subir la Resolución de Disolución en la página correspondiente.');
@@ -141,7 +134,6 @@ export default function ArchivamientoExpediente() {
             const reniecFile = archivos.reniec || null
             const result = await subirCargosExternos(id, sunarpFile, reniecFile)
             if (result.ok) {
-                // Limpiar previsualizaciones
                 setPreviaAbierta({ sunarp: false, reniec: false })
                 setArchivos({ sunarp: null, reniec: null })
                 setMensaje('Expediente finalizado correctamente. Redirigiendo...')
@@ -177,7 +169,6 @@ export default function ArchivamientoExpediente() {
     const etapaActual = expediente?.etapa || 'ARCHIVADO'
     const getPipelineEtapa = () => 'archivar'
 
-    // Verificar si existe resolución de disolución
     const tieneResolucion = expediente?.num_resolucion && expediente?.fecha_elaboracion_resolucion;
 
     if (cargando) return (
@@ -221,11 +212,9 @@ export default function ArchivamientoExpediente() {
 
                 <div className="rf-layout">
                     <div className="rf-main">
-                        {/* SECCIÓN DATOS DEL EXPEDIENTE MODIFICADA */}
                         <div className="seccion">
                             <h2>Datos del expediente</h2>
 
-                            {/* Tabla de datos principales */}
                             <div className="datos-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                                 <div>
                                     <label>N° EXPEDIENTE</label>
@@ -245,7 +234,6 @@ export default function ArchivamientoExpediente() {
                                 </div>
                             </div>
 
-                            {/* Datos del Solicitante */}
                             <div style={{ marginTop: '1.5rem' }}>
                                 <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#0f3b6f', marginBottom: '0.5rem' }}>Solicitante</h3>
                                 <div className="datos-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
@@ -254,7 +242,6 @@ export default function ArchivamientoExpediente() {
                                 </div>
                             </div>
 
-                            {/* Datos del Demandado */}
                             <div style={{ marginTop: '1.5rem' }}>
                                 <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#0f3b6f', marginBottom: '0.5rem' }}>Demandado</h3>
                                 <div className="datos-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
@@ -263,7 +250,6 @@ export default function ArchivamientoExpediente() {
                                 </div>
                             </div>
                         </div>
-                        {/* FIN DE LA SECCIÓN MODIFICADA */}
 
                         <div className="seccion">
                             <h2>Cargos SUNARP y RENIEC</h2>
@@ -274,7 +260,6 @@ export default function ArchivamientoExpediente() {
                                 </div>
                             )}
 
-                            {/* SUNARP - Archivo existente */}
                             {archivosExistentes.sunarp ? (
                                 <div style={{ marginBottom: '24px', border: '1.5px solid #9ae6b4', borderRadius: '12px', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f0fff4' }}>
@@ -324,7 +309,6 @@ export default function ArchivamientoExpediente() {
                                     )}
                                 </div>
                             ) : (
-                                /* SUNARP - nuevo archivo (subida) */
                                 <div style={{ marginBottom: '24px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                     <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Constancia SUNARP (PDF):</label>
                                     <input
@@ -341,7 +325,6 @@ export default function ArchivamientoExpediente() {
                                         </div>
                                     )}
 
-                                    {/* PREVISUALIZACIÓN SUNARP CON ACORDEÓN */}
                                     {archivos.sunarp && !yaFinalizado && (
                                         <div style={{ marginTop: '16px', border: '1.5px solid #9ae6b4', borderRadius: '10px', overflow: 'hidden' }}>
                                             <div style={{
@@ -428,7 +411,6 @@ export default function ArchivamientoExpediente() {
                                 </div>
                             )}
 
-                            {/* RENIEC - Archivo existente */}
                             {archivosExistentes.reniec ? (
                                 <div style={{ marginBottom: '24px', border: '1.5px solid #9ae6b4', borderRadius: '12px', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f0fff4' }}>
@@ -478,7 +460,6 @@ export default function ArchivamientoExpediente() {
                                     )}
                                 </div>
                             ) : (
-                                /* RENIEC - nuevo archivo (subida) */
                                 <div style={{ marginBottom: '24px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                     <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Constancia RENIEC (PDF):</label>
                                     <input
@@ -495,7 +476,6 @@ export default function ArchivamientoExpediente() {
                                         </div>
                                     )}
 
-                                    {/* PREVISUALIZACIÓN RENIEC CON ACORDEÓN */}
                                     {archivos.reniec && !yaFinalizado && (
                                         <div style={{ marginTop: '16px', border: '1.5px solid #9ae6b4', borderRadius: '10px', overflow: 'hidden' }}>
                                             <div style={{

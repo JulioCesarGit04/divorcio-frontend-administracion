@@ -24,7 +24,6 @@ export default function AppRoutes() {
         verDetalle
     }
 
-    // Props con ID para las vistas que lo necesitan
     const propsConId = {
         ...propsComunes,
         id: expedienteId

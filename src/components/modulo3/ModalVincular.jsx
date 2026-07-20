@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { vincularExpediente } from '../../services/ProcedimientoService';
 import '../../styles/modulo3/modales.css';
 
-// Función reutilizable
 const getFechaPeru = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
 };
@@ -15,7 +14,6 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
     const [cargando, setCargando] = useState(false);
 
     const validarFechaPago = (fecha) => {
-        // ✅ Usar zona horaria de Perú
         const hoy = new Date(getFechaPeru());
         hoy.setHours(0, 0, 0, 0);
         const fechaSeleccionada = new Date(fecha);
@@ -97,7 +95,7 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
     const coinciden = nroMesaPartes.trim() && nroMesaPartesConfirm.trim()
         && nroMesaPartes.trim() === nroMesaPartesConfirm.trim();
 
-    const fechaMaxima = getFechaPeru(); // ✅ Fecha actual en Perú
+    const fechaMaxima = getFechaPeru();
 
     return (
         <div className="modal-overlay" onClick={onCerrar}>
@@ -177,7 +175,7 @@ export default function ModalVincular({ preExpediente, onCerrar, onVinculado }) 
                             value={fechaPago}
                             onChange={e => { setFechaPago(e.target.value); setError(''); }}
                             disabled={cargando}
-                            max={fechaMaxima} // ✅ Fecha actual en Perú
+                            max={fechaMaxima}
                         />
                         <span className="campo-ayuda">
                             Fecha del voucher de pago (no puede ser futura)

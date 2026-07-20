@@ -57,10 +57,8 @@ const DashboardCompleto = () => {
         setFiltros(prev => ({ ...prev, [campo]: valor }));
     };
 
-    // Extraer resúmenes de cada KPI
     const getResumen = (kpiData) => {
         if (!kpiData || !kpiData.length) return null;
-        // Asumimos que el último registro tiene el resumen o calculamos
         return kpiData[0] || null;
     };
 
@@ -103,10 +101,9 @@ const DashboardCompleto = () => {
     return (
         <Box sx={{ flexGrow: 1, overflow: 'auto', p: 3, bgcolor: '#f5f5f5' }}>
             <Container maxWidth="xl">
-                {/* Header */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                     <Typography variant="h4" gutterBottom>
-                        📊 Dashboard de Indicadores
+                         Dashboard de Indicadores
                     </Typography>
                     <Stack direction="row" spacing={2} alignItems="center">
                         <TextField

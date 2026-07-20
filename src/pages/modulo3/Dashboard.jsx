@@ -78,6 +78,13 @@ const PALETA_CIRCULAR = [
     '#4f46e5', '#0d9488', '#c026d3', '#65a30d'
 ];
 
+const formatearMinutos = (minutosDecimales) => {
+    const totalSegundos = Math.round(Number(minutosDecimales) * 60);
+    const min = Math.floor(totalSegundos / 60);
+    const seg = totalSegundos % 60;
+    return `${String(min).padStart(2, '0')}:${String(seg).padStart(2, '0')}`;
+};
+
 const DashboardKPI = () => {
     const theme = useTheme();
     const [loading, setLoading] = useState(true);
@@ -96,16 +103,12 @@ const DashboardKPI = () => {
         fetchData();
     }, [filtros]);
 
-    // ============================================================
-    // FETCH DATA – CONVERSIÓN ROBUSTA A ARRAYS
-    // ============================================================
     const fetchData = async () => {
         setLoading(true);
         setError(null);
         try {
             const response = await getDashboardCompleto(filtros);
             if (response.ok && response.data) {
-                // Función auxiliar para asegurar que los KPIs sean arrays
                 const asegurarArray = (dato) => {
                     if (Array.isArray(dato)) return dato;
                     if (dato && typeof dato === 'object') return [dato];
@@ -135,9 +138,6 @@ const DashboardKPI = () => {
         }
     };
 
-    // ============================================================
-    // FILTROS DE TIEMPO PROMEDIO
-    // ============================================================
     const filteredData = useMemo(() => {
         if (!data?.tiempoPromedioEnvio?.length) return [];
 
@@ -148,35 +148,37 @@ const DashboardKPI = () => {
                 if (!porAnio[anio]) {
                     porAnio[anio] = { anio, mes: '', tiempos: [], total_solicitudes: 0 };
                 }
-                porAnio[anio].tiempos.push(parseFloat(item.tiempo_promedio_minutos));
+                porAnio[anio].tiempos.push(Number(item.tiempo_promedio_minutos));
                 porAnio[anio].total_solicitudes += item.total_solicitudes;
             });
             return Object.values(porAnio)
                 .sort((a, b) => a.anio - b.anio)
-                .map(g => ({
-                    mes: '',
-                    anio: g.anio,
-                    total_solicitudes: g.total_solicitudes,
-                    tiempo_promedio_minutos: (
-                        g.tiempos.reduce((a, b) => a + b, 0) / g.tiempos.length
-                    ).toFixed(2)
-                }));
+                .map(g => {
+                    const promedioMin = g.tiempos.reduce((a, b) => a + b, 0) / g.tiempos.length;
+                    return {
+                        mes: '',
+                        anio: g.anio,
+                        total_solicitudes: g.total_solicitudes,
+                        tiempo_promedio_minutos: promedioMin,
+                        tiempo_promedio_formato: formatearMinutos(promedioMin)
+                    };
+                });
         }
 
         if (timeRange === 'semanal') {
             return data.tiempoPromedioEnvio.slice(-4);
         }
 
-        return data.tiempoPromedioEnvio.slice(-12);
+        return data.tiempoPromedioEnvio.slice(-12).map(item => ({
+            ...item,
+            tiempo_mostrar: item.tiempo_promedio_formato
+        }));
     }, [data, timeRange]);
 
-    // ============================================================
-    // ESTADÍSTICAS DE TIEMPO PROMEDIO
-    // ============================================================
     const stats = useMemo(() => {
         if (!filteredData.length) return null;
 
-        const tiempos = filteredData.map(item => parseFloat(item.tiempo_promedio_minutos));
+        const tiempos = filteredData.map(item => Number(item.tiempo_promedio_minutos));
         const promedio = tiempos.reduce((a, b) => a + b, 0) / tiempos.length;
         const max = Math.max(...tiempos);
         const min = Math.min(...tiempos);
@@ -184,22 +186,21 @@ const DashboardKPI = () => {
         const ultimo = tiempos[tiempos.length - 1];
         const anterior = tiempos.length > 1 ? tiempos[tiempos.length - 2] : ultimo;
         const tendencia = ultimo - anterior;
+        const tendenciaPorcentaje = anterior !== 0 ? (tendencia / anterior) * 100 : 0;
 
         return {
-            promedio: promedio.toFixed(2),
-            max: max.toFixed(2),
-            min: min.toFixed(2),
+            promedio,
+            promedioFormato: formatearMinutos(promedio),
+            max,
+            min,
             total,
-            ultimo: ultimo.toFixed(2),
-            tendencia: tendencia.toFixed(2),
-            tendenciaPorcentaje: ((tendencia / (anterior || 1)) * 100).toFixed(1),
+            ultimo,
+            tendencia,
+            tendenciaPorcentaje,
             suficienteDatos: tiempos.length > 1
         };
     }, [filteredData]);
 
-    // ============================================================
-    // DATOS PARA GRÁFICOS
-    // ============================================================
     const etiquetas = useMemo(() => {
         return filteredData.map(item =>
             timeRange === 'anual' ? `${item.anio}` : `${item.mes} ${item.anio}`
@@ -211,7 +212,7 @@ const DashboardKPI = () => {
         datasets: [
             {
                 label: 'Tiempo Promedio (minutos)',
-                data: filteredData.map(item => parseFloat(item.tiempo_promedio_minutos)),
+                data: filteredData.map(item => Number(item.tiempo_promedio_minutos)),
                 borderColor: theme.palette.primary.main,
                 backgroundColor: theme.palette.primary.main + '33',
                 fill: true,
@@ -352,7 +353,6 @@ const DashboardKPI = () => {
         };
 
         const pct = parseFloat(percentage) || 0;
-        // Para observaciones, mostramos siempre "Atención" si hay datos, pero dejamos la lógica original
         const cumple = pct >= 80;
 
         return (
@@ -494,18 +494,12 @@ const DashboardKPI = () => {
     const fechaDesdeLabel = new Date(filtros.fecha_desde + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
     const fechaHastaLabel = new Date(filtros.fecha_hasta + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    // Para los bloques de IndicadorKPI, necesitamos arrays con 'mes' y 'anio'
-    // Si los SPs no devuelven esos campos, los rellenamos con el rango de fechas
     const conEtiquetaPeriodo = (arr) => (arr || []).map(item => ({
         ...item,
         mes: item.mes ?? `${fechaDesdeLabel} –`,
         anio: item.anio ?? fechaHastaLabel
     }));
 
-    // Para observaciones, el backend devuelve '% con observaciones'. En la sección detalle
-    // de IndicadorKPI queremos que el gráfico refleje el mismo % que la tarjeta (es decir, con observaciones)
-    // pero como IndicadorKPI usa el campo 'porcentaje' del fieldMap, lo dejaremos tal cual.
-    // Solo aseguramos que el array tenga los campos necesarios.
     const observacionesParaDetalle = conEtiquetaPeriodo(observaciones);
 
     return (
@@ -585,19 +579,15 @@ const DashboardKPI = () => {
                 </Paper>
 
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-                    En las 4 tarjetas de porcentaje, más alto siempre es mejor desempeño (el sector coloreado del anillo es el valor favorable). En "Tiempo Promedio de Envío", más bajo es mejor.
+                    En las 5 tarjetas de porcentaje, más alto siempre es mejor desempeño (el sector coloreado del anillo es el valor favorable). En "Tiempo Promedio de Envío", más bajo es mejor.
                 </Typography>
 
-                {/* ============================================================ */}
-                {/* TARJETAS DE KPIs (5 en una fila) */}
-                {/* ============================================================ */}
                 <Box sx={{
                     display: 'grid',
                     gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr', lg: 'repeat(5, 1fr)' },
                     gap: 3,
                     mb: 4
                 }}>
-                    {/* Audiencias */}
                     <Box>
                         {renderKPICard(
                             'Audiencias en Plazo Legal',
@@ -614,7 +604,6 @@ const DashboardKPI = () => {
                         )}
                     </Box>
 
-                    {/* Disolución */}
                     <Box>
                         {renderKPICard(
                             'Disolución en Plazo',
@@ -631,7 +620,6 @@ const DashboardKPI = () => {
                         )}
                     </Box>
 
-                    {/* Expedientes con Observaciones - CORREGIDO */}
                     <Box>
                         {renderKPICard(
                             'Expedientes con Observaciones',
@@ -648,7 +636,6 @@ const DashboardKPI = () => {
                         )}
                     </Box>
 
-                    {/* Subsanación */}
                     <Box>
                         {renderKPICard(
                             'Documentos Subsanados en Plazo',
@@ -665,7 +652,6 @@ const DashboardKPI = () => {
                         )}
                     </Box>
 
-                    {/* Tiempo Promedio de Envío (tarjeta resumen) */}
                     <Box>
                         <Card elevation={3} sx={{ height: '100%' }}>
                             <CardContent>
@@ -675,7 +661,7 @@ const DashboardKPI = () => {
                                             Tiempo Promedio de Envío
                                         </Typography>
                                         <Typography variant="h5" fontWeight="bold">
-                                            {stats ? `${stats.promedio} min` : '—'}
+                                            {stats ? stats.promedioFormato : '—'}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary">
                                             Formulario del ciudadano
@@ -693,7 +679,7 @@ const DashboardKPI = () => {
                                                 <Box sx={{ textAlign: 'center', color: parseFloat(stats.tendencia) < 0 ? 'success.main' : 'error.main' }}>
                                                     {parseFloat(stats.tendencia) < 0 ? <TrendingDownIcon size={32} /> : <TrendingUpIcon size={32} />}
                                                     <Typography variant="caption" display="block">
-                                                        {parseFloat(stats.tendencia) < 0 ? '−' : '+'}{Math.abs(parseFloat(stats.tendencia)).toFixed(1)} min
+                                                        {parseFloat(stats.tendencia) < 0 ? '−' : '+'}{formatearMinutos(Math.abs(parseFloat(stats.tendencia)))}
                                                     </Typography>
                                                 </Box>
                                             ) : (
@@ -705,7 +691,8 @@ const DashboardKPI = () => {
                                         <Box sx={{ flex: 1 }}>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Typography variant="body2" color="text.secondary">Rango</Typography>
-                                                <Typography variant="body2" fontWeight="bold">{stats.min}–{stats.max} min</Typography>
+                                                <Typography variant="body2" fontWeight="bold">
+{formatearMinutos(stats.min)} - {formatearMinutos(stats.max)}                                                </Typography>
                                             </Box>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
                                                 <Typography variant="caption" color="text.secondary">
@@ -732,9 +719,6 @@ const DashboardKPI = () => {
 
                 <Divider sx={{ my: 4 }} />
 
-                {/* ============================================================ */}
-                {/* SECCIONES DETALLADAS (IndicadorKPI) */}
-                {/* ============================================================ */}
                 <IndicadorKPI
                     titulo="Audiencias en Plazo Legal"
                     descripcion="% de expedientes con audiencia programada dentro de 15 días desde recepción"
@@ -805,9 +789,6 @@ const DashboardKPI = () => {
 
                 <Divider sx={{ my: 4 }} />
 
-                {/* ============================================================ */}
-                {/* SECCIÓN DE TIEMPO PROMEDIO DE ENVÍO (gráfico y estadísticas) */}
-                {/* ============================================================ */}
                 <Typography variant="h5" gutterBottom sx={{ mb: 3 }} id="seccion-tiempo-promedio">
                      Tiempo Promedio de Envío
                 </Typography>
@@ -824,7 +805,10 @@ const DashboardKPI = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <Box>
                                         <Typography color="textSecondary" variant="caption">Promedio General</Typography>
-                                        <Typography variant="h4">{stats.promedio} <small style={{ fontSize: '14px' }}>min</small></Typography>
+                                        <Typography variant="h4">
+    {stats.promedioFormato}
+                                            </Typography>
+
                                     </Box>
                                     <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
                                         <AccessTimeIcon />
@@ -875,7 +859,8 @@ const DashboardKPI = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <Box>
                                         <Typography color="textSecondary" variant="caption">Rango de Tiempo</Typography>
-                                        <Typography variant="h4" sx={{ fontSize: '1.2rem' }}>{stats.min} - {stats.max} min</Typography>
+                                        <Typography variant="h4" sx={{ fontSize: '1.2rem' }}>    {formatearMinutos(stats.min)} - {formatearMinutos(stats.max)}
+</Typography>
                                     </Box>
                                     <Box sx={{ bgcolor: 'info.light', borderRadius: '50%', p: 1, display: 'flex', color: 'white' }}>
                                         <BarChartIcon />
@@ -962,14 +947,14 @@ const DashboardKPI = () => {
                                             {timeRange === 'anual' ? 'Año' : 'Mes'}
                                         </th>
                                         <th style={{ padding: '12px', textAlign: 'right' }}>Solicitudes</th>
-                                        <th style={{ padding: '12px', textAlign: 'right' }}>Tiempo Promedio (min)</th>
+                                        <th style={{ padding: '12px', textAlign: 'right' }}>Tiempo Promedio </th>
                                         <th style={{ padding: '12px', textAlign: 'center' }}>Tendencia vs. período anterior</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredData.map((item, index) => {
-                                        const tiempoActual = parseFloat(item.tiempo_promedio_minutos);
-                                        const tiempoAnterior = index > 0 ? parseFloat(filteredData[index - 1].tiempo_promedio_minutos) : null;
+                                        const tiempoActual = Number(item.tiempo_promedio_minutos);
+                                        const tiempoAnterior = index > 0 ? Number(filteredData[index - 1].tiempo_promedio_minutos) : null;
                                         const trend = tiempoAnterior ? ((tiempoActual - tiempoAnterior) / tiempoAnterior * 100) : 0;
 
                                         return (
@@ -978,7 +963,7 @@ const DashboardKPI = () => {
                                                     {item.mes ? <><strong>{item.mes}</strong> {item.anio}</> : <strong>{item.anio}</strong>}
                                                 </td>
                                                 <td style={{ padding: '10px', textAlign: 'right' }}>{item.total_solicitudes}</td>
-                                                <td style={{ padding: '10px', textAlign: 'right' }}>{item.tiempo_promedio_minutos}</td>
+                                                <td style={{ padding: '10px', textAlign: 'right' }}>{item.tiempo_promedio_formato}</td>
                                                 <td style={{ padding: '10px', textAlign: 'center' }}>
                                                     {index > 0 ? (
                                                         <Chip

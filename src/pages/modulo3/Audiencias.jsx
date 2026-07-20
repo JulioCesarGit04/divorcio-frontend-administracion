@@ -50,7 +50,6 @@ export default function Audiencias() {
         setCargando(true);
         setError(null);
         try {
-            // ✅ Obtener TODOS los expedientes (incluyendo ARCHIVADO)
             const resExp = await getExpedientes();
             let expedientes = [];
             if (resExp && Array.isArray(resExp.data)) {
@@ -73,10 +72,8 @@ export default function Audiencias() {
                     audienciaActual = audienciasData.find((a) => a.es_actual === true);
                     tieneAudiencia = audienciaActual !== undefined;
                 } catch (err) {
-                    // Si falla, lo ignoramos
                 }
 
-                // ✅ Incluir expedientes que tengan audiencia O estén en etapa AUDIENCIA
                 const debeIncluir = tieneAudiencia || exp.etapa === 'AUDIENCIA';
                 if (!debeIncluir) return null;
 
@@ -95,7 +92,7 @@ export default function Audiencias() {
                         audienciaId: audienciaActual.id,
                         tieneAudiencia: true,
                         etapa: exp.etapa,
-                        estadoExpediente: exp.estado, // ✅ guardamos estado del expediente
+                        estadoExpediente: exp.estado, 
                     };
                 } else {
                     return {
@@ -112,7 +109,7 @@ export default function Audiencias() {
                         audienciaId: null,
                         tieneAudiencia: false,
                         etapa: exp.etapa,
-                        estadoExpediente: exp.estado, // ✅ guardamos estado del expediente
+                        estadoExpediente: exp.estado, 
                     };
                 }
             });
@@ -120,7 +117,6 @@ export default function Audiencias() {
             let resultados = await Promise.all(promesas);
             resultados = resultados.filter((r) => r !== null);
 
-            // --- Aplicar filtros ---
             let filtrados = resultados;
             if (filtrosAplicados.numeroExpediente) {
                 filtrados = filtrados.filter((a) =>
@@ -154,7 +150,6 @@ export default function Audiencias() {
                 );
             }
 
-            // Ordenar por fecha (primero las más próximas)
             filtrados.sort((a, b) => {
                 if (!a.fechaProgramada && !b.fechaProgramada) return 0;
                 if (!a.fechaProgramada) return 1;
@@ -173,7 +168,6 @@ export default function Audiencias() {
 
     useEffect(() => {
         cargar();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filtrosAplicados]);
 
     const handleFiltroChange = (campo, valor) => {
@@ -206,7 +200,6 @@ export default function Audiencias() {
     };
 
     const handleVerResultado = (expedienteId) => {
-        // Usamos la misma ruta de registrar porque ahí se muestra el resultado
         navigate(`/modulo3/expediente/${expedienteId}/registrar-audiencia`);
     };
 
@@ -310,7 +303,7 @@ export default function Audiencias() {
                                     <th>Fecha/Hora</th>
                                     <th>Estado Audiencia</th>
                                     <th>Intento</th>
-                                    <th>Estado Expediente</th> {/* ✅ Nueva columna */}
+                                    <th>Estado Expediente</th> 
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -349,7 +342,6 @@ export default function Audiencias() {
                                         </td>
                                         <td>
                                             {a.estadoExpediente === 'ARCHIVADO' ? (
-                                                // ✅ Si está archivado, solo mostramos "Ver resultado"
                                                 <button
                                                     className="btn-ver"
                                                     onClick={() => handleVerResultado(a.expedienteId)}
@@ -357,7 +349,6 @@ export default function Audiencias() {
                                                     Ver resultado
                                                 </button>
                                             ) : (
-                                                // Comportamiento normal para no archivados
                                                 !a.tieneAudiencia ? (
                                                     <button
                                                         className="btn-programar"

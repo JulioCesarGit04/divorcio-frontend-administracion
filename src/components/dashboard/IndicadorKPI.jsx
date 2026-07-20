@@ -1,13 +1,3 @@
-// src/components/dashboard/IndicadorKPI.jsx
-//
-// Vista detallada de un KPI individual. Se apoya 100% en `fieldMap` para leer
-// los datos: nunca asume nombres de campo fijos ni recalcula el porcentaje
-// por su cuenta. Esto es intencional -> el número que ves acá SIEMPRE es el
-// mismo que el de la tarjeta resumen de arriba, porque ambos leen el mismo
-// campo del mismo objeto. Si algún día cambian los nombres de campo del
-// backend, solo hay que tocar el `fieldMap` que le pasa Dashboard.jsx, no
-// este archivo.
-
 import React, { useState, useMemo } from 'react';
 import {
     Box,
@@ -49,10 +39,6 @@ ChartJS.register(
     Filler
 );
 
-// Arma una etiqueta de período legible a partir de un registro. Si el
-// backend no envía 'mes'/'anio' (porque el SP solo devuelve un total, sin
-// desglose mensual) nunca deja pasar "undefined undefined": usa un rótulo
-// neutro en su lugar.
 const etiquetaPeriodo = (item, fieldMap, index, total) => {
     const mes = fieldMap.mes ? item[fieldMap.mes] : undefined;
     const anio = item.anio;
@@ -61,8 +47,6 @@ const etiquetaPeriodo = (item, fieldMap, index, total) => {
     if (anio) return `${anio}`;
     if (mes) return `${mes}`;
 
-    // Sin mes/año: si es el único registro, es "el período filtrado".
-    // Si hay varios, al menos los diferenciamos por posición.
     return total > 1 ? `Registro ${index + 1}` : 'Período filtrado';
 };
 
@@ -82,8 +66,6 @@ const IndicadorKPI = ({
     const registros = Array.isArray(data) ? data : [];
     const hayDatos = registros.length > 0;
 
-    // Registro "actual": igual criterio que Dashboard.jsx (primer elemento
-    // del arreglo) para que el detalle nunca contradiga a la tarjeta resumen.
     const actual = hayDatos ? registros[0] : null;
     const anterior = registros.length > 1 ? registros[1] : null;
 
@@ -102,7 +84,7 @@ const IndicadorKPI = ({
         if (!anterior) return null;
         const porcentajeAnterior = parseFloat(leer(anterior, 'porcentaje', 0));
         return (porcentajeActual - porcentajeAnterior).toFixed(1);
-    }, [actual, anterior]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [actual, anterior]); 
 
     const etiquetas = useMemo(
         () => registros.map((item, i) => etiquetaPeriodo(item, fieldMap, i, registros.length)),
@@ -113,7 +95,7 @@ const IndicadorKPI = ({
         if (!hayDatos) return null;
 
         if (registros.length === 1) {
-            // Un solo registro: comparación Dentro vs Fuera, igual a la tarjeta.
+            
             return {
                 labels: [dentroLabel, fueraLabel],
                 datasets: [{
@@ -126,8 +108,6 @@ const IndicadorKPI = ({
             };
         }
 
-        // Varios registros (desglose temporal, cuando el backend lo entregue):
-        // se grafica la evolución del % que ya usa la tarjeta resumen.
         return {
             labels: etiquetas,
             datasets: [{

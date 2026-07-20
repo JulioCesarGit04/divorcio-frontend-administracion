@@ -30,7 +30,6 @@ export default function ProgramarAudiencia() {
     const [modoReprogramacion, setModoReprogramacion] = useState(false)
     const [horasDisponibles, setHorasDisponibles] = useState(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'])
 
-    // 🔹 NUEVO: estado para el modal de advertencia
     const [modalAdvertencia, setModalAdvertencia] = useState({
         visible: false,
         mensaje: '',
