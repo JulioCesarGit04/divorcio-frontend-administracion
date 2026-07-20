@@ -1,4 +1,3 @@
-// src/pages/modulo3/Dashboard.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { getDashboardCompleto } from '../../services/dashboardService';
 import { traducirMes } from '../../utils/meses';
@@ -319,9 +318,7 @@ const DashboardKPI = () => {
         }
     };
 
-    // ============================================================
-    // FUNCIÓN PARA RENDERIZAR CADA TARJETA KPI
-    // ============================================================
+
     const renderKPICard = (title, subtitle, percentage, total, favorable, desfavorable, favorableLabel, desfavorableLabel, color, icon, tooltipText) => {
         const sinDatos = !total || total === 0;
 
@@ -436,9 +433,7 @@ const DashboardKPI = () => {
         );
     };
 
-    // ============================================================
-    // RENDERIZADO PRINCIPAL
-    // ============================================================
+
     if (loading) {
         return (
             <>

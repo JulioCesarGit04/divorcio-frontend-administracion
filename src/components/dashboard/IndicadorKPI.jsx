@@ -120,7 +120,7 @@ const IndicadorKPI = ({
                 tension: 0.35
             }]
         };
-    }, [registros, hayDatos, dentroActual, fueraActual, dentroLabel, fueraLabel, color, etiquetas, chartType, titulo]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [registros, hayDatos, dentroActual, fueraActual, dentroLabel, fueraLabel, color, etiquetas, chartType, titulo]);
 
     const opciones = {
         responsive: true,
