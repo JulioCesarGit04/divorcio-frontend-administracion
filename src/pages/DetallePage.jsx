@@ -252,13 +252,11 @@ useEffect(() => {
   api.get(`/revision/${id}`)
     .then((res) => {
       const data = res.data.data;
-      console.log('🔍 DATOS DE DOCUMENTOS:');
       
       const evIniciales = {};
       const docsReemplazados = [];
       
       data.documentos?.forEach((doc) => {
-        console.log(`📄 ${doc.tipo_documento}: fecha_correccion=${doc.fecha_correccion}`);
         
         if (doc.estado_evaluacion) {
           evIniciales[doc.id] = {
@@ -272,7 +270,6 @@ useEffect(() => {
         }
       });
       
-      console.log('📋 Documentos reemplazados:', docsReemplazados);
       
       setSolicitud(data);
       setEvaluaciones(evIniciales);
