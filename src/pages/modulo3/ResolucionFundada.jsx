@@ -843,7 +843,7 @@ export default function ResolucionFundada() {
                                      Una vez confirmado, el expediente cambiará a la etapa de <strong>DISOLUCIÓN</strong>.
                                 </p>
                                 <ul style={{ marginLeft: 20, color: '#475569', lineHeight: 1.6 }}>
-                                    <li>El expediente pasará a estado ARCHIVADO</li>
+                                    <li>El expediente pasará a estado DISOLUCIÓN</li>
                                 </ul>
                                 <p style={{ marginTop: 16, fontWeight: 500, color: '#dc2626' }}>
                                     Esta acción no se puede deshacer.

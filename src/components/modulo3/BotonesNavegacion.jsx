@@ -37,13 +37,13 @@ export default function BotonesNavegacion({ expedienteId, etapaActual, documento
             id: 'disolucion',
             label: 'Resolución de Disolución',
             ruta: `/modulo4/resolucion-disolucion/${expedienteId}`,
-            etapaMinimaIndex: 3 
+            etapaMinimaIndex: 4 
         },
         {
             id: 'archivar',
             label: 'Archivamiento del Expediente',
             ruta: `/modulo4/archivamiento/${expedienteId}`,
-            etapaMinimaIndex: 4  
+            etapaMinimaIndex: 5  
         }
     ]
 
