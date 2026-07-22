@@ -31,7 +31,6 @@ ChartJS.register(
   ChartTooltip, Legend, Filler, ArcElement
 );
 
-// ─── Utilidades ────────────────────────────────────────────────
 const formatearMinutos = (min) => {
   const totalSeg = Math.round(Number(min) * 60);
   const m = Math.floor(totalSeg / 60);
@@ -39,9 +38,6 @@ const formatearMinutos = (min) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-// ============================================================
-// SEMAFORIZACIÓN — porcentajes
-// ============================================================
 const getSemaforo = (pct, higherIsBetter = true) => {
   const val = higherIsBetter ? pct : (100 - pct);
   if (val >= 80) return { nivel: 'BUENO', label: 'Bueno', cls: 'badge-verde', color: '#276749', bg: '#f0fff4', border: '#9ae6b4' };
@@ -49,9 +45,6 @@ const getSemaforo = (pct, higherIsBetter = true) => {
   return { nivel: 'CRITICO', label: 'Crítico', cls: 'badge-rojo', color: '#9b2c2c', bg: '#fff5f5', border: '#feb2b2' };
 };
 
-// ============================================================
-// SEMAFORIZACIÓN — tiempo (minutos)
-// ============================================================
 const TIEMPO_BUENO_MIN = 5;
 const TIEMPO_REGULAR_MIN = 10;
 
@@ -61,9 +54,6 @@ const getSemaforoTiempo = (minutos) => {
   return { nivel: 'CRITICO', label: 'Crítico', cls: 'badge-rojo', color: '#9b2c2c', bg: '#fff5f5', border: '#feb2b2' };
 };
 
-// ============================================================
-// ANÁLISIS DE MÉTRICAS (con logs)
-// ============================================================
 const calcularMetricas = (data, campoPorcentaje, campoTotales, campoDesfavorable, higherIsBetter = true) => {
   if (!data || data.length === 0) return null;
 
@@ -86,15 +76,10 @@ const calcularMetricas = (data, campoPorcentaje, campoTotales, campoDesfavorable
     });
   }
 
-  // 🔍 LOG
-  console.log(`📊 [${campoPorcentaje}] actual=${actual.toFixed(2)}, anterior=${anterior.toFixed(2)}, tendencia=${tendencia.toFixed(2)}, total=${totalUltimo}, desfavorable=${desfavorableUltimo}, peorMes=${peorMes}, peorValor=${peorValor.toFixed(2)}`);
 
   return { actual, anterior, tendencia, totalUltimo, desfavorableUltimo, peorMes, peorValor, hayHistorial, mesActual: ultimo.mes };
 };
 
-// ============================================================
-// GENERADORES DE CAUSAS DINÁMICAS
-// ============================================================
 
 const causasAudiencias = (data) => {
   const m = calcularMetricas(data, 'porcentaje_cumplimiento', 'total_expedientes', 'fuera_plazo', true);
@@ -231,9 +216,6 @@ const causasTiempo = (dataTiempo) => {
   return causas.slice(0, 3);
 };
 
-// ============================================================
-// SUB-COMPONENTES (con contraste mejorado)
-// ============================================================
 
 function TarjetaKPI({ id, title, subtitle, total, favorable, desfavorable,
                       pct, fLabel, dLabel, color, higherIsBetter = true,
@@ -437,9 +419,6 @@ function Modal({ open, onClose, titulo, descripcion, chartData, chartOpts, tabla
   );
 }
 
-// ============================================================
-// COMPONENTE PRINCIPAL
-// ============================================================
 const DashboardKPI = () => {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
@@ -460,7 +439,6 @@ const DashboardKPI = () => {
     try {
       const response = await getDashboardCompleto(filtros);
       if (response.ok && response.data) {
-        console.log('📥 Datos crudos desde la API:', response.data);
         const asegurarArray = (d) => Array.isArray(d) ? d : d && typeof d === 'object' ? [d] : [];
         const normalizado = {
           tiempoPromedioEnvio: (response.data.tiempoPromedioEnvio || []).map(item => ({
@@ -471,7 +449,6 @@ const DashboardKPI = () => {
           expedientesObservaciones: asegurarArray(response.data.expedientesObservaciones),
           documentosSubsanados:     asegurarArray(response.data.documentosSubsanados),
         };
-        console.log('📦 Datos normalizados:', normalizado);
         setData(normalizado);
         setUltimaActualizacion(new Date());
       } else {
@@ -651,10 +628,6 @@ const DashboardKPI = () => {
   const miniObs = calcMiniStats(observaciones, 'porcentaje_observaciones', 'total_pre_solicitudes');
   const miniSub = calcMiniStats(documentos,    'porcentaje_subsanacion_plazo', 'total_documentos_observados');
 
-  console.log('📈 MiniStats Audiencias:', miniAud);
-  console.log('📈 MiniStats Disolución:', miniDis);
-  console.log('📈 MiniStats Observaciones:', miniObs);
-  console.log('📈 MiniStats Subsanación:', miniSub);
 
   const causasAud = causasAudiencias(audiencias);
   const causasDis = causasDisolucion(disolucion);
